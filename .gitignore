@@ -1,0 +1,9 @@
+__pycache__
+.vscode
+.pytest_cache/
+*.py[cod]
+*$py.class
+.DS_Store
+Thumbs.db
+mydata/
+my*
