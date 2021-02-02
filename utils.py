@@ -1,6 +1,6 @@
 import numpy as np
 import math as m
-from scipy.special import fresnel # pylint: disable=no-name-in-module
+from scipy.special import fresnel
 
 def addnoise(V,sig):
     """
