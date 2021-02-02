@@ -2,7 +2,7 @@ import pymc3 as pm
 import numpy as np
 import math as m
 
-from utils import dipolarkernel
+from .utils import dipolarkernel
 
 def multigaussmodel(nGauss,t,Vdata):
     """
