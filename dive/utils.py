@@ -2,6 +2,8 @@ import numpy as np
 import math as m
 from scipy.special import fresnel
 
+from .constants import *
+
 def addnoise(V,sig):
     """
     Add Gaussian noise with standard deviation sig to signal
@@ -16,14 +18,8 @@ def dipolarkernel(t,r):
     Calculate dipolar kernel matrix.
     Assumes t in microseconds and r in nanometers
     """
-    
-    # Fundamental constants (CODATA 2018)
-    ge = 2.00231930436256
-    hb = 6.62607015e-34/2/m.pi # J rad^-1 s^-1
-    muB = 9.2740100783e-24 # J T^-1
-    w0 = 1e-7*(muB*ge)**2/hb # rad s^-1
     wr = w0/(r*1e-9)**3  # rad s^-1
-    
+        
     # Calculation using Fresnel integrals
     nr = np.size(r)
     nt = np.size(t)
