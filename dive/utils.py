@@ -1,7 +1,7 @@
 import numpy as np
 import math as m
 import sys
-from scipy.special import fresnel
+from scipy.special import fresnel # pylint: disable=no-name-in-module 
 import pymc3 as pm
 from datetime import date
 import os   
@@ -16,6 +16,22 @@ def addnoise(V,sig):
     noise = np.random.normal(0,sig,np.size(V))
     Vnoisy = V + noise
     return Vnoisy
+
+def FWHM2sigma(FWHM):
+    """
+    Take a Gaussian FWHM linewidth to sigma which is the width/standard deviation of the Gaussian.
+    """
+    sigma = FWHM/(2*m.sqrt(2*m.log(2)))
+
+    return sigma
+
+def sigma2FWHM(sigma):
+    """
+    Take the width/standard deviation of the Gaussian and return the FWHM. 
+    """
+    FWHM = sigma/(2*m.sqrt(2*m.log(2)))
+
+    return FWHM
 
 def dipolarkernel(t,r):
     """
@@ -76,12 +92,20 @@ def sample(Model,MCMCparameters):
     trace = pm.sample(model=Model, draws=MCMCparameters["draws"], tune=MCMCparameters["tune"], chains=MCMCparameters["chains"],cores=MCMCparameters["cores"])
 
     # # Result processing 
-    df = pm.trace_to_dataframe(trace)
+    # df = pm.trace_to_dataframe(trace)
+    removeVariables = ["r0_rel"]
+    
 
-    return df
+    for Key in removeVariables:
+        if Key in trace.varnames:
+            trace.remove_values(Key)
+
+    return trace
 
 def saveTrace(df,Parameters,SaveName='empty'):
-    
+    """
+    Save a trace to a CSV file.
+    """
     if SaveName == 'empty':
         today = date.today()
         datestring = today.strftime("%Y%m%d")

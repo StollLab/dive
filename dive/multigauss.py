@@ -2,7 +2,7 @@ import pymc3 as pm
 import numpy as np
 import math as m
 
-from .utils import dipolarkernel
+from .utils import *
 
 def multigaussmodel(nGauss,t,Vdata):
     """
@@ -31,25 +31,25 @@ def multigaussmodel(nGauss,t,Vdata):
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
         r0 = pm.Deterministic('r0', r0_rel.sort()*(r0max-r0min) + r0min)
         
-        w = pm.Bound(pm.InverseGamma, lower=0.05, upper=3.0)('w', alpha=0.1, beta=0.2, shape=nGauss)
-        sig = pm.Deterministic('sig_r', w/(2*m.sqrt(2*m.log(2))))
+        w = pm.Bound(pm.InverseGamma, lower=0.05, upper=3.0)('w', alpha=0.1, beta=0.2, shape=nGauss) # this is the FWHM of the Gaussian
+        # sig = pm.Deterministic('sig_r', w/(2*m.sqrt(2*m.log(2)))) # this is the widht of the Gaussian as it is used 
         
         if nGauss>1:
-            A = pm.Dirichlet('A',a=np.ones(nGauss))
+            a = pm.Dirichlet('a', a=np.ones(nGauss))
         else:
-            A = np.ones(1)
+            a = np.ones(1)
         
         # Calculate distance distribution
         if nGauss==1:
-            P = (1/(sig*m.sqrt(2*m.pi)))*np.exp(-(r-r0)**2/(2*sig**2))
+            P = (1/(FWHM2sigma(w)*m.sqrt(2*m.pi)))*np.exp(-(r-r0)**2/(2*FWHM2sigma(w)**2))
         else:
             P = np.zeros(np.size(K,1))
             for i in range(nGauss):
-                P += A[i]*(1/(sig[i]*m.sqrt(2*m.pi)))*np.exp(-(r-r0[i])**2/(2*sig[i]**2))
+                P += a[i]*(1/(FWHM2sigma(w[i])*m.sqrt(2*m.pi)))*np.exp(-(r-r0[i])**2/(2*FWHM2sigma(w[i])**2))
         
         # Background model
         k = pm.Gamma('k', alpha=0.5, beta=2)
-        B = np.exp(-k*np.abs(t))
+        B = np.exp(-np.abs(t)*k)
         
         # DEER signal
         lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
@@ -61,4 +61,13 @@ def multigaussmodel(nGauss,t,Vdata):
         # Likelihood
         pm.Normal('V', mu=Vmodel, sigma=sigma, observed=Vdata)
         
+    return model
+
+
+def addData(model,V,t):
+
+    with model:
+        # Likelihood
+        pm.Normal('V', mu=Vmodel, sigma=sigma, observed=Vdata)
+
     return model
