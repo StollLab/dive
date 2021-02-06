@@ -3,22 +3,33 @@ import math as m
 
 from .constants import *
 
+def deerTrace(S,B,V0,lamb):
+
+    V = V0*(1-lamb+lamb*S)*B
+
+    return V
+
 def dd_gauss(r,r0,fwhm,a=1):
     """
     Calculates a multi-Gauss distance distribution over distance vector r.
     """
+
     nGauss = np.size(r0)
+
     if np.size(fwhm)!=nGauss:
         raise ValueError("r0 and fwhm need to have the same number of elements.")
     if np.size(a)!=nGauss:
         raise ValueError("r0 and a need to have the same number of elements.")
+    
     sig = np.array(fwhm)/2/m.sqrt(2*m.log(2))
+
     if nGauss==1:
         P = a*gauss(r,r0,sig)
     else:
         P = np.zeros_like(r)
         for k in range(nGauss):
             P += a[k]*gauss(r,r0[k],sig[k])
+
     return P
 
 

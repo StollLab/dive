@@ -3,6 +3,7 @@ import numpy as np
 import math as m
 
 from .utils import *
+from .models import *
 
 def multigaussmodel(nGauss,t,Vdata):
     """
@@ -41,33 +42,27 @@ def multigaussmodel(nGauss,t,Vdata):
         
         # Calculate distance distribution
         if nGauss==1:
-            P = (1/(FWHM2sigma(w)*m.sqrt(2*m.pi)))*np.exp(-(r-r0)**2/(2*FWHM2sigma(w)**2))
+            P = gauss(r,r0,FWHM2sigma(w))
         else:
             P = np.zeros(np.size(K,1))
             for i in range(nGauss):
-                P += a[i]*(1/(FWHM2sigma(w[i])*m.sqrt(2*m.pi)))*np.exp(-(r-r0[i])**2/(2*FWHM2sigma(w[i])**2))
+                P += a[i]*gauss(r,r0[i],FWHM2sigma(w[i]))
         
         # Background model
         k = pm.Gamma('k', alpha=0.5, beta=2)
-        B = np.exp(-np.abs(t)*k)
+        B = bg_exp(t,k)
         
         # DEER signal
         lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
         V0 = pm.Bound(pm.Normal,lower=0.0)('V0', mu=1, sigma=0.2)
-        Vmodel = V0*(1-lamb+lamb*pm.math.dot(K,P))*B
+        
+        # S = pm.math.dot(K,P)
+        # Vmodel = V0*(1-lamb+lamb*S)*B
+        Vmodel = deerTrace(pm.math.dot(K,P),B,V0,lamb)
 
         sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
         
         # Likelihood
-        pm.Normal('V', mu=Vmodel, sigma=sigma, observed=Vdata)
+        pm.Normal('V', mu = Vmodel, sigma = sigma, observed = Vdata)
         
-    return model
-
-
-def addData(model,V,t):
-
-    with model:
-        # Likelihood
-        pm.Normal('V', mu=Vmodel, sigma=sigma, observed=Vdata)
-
     return model

@@ -3,7 +3,6 @@
 # # Import modules
 import pymc3 as pm
 import matplotlib.pyplot as plt
-# import seaborn as sb
 import numpy as np
 import random
 
@@ -67,7 +66,7 @@ def plotMCMC(Ps,Vs,Vdata,t,r):
     ax1.hlines(0,min(t),max(t), color = 'black')
 
     ax1.set_xlabel('$t$ (µs)')
-    ax1.set_ylabel('$V$ arb.u')
+    ax1.set_ylabel('$V$ (arb.u)')
     ax1.set_xlim((min(t), max(t)))
     ax1.set_title('time domain and residuals')
 
