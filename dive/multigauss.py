@@ -19,21 +19,20 @@ def multigaussmodel(nGauss,t,Vdata):
     
     # Calculate dipolar kernel for integration
     r = np.linspace(1,10,451)
-    K = dipolarkernel(t,r)        
-    
+    K = dipolarkernel(t,r)  
+
+    r0min = 1.3
+    r0max = 7    
+
     # Model definition
     model = pm.Model()
     with model:
         
         # Distribution model
-        r0min = 1.3
-        r0max = 7
-        
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
         r0 = pm.Deterministic('r0', r0_rel.sort()*(r0max-r0min) + r0min)
         
         w = pm.Bound(pm.InverseGamma, lower=0.05, upper=3.0)('w', alpha=0.1, beta=0.2, shape=nGauss) # this is the FWHM of the Gaussian
-        # sig = pm.Deterministic('sig_r', w/(2*m.sqrt(2*m.log(2)))) # this is the widht of the Gaussian as it is used 
         
         if nGauss>1:
             a = pm.Dirichlet('a', a=np.ones(nGauss))

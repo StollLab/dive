@@ -18,34 +18,47 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
             nGaussians = 1
         else:
             nGaussians = df['r0'].shape[1]
+
+        nSamples = df['r0'].shape[0]
     else:
         Model = 'Regularization'
-
-    nSamples = df['r0'].shape[0]
+        nSamples = df['P'].shape[0]
 
     idxSamples = random.sample(range(nSamples),nDraws)
-    
-    r0_vecs = df['r0'][idxSamples]
-    w_vecs = df['w'][idxSamples]
-    if nGaussians == 1:
-        a_vecs = np.ones_like(idxSamples)
-    else:
-        a_vecs = df['a'][idxSamples]
-    k_vecs = df['k'][idxSamples]
-    lamb_vecs = df['lamb'][idxSamples]
-    V0_vecs = df['V0'][idxSamples]
-
     Ps = []
     Vs = []
 
     K = dipolarkernel(t,r)
 
-    for iDraw in range(nDraws):
-        P = dd_gauss(r,r0_vecs[iDraw],w_vecs[iDraw],a_vecs[iDraw])
-        Ps.append(P)
-        B = bg_exp(t,k_vecs[iDraw])
-        F = np.dot(K,P)
-        Vs.append(V0_vecs[iDraw]*(1-lamb_vecs[iDraw]+lamb_vecs[iDraw]*F)*B)
+    k_vecs = df['k'][idxSamples]
+    lamb_vecs = df['lamb'][idxSamples]
+    V0_vecs = df['V0'][idxSamples]
+
+    if Model == 'Gaussian':
+        r0_vecs = df['r0'][idxSamples]
+        w_vecs = df['w'][idxSamples]
+        if nGaussians == 1:
+            a_vecs = np.ones_like(idxSamples)
+        else:
+            a_vecs = df['a'][idxSamples]
+
+        for iDraw in range(nDraws):
+            P = dd_gauss(r,r0_vecs[iDraw],w_vecs[iDraw],a_vecs[iDraw])
+            Ps.append(P)
+            
+            B = bg_exp(t,k_vecs[iDraw])
+            F = np.dot(K,P)
+            Vs.append(deerTrace(F,B,V0_vecs[iDraw],lamb_vecs[iDraw]))
+
+    elif Model == 'Regularization':
+ 
+        for iDraw in range(nDraws):
+            P = df['P'][idxSamples[iDraw]]
+            Ps.append(P)
+            
+            B = bg_exp(t,k_vecs[iDraw])
+            F = np.dot(K,P)
+            Vs.append(deerTrace(F,B,V0_vecs[iDraw],lamb_vecs[iDraw]))
 
     return Ps, Vs, t, r
 
