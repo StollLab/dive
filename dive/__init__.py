@@ -8,3 +8,4 @@ from .deerload import deerload
 from .models import *
 from .multigauss import *
 from .plotting import *
+from .samplers import *
