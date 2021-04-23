@@ -89,7 +89,7 @@ def sample(Model,MCMCparameters):
         MCMCparameters["cores"] = 2
     
     # Sampling
-    trace = pm.sample(model=Model, draws=MCMCparameters["draws"], tune=MCMCparameters["tune"], chains=MCMCparameters["chains"],cores=MCMCparameters["cores"])
+    trace = pm.sample(model=Model, draws=MCMCparameters["draws"], tune=MCMCparameters["tune"], chains=MCMCparameters["chains"],cores=MCMCparameters["cores"],return_inferencedata=False)
 
     # # Result processing 
     # df = pm.trace_to_dataframe(trace)

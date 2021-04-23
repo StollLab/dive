@@ -25,8 +25,10 @@ def summary(df,model,Vexp,t,r,nDraws = 100):
 
         nSamples = df['r0'].shape[0]
 
-        display('figure out what labels are needed')
-        Vars = ["k", "lamb","V0","sigma","tau","delta"]  
+        if nGaussians == 1:
+            Vars = ["r0", "w","k","lamb","V0","sigma"]  
+        else:
+            Vars = ["r0", "w","a","k","lamb","V0","sigma"]  
     else:
         Model = 'Regularization'
         nSamples = df['P'].shape[0]
@@ -95,6 +97,8 @@ def LabelLookup(input):
         return "τ" 
     elif input == "V0":
         return "V₀"
+    elif input == "r0":
+        return "r₀"
     else:
         return input
 
