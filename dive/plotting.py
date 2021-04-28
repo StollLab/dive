@@ -33,12 +33,12 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Ptrue = None):
     elif 'k' not in VarNames:
         Model = 'Edwards'
         nSamples = df['P'].shape[0]
-        Vars = ["V0","sigma","tau","delta"]  
+        Vars = ["V0","sigma","tau","delta",'alpha']  
 
     else:
         Model = 'Regularization'
         nSamples = df['P'].shape[0]
-        Vars = ["k", "lamb","V0","sigma","tau","delta"]     
+        Vars = ["k", "lamb","V0","sigma","tau","delta",'alpha']     
     
 
     with model:
@@ -51,17 +51,17 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Ptrue = None):
     
 
 
-    if len(Vars) == 4:
-        fig, axs = plt.subplots(1, 4)
-        axs = np.reshape(axs,(4,))
+    if len(Vars) == 5:
+        fig, axs = plt.subplots(1, 5)
+        axs = np.reshape(axs,(5,))
         
         height = 3.5
         width = 8
 
 
-    elif len(Vars) == 6:
-        fig, axs = plt.subplots(2, 3)
-        axs = np.reshape(axs,(6,))
+    elif len(Vars) == 7:
+        fig, axs = plt.subplots(2, 4)
+        axs = np.reshape(axs,(8,))
 
         height = 7
         width = 11

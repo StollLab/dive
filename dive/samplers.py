@@ -6,29 +6,27 @@ from theano.tensor import slinalg as snp
 import pymc3 as pm
 from scipy.linalg import sqrtm
 
-def randP(delta,tauKtK,tauKtS,LtL,nr):
+def randP(delta,tau,KtK,KtS,LtL,nr):
     r"""
     based on:
     J.M. Bardsley, C. Fox, An MCMC method for uncertainty quantification in
     nonnegativity constrained inverse problems, Inverse Probl. Sci. Eng. 20 (2012)
     """
-    invSigma = tauKtK + delta*LtL
+    invSigma = tau*KtK + delta*LtL
     Sigma = np.linalg.inv(invSigma)
 
     try:
         #'lower' syntax is faster for sparse matrices. Also matches convention in
         # Bardsley paper.
         C_L = np.linalg.cholesky(Sigma)
-        # print('chol')
     except:
         C_L = sqrtm(Sigma)
-        # print('srqt')
         
     v = np.random.standard_normal(size=(nr,))
     w = np.linalg.lstsq(np.matrix.transpose(C_L),v,rcond=None)
     w = w[0]
 
-    P = fnnls(invSigma,tauKtS+w)
+    P = fnnls(invSigma,tau*KtS+w)
 
     return P
 
