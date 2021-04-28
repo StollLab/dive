@@ -11,7 +11,7 @@ from IPython.display import display
 from .utils import *
 from .models import *
 
-def summary(df,model,Vexp,t,r,nDraws = 100):
+def summary(df,model,Vexp,t,r,nDraws = 100, Ptrue = None):
 
     # df = replaceLabels(df)
     VarNames = df.varnames
@@ -28,7 +28,13 @@ def summary(df,model,Vexp,t,r,nDraws = 100):
         if nGaussians == 1:
             Vars = ["r0", "w","k","lamb","V0","sigma"]  
         else:
-            Vars = ["r0", "w","a","k","lamb","V0","sigma"]  
+            Vars = ["r0", "w","a","k","lamb","V0","sigma"]
+
+    elif 'k' not in VarNames:
+        Model = 'Edwards'
+        nSamples = df['P'].shape[0]
+        Vars = ["V0","sigma","tau","delta"]  
+
     else:
         Model = 'Regularization'
         nSamples = df['P'].shape[0]
@@ -42,11 +48,26 @@ def summary(df,model,Vexp,t,r,nDraws = 100):
     display(summary)
 
 
-    fig, axs = plt.subplots(2, 3)
-    fig.set_figheight(7)
-    fig.set_figwidth(11)
+    
 
-    axs = np.reshape(axs,(6,))
+
+    if len(Vars) == 4:
+        fig, axs = plt.subplots(1, 4)
+        axs = np.reshape(axs,(4,))
+        
+        height = 3.5
+        width = 8
+
+
+    elif len(Vars) == 6:
+        fig, axs = plt.subplots(2, 3)
+        axs = np.reshape(axs,(6,))
+
+        height = 7
+        width = 11
+
+    fig.set_figheight(height)
+    fig.set_figwidth(width)
 
     for i in range(len(Vars)):
         az.plot_kde(df[Vars[i]],ax = axs[i])
@@ -60,7 +81,7 @@ def summary(df,model,Vexp,t,r,nDraws = 100):
     plt.show()
 
     with model:
-        axs = az.plot_pair(df,var_names=Vars,kind='kde',figsize=(18,12))
+        axs = az.plot_pair(df,var_names=Vars,kind='kde',figsize=(width,height*2))
 
     axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
 
@@ -72,8 +93,10 @@ def summary(df,model,Vexp,t,r,nDraws = 100):
         if ylabel:
             ax.set_ylabel(betterLabels(ylabel))
 
+    plt.show()
+
     Ps, Vs, _, _ = drawPosteriorSamples(df,r,t,nDraws)
-    plotMCMC(Ps,Vs,Vexp,t,r)
+    plotMCMC(Ps, Vs, Vexp, t, r, Ptrue)
 
 
 def betterLabels(x):
@@ -113,6 +136,11 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
             nGaussians = df['r0'].shape[1]
 
         nSamples = df['r0'].shape[0]
+
+    if 'k' not in VarNames:
+        Model = 'Thomas'
+        nSamples = df['P'].shape[0]
+
     else:
         Model = 'Regularization'
         nSamples = df['P'].shape[0]
@@ -123,8 +151,10 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
 
     K = dipolarkernel(t,r)
 
-    k_vecs = df['k'][idxSamples]
-    lamb_vecs = df['lamb'][idxSamples]
+    if Model != 'Thomas':
+        k_vecs = df['k'][idxSamples]
+        lamb_vecs = df['lamb'][idxSamples]
+
     V0_vecs = df['V0'][idxSamples]
 
     if Model == 'Gaussian':
@@ -153,21 +183,32 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
             F = np.dot(K,P)
             Vs.append(deerTrace(F,B,V0_vecs[iDraw],lamb_vecs[iDraw]))
 
+    elif Model == 'Thomas':
+
+        for iDraw in range(nDraws):
+            P = df['P'][idxSamples[iDraw]]
+            Ps.append(P)
+            Vs.append(V0_vecs[iDraw]*np.dot(K,P))
+
     return Ps, Vs, t, r
 
-def plotMCMC(Ps,Vs,Vdata,t,r):
+def plotMCMC(Ps,Vs,Vdata,t,r, Ptrue = None):
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
     fig.set_figwidth(11)
 
-    
+    if min(Vs[0])<0.2:
+        residuals_offset = -0.5
+    else:
+        residuals_offset = 0
+
     for V,P in zip(Vs,Ps):
         ax1.plot(t, V, color = '#3F60AE', alpha=0.2)
-        ax1.plot(t, Vdata-V, color = '#3F60AE', alpha=0.2)
+        ax1.plot(t, Vdata-V+residuals_offset, color = '#3F60AE', alpha=0.2)
         ax2.plot(r, P, color = '#3F60AE', alpha=0.2)
     ax1.plot(t, Vdata , color = 'black')
-    ax1.hlines(0,min(t),max(t), color = 'black')
+    ax1.hlines(residuals_offset,min(t),max(t), color = 'black')
 
     ax1.set_xlabel('$t$ (µs)')
     ax1.set_ylabel('$V$ (arb.u)')
@@ -178,6 +219,9 @@ def plotMCMC(Ps,Vs,Vdata,t,r):
     ax2.set_ylabel('$P$ (nm$^{-1}$)')
     ax2.set_xlim((min(r), max(r)))
     ax2.set_title('distance domain')
+
+    if Ptrue is not None:
+        ax2.plot(r, Ptrue , color = 'black')
 
     plt.grid()
 
