@@ -6,6 +6,31 @@ from theano.tensor import slinalg as snp
 import pymc3 as pm
 from scipy.linalg import sqrtm
 
+
+from pymc3.step_methods.arraystep import BlockedStep
+
+class SampleEdwardsModel(BlockedStep):
+    def __init__(self, var, delta, sigma, KtK, KtS, LtL, nr):
+            self.vars = [var]
+            self.var = var
+            self.delta = delta
+            self.sigma = sigma
+            self.KtK = KtK
+            self.KtS = KtS
+            self.LtL = LtL
+            self.nr = nr
+
+    def step(self, point: dict):
+        # sigma = np.exp(point[self.sigma.transformed.name])
+        sigma = self.sigma
+        tau = 1/(sigma**2)
+        delta = np.exp(point[self.delta.transformed.name])
+       
+        new = point.copy()
+        new[self.var.name] = randP(delta,tau,self.KtK,self.KtS,self.LtL,self.nr)
+
+        return new
+
 def randP(delta,tau,KtK,KtS,LtL,nr):
     r"""
     based on:

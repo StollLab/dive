@@ -9,3 +9,4 @@ from .models import *
 from .multigauss import *
 from .plotting import *
 from .samplers import *
+from .test_data import *
