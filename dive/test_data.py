@@ -28,9 +28,9 @@ def generateSingleGauss(sigma = 0.01, r0 = 4, w = 0.4, nt = 150,  nr = 100, lam 
     return data, pars
 
 
-def generateMultiGauss(sigma = 0.01, gausspars = [4, 0.3,0.6, 4.8, 0.5, 0.4], nt = 150, nr = 100, lam = 0.5, k = 0.1, V0 = 1, seed = 0):
+def generateMultiGauss(sigma = 0.01, gausspars = [4, 0.3,0.6, 4.8, 0.5, 0.4], nt = 150, nr = 100, lam = 0.5, k = 0.1, V0 = 1, seed = 0, r_edges = [2,8]):
     t = np.linspace(-0.1,2.5,nt)        # time axis, µs
-    r = np.linspace(2,8,nr)      # distance axis, ns
+    r = np.linspace(r_edges[0],r_edges[1],nr)      # distance axis, ns
 
     P = dl.dd_gauss2(r,gausspars)          # model distance distribution
 

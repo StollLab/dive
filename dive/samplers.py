@@ -5,6 +5,8 @@ from theano.tensor import nlinalg as tnp
 from theano.tensor import slinalg as snp
 import pymc3 as pm
 from scipy.linalg import sqrtm
+import deerlab as dl
+import matplotlib.pyplot as plt
 
 
 from pymc3.step_methods.arraystep import BlockedStep
@@ -28,6 +30,127 @@ class SampleEdwardsModel(BlockedStep):
        
         new = point.copy()
         new[self.var.name] = randP(delta,tau,self.KtK,self.KtS,self.LtL,self.nr)
+
+        return new
+
+class SampleExpandedEdwardsModel(BlockedStep):
+    def __init__(self, var, delta, sigma, V0, KtK, KtS, LtL, nr):
+            self.vars = [var]
+            self.var = var
+            self.delta = delta
+            self.sigma = sigma
+            self.V0 = V0
+            self.KtK = KtK
+            self.KtS = KtS
+            self.LtL = LtL
+            self.nr = nr
+
+    def step(self, point: dict):
+        sigma = np.exp(point[self.sigma.transformed.name])
+        tau = 1/(sigma**2)
+        delta = np.exp(point[self.delta.transformed.name])
+        V0 = np.exp(point[self.V0.transformed.name])
+
+        KtS = self.KtS / V0
+       
+        new = point.copy()
+        new[self.var.name] = randP(delta,tau,self.KtK,KtS,self.LtL,self.nr)
+
+        return new
+
+from pymc3.step_methods.arraystep import BlockedStep
+import time
+
+class SampleFullP(BlockedStep):
+    def __init__(self, var, delta, sigma, k, lamb, V0, LtL, t, V, r):
+            self.vars = [var]
+            self.var = var
+            self.delta = delta
+            self.sigma = sigma
+            self.k = k
+            self.lamb = lamb
+            self.LtL = LtL
+            self.V0 = V0
+            self.V = V
+            self.r = r
+            self.t = t
+
+    def step(self, point: dict):
+        # transform parameters
+        sigma = np.exp(point[self.sigma.transformed.name])
+        tau = 1/(sigma**2)
+        delta = np.exp(point[self.delta.transformed.name])
+        # k = np.exp(point[self.k.transformed.name])
+        k = 0
+        lamb = np.exp(point[self.lamb.transformed.name])
+        V0 = np.exp(point[self.V0.transformed.name])
+
+        nr = len(self.r)
+
+        # Background
+        B = dl.bg_exp(self.t,k) 
+        # Kernel
+        K = dl.dipolarkernel(self.t, self.r, mod = lamb, bg = B, integralop=True)
+        K[:,0] = 2*K[:,0]
+        K[:,-1] = 2*K[:,-1]
+
+        KtK = np.matmul(np.transpose(K),K)
+        KtV = np.matmul(np.transpose(K),self.V) / V0
+
+        new = point.copy()
+        Pdraw = randP(delta,tau,KtK,KtV,self.LtL,nr)
+
+        # plt.plot(self.r,Pdraw)
+        # plt.show()
+        new[self.var.name] = Pdraw
+
+        return new
+
+
+class SampleFullP_(BlockedStep):
+    def __init__(self, var, delta, sigma, k, lamb, V0, LtL, t, Vfull, r):
+            self.vars = [var]
+            self.var = var
+            self.delta = delta
+            self.sigma = sigma
+            self.k = k
+            self.lamb = lamb
+            self.LtL = LtL
+            self.V0 = V0
+            self.Vfull = Vfull
+            self.r = r
+            self.t = t
+
+    def step(self, point: dict):
+        # transform parameters
+        sigma = np.exp(point[self.sigma.transformed.name])
+        tau = 1/(sigma**2)
+        delta = np.exp(point[self.delta.transformed.name])
+        k = np.exp(point[self.k.transformed.name])
+        lamb = np.exp(point[self.lamb.transformed.name])
+        V0 = np.exp(point[self.V0.transformed.name])
+
+        nr = len(self.r)
+
+        # Background
+        B = dl.bg_exp(self.t,k) 
+        # Kernel
+        K = dl.dipolarkernel(self.t, self.r, integralop=True)
+        K[:,0] = 2*K[:,0]
+        K[:,-1] = 2*K[:,-1]
+
+        V_ = np.divide(self.Vfull/V0,B)
+        S = (V_-1+lamb)/lamb
+        
+        KtK = np.matmul(np.transpose(K),K)
+        KtS = np.matmul(np.transpose(K),S)
+
+        new = point.copy()
+        Pdraw = randP(delta,tau,KtK,KtS,self.LtL,nr)
+
+        # plt.plot(self.r,Pdraw)
+        # plt.show()
+        new[self.var.name] = Pdraw
 
         return new
 

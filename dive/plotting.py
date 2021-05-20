@@ -18,36 +18,29 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Pref = None):
     VarNames = df.varnames
 
     if 'r0' in VarNames:
-        Model = 'Gaussian'
         if df['r0'].ndim == 1:
             nGaussians = 1
         else:
             nGaussians = df['r0'].shape[1]
 
-        nSamples = df['r0'].shape[0]
 
         if nGaussians == 1:
             Vars = ["r0", "w","k","lamb","V0","sigma"]  
         else:
             Vars = ["r0", "w","a","k","lamb","V0","sigma"]
 
-    elif 'k' not in VarNames:
-        if 'sigma' not in VarNames:
-            Model = 'Edwards'
-            nSamples = df['P'].shape[0]
-            if "V0" in VarNames:
-                Vars = ["V0","delta",'lg_alpha']
-            else:
-                Vars = ["delta",'lg_alpha']
-        else:
-            Model = 'ExpandedEdwards'
-            nSamples = df['P'].shape[0]
-            Vars = ["V0","sigma","tau","delta",'lg_alpha']
+    # elif 'k' not in VarNames:
+    #     if 'sigma' not in VarNames:
+    #         if "V0" in VarNames:
+    #             Vars = ["V0","delta",'lg_alpha']
+    #         else:
+    #             Vars = ["delta",'lg_alpha']
+    #     else:
+    #         Vars = ["V0","sigma","delta",'lg_alpha']
 
     else:
-        Model = 'Regularization'
-        nSamples = df['P'].shape[0]
-        Vars = ["k", "lamb","V0","sigma","tau","delta",'lg_alpha']     
+        # Vars = ["k", "lamb","V0","sigma","delta",'lg_alpha']
+        Vars = [ "lamb","V0","sigma","delta",'lg_alpha']          
     
     with model:
         summary = az.summary(df,var_names=Vars)
@@ -55,19 +48,25 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Pref = None):
     summary.index = betterLabels(summary.index.values)
     display(summary)
   
+    nVars = len(Vars)
+    plotsperrow = 4
+    nrows = int(np.ceil(nVars/plotsperrow))
 
-    nrows = int(np.ceil(len(Vars)/4))
-
-    fig, axs = plt.subplots(nrows, len(Vars))
-    axs = np.reshape(axs,(len(Vars),))
+    if nVars > plotsperrow:
+        fig, axs = plt.subplots(nrows, plotsperrow)
+        axs = np.reshape(axs,(nrows*plotsperrow,))
+        width = 11
+    else:
+        fig, axs = plt.subplots(1, nVars)
+        width = 3*nVars
     
     height = nrows*3.5
-    width = 11
+   
 
     fig.set_figheight(height)
     fig.set_figwidth(width)
 
-    for i in range(len(Vars)):
+    for i in range(nVars):
         az.plot_kde(df[Vars[i]],ax = axs[i])
         bottom, top = axs[i].get_ylim()
         # axs[i].vlines(np.mean(df[Vars[i]]),bottom,top, color = 'black')
@@ -77,7 +76,7 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Pref = None):
     fig.tight_layout()
     plt.show()
 
-    if len(Vars) < 3:
+    if nVars < 3:
         corwidth = 7
         corheight = 7
     else:
@@ -178,7 +177,7 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
             V0_vecs = df['V0'][idxSamples]
 
         if Model != 'ExpandedEdwards' and Model != 'Edwards':
-            k_vecs = df['k'][idxSamples]
+            # k_vecs = df['k'][idxSamples]
             lamb_vecs = df['lamb'][idxSamples]
 
     if Model == 'Gaussian':
@@ -203,7 +202,8 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
             P = df['P'][idxSamples[iDraw]]
             Ps.append(P)
 
-            B = bg_exp(t,k_vecs[iDraw])
+            # B = bg_exp(t,k_vecs[iDraw])
+            B = bg_exp(t,0)
             F = np.dot(K,P)
             Vs.append(deerTrace(F,B,V0_vecs[iDraw],lamb_vecs[iDraw]))
 
