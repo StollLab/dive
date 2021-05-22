@@ -1,9 +1,9 @@
 import deerlab as dl
 import numpy as np
 
-def generateSingleGauss(sigma = 0.01, r0 = 4, w = 0.4, nt = 150,  nr = 100, lam = 0.5, k = 0.1, V0 = 1, seed = 0):
+def generateSingleGauss(sigma = 0.01, r0 = 4, w = 0.4, nt = 150,  nr = 800, lam = 0.5, k = 0.1, V0 = 1, seed = 0, r_edges = [1,10]):
     t = np.linspace(-0.1,2.5,nt)        # time axis, µs
-    r = np.linspace(2,8,nr)      # distance axis, ns
+    r = np.linspace(r_edges[0],r_edges[1],nr)      # distance axis, nm
 
     P = dl.dd_gauss(r,[r0,w])          # model distance distribution
 
@@ -28,9 +28,9 @@ def generateSingleGauss(sigma = 0.01, r0 = 4, w = 0.4, nt = 150,  nr = 100, lam 
     return data, pars
 
 
-def generateMultiGauss(sigma = 0.01, gausspars = [4, 0.3,0.6, 4.8, 0.5, 0.4], nt = 150, nr = 100, lam = 0.5, k = 0.1, V0 = 1, seed = 0, r_edges = [2,8]):
+def generateMultiGauss(sigma = 0.01, gausspars = [4, 0.3,0.6, 4.8, 0.5, 0.4], nt = 150, nr = 800, lam = 0.5, k = 0.1, V0 = 1, seed = 0, r_edges = [1,10]):
     t = np.linspace(-0.1,2.5,nt)        # time axis, µs
-    r = np.linspace(r_edges[0],r_edges[1],nr)      # distance axis, ns
+    r = np.linspace(r_edges[0],r_edges[1],nr)      # distance axis, nm
 
     P = dl.dd_gauss2(r,gausspars)          # model distance distribution
 
@@ -54,9 +54,10 @@ def generateMultiGauss(sigma = 0.01, gausspars = [4, 0.3,0.6, 4.8, 0.5, 0.4], nt
     data = {'t': t, 'V': V, 'S': S, 'r': r, 'P': P, 'V0': Vm, 'S0': Sm}
     return data, pars
 
-def generateBiModalGauss(sigma = 0.01, gausspars = [4, 0.3,0.6, 6, 0.5, 0.4], nt = 150, nr = 100, lam = 0.5, k = 0.1, V0 = 1, seed = 0):
+def generateBiModalGauss(sigma = 0.01, gausspars = [4, 0.3,0.6, 6, 0.5, 0.4], nt = 150, nr = 800, lam = 0.5, k = 0.1, V0 = 1, seed = 0, r_edges = [1,10]):
     t = np.linspace(-0.1,2.5,nt)        # time axis, µs
-    r = np.linspace(2,8,nr)      # distance axis, ns
+    r = np.linspace(r_edges[0],r_edges[1],nr)      # distance axis, nm
+
 
     P = dl.dd_gauss2(r,gausspars)          # model distance distribution
 

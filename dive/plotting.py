@@ -1,57 +1,41 @@
 ## Plotting 
 
 # # Import modules
-import pymc3 as pm
 import matplotlib.pyplot as plt
 import numpy as np
 import random
 import arviz as az
 from IPython.display import display
 import deerlab as dl
+import copy
 
 from .utils import *
 from .models import *
 
-def summary(df,model,Vexp,t,r,nDraws = 100, Pref = None):
+def summary(df, model, Vexp, t, r, nDraws = 100, Pref = None):
 
-    # df = replaceLabels(df)
-    VarNames = df.varnames
+    # Figure out what Vars are present -----------------------------------------
+    PossibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
+    PresentVars = df.varnames
 
-    if 'r0' in VarNames:
-        if df['r0'].ndim == 1:
-            nGaussians = 1
-        else:
-            nGaussians = df['r0'].shape[1]
+    Vars = []
+    for Var in PossibleVars:
+        if Var in PresentVars:
+            Vars.append(Var)
+    nVars = len(Vars)
 
-
-        if nGaussians == 1:
-            Vars = ["r0", "w","k","lamb","V0","sigma"]  
-        else:
-            Vars = ["r0", "w","a","k","lamb","V0","sigma"]
-
-    # elif 'k' not in VarNames:
-    #     if 'sigma' not in VarNames:
-    #         if "V0" in VarNames:
-    #             Vars = ["V0","delta",'lg_alpha']
-    #         else:
-    #             Vars = ["delta",'lg_alpha']
-    #     else:
-    #         Vars = ["V0","sigma","delta",'lg_alpha']
-
-    else:
-        Vars = ["k","V0","delta",'lg_alpha']
-        # Vars = [ "lamb","V0","sigma","delta",'lg_alpha']          
-    
+    # Print summary for RVs ----------------------------------------------------
     with model:
         summary = az.summary(df,var_names=Vars)
-
+    # replace the labels with their unicode characters before displaying
     summary.index = betterLabels(summary.index.values)
     display(summary)
-  
-    nVars = len(Vars)
+    
+    # Plot marginalized posteriors ---------------------------------------------
     plotsperrow = 4
-    nrows = int(np.ceil(nVars/plotsperrow))
 
+    # figure out layout of plots and creat figure
+    nrows = int(np.ceil(nVars/plotsperrow))
     if nVars > plotsperrow:
         fig, axs = plt.subplots(nrows, plotsperrow)
         axs = np.reshape(axs,(nrows*plotsperrow,))
@@ -59,23 +43,24 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Pref = None):
     else:
         fig, axs = plt.subplots(1, nVars)
         width = 3*nVars
-    
     height = nrows*3.5
    
-
+    # set figure size
     fig.set_figheight(height)
     fig.set_figwidth(width)
-
+    
+    # KDE of chain samples and plot them
     for i in range(nVars):
         az.plot_kde(df[Vars[i]],ax = axs[i])
-        bottom, top = axs[i].get_ylim()
-        # axs[i].vlines(np.mean(df[Vars[i]]),bottom,top, color = 'black')
         axs[i].set_xlabel(betterLabels(Vars[i]))
         axs[i].yaxis.set_ticks([])
 
+    # Clean up figure
     fig.tight_layout()
     plt.show()
 
+    # Pairwise correlation plots ----------------------------------------------
+    # determine figure size
     if nVars < 3:
         corwidth = 7
         corheight = 7
@@ -83,10 +68,13 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Pref = None):
         corwidth = 11
         corheight = 11
 
+    # use arviz librarby to plot them
     with model:
         axs = az.plot_pair(df,var_names=Vars,kind='kde',figsize=(corwidth,corheight))
 
+    # replace labels with the nicer unicode character versions
     if len(Vars) > 2:
+        # reshape axes so that we can loop through them
         axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
 
         for ax in axs:
@@ -96,21 +84,24 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Pref = None):
                 ax.set_xlabel(betterLabels(xlabel))
             if ylabel:
                 ax.set_ylabel(betterLabels(ylabel))
-
     else:
         xlabel = axs.get_xlabel()
         ylabel = axs.get_ylabel()
         axs.set_xlabel(betterLabels(xlabel))
         axs.set_ylabel(betterLabels(ylabel))
 
+    # show plot
     plt.show()
 
+    # Posterior sample plot -----------------------------------------------------
+    # Draw samples
     Ps, Vs, _, _ = drawPosteriorSamples(df,r,t,nDraws)
+    # Plot them
     plotMCMC(Ps, Vs, Vexp, t, r, Pref)
 
 
 def betterLabels(x):
-
+    # replace strings with their corresponding (greek) symbols
     if type(x) == str:
         x = LabelLookup(x)
     else:
@@ -120,6 +111,7 @@ def betterLabels(x):
     return x
 
 def LabelLookup(input):
+    # look up table that contains the strings and their symbols
     if input == "lamb":
         return "λ"
     elif input == "sigma":
@@ -139,48 +131,28 @@ def LabelLookup(input):
     else:
         return input
 
-def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0,3,num = 200), nDraws = 100):
+def drawPosteriorSamples(df, r = np.linspace(2, 8,num = 200), t = np.linspace(0,3,num = 200), nDraws = 100):
     VarNames = df.varnames
 
+    # Determine if a Gaussian model was used and how many iterations were run -------
     if 'r0' in VarNames:
-        Model = 'Gaussian'
         if df['r0'].ndim == 1:
             nGaussians = 1
         else:
             nGaussians = df['r0'].shape[1]
 
-        nSamples = df['r0'].shape[0]
-
-    # elif 'k' not in VarNames:
-    #     if 'sigma' not in VarNames:
-    #         Model = 'Edwards'
-    #         nSamples = df['P'].shape[0]
-    #     else:
-    #         Model = 'ExpandedEdwards'
-    #         nSamples = df['P'].shape[0]
+        nChainSamples = df['r0'].shape[0]
 
     else:
-        Model = 'Regularization'
-        nSamples = df['P'].shape[0]
+        nChainSamples = df['P'].shape[0]
 
-    idxSamples = random.sample(range(nSamples),nDraws)
+    # Generate random indeces from chain samples ------------------------------------
+    idxSamples = random.sample(range(nChainSamples),nDraws)
+
+    # Draw P's -------------------------------------------------------------------
     Ps = []
-    Vs = []
 
-    K = dl.dipolarkernel(t,r,integralop=True)
-    K[:,0] = 2*K[:,0]
-    K[:,-1] = 2*K[:,-1]
-
-    if Model != 'Edwards':
-
-        if 'V0' in VarNames:
-            V0_vecs = df['V0'][idxSamples]
-
-        if Model != 'ExpandedEdwards' and Model != 'Edwards':
-            k_vecs = df['k'][idxSamples]
-            # lamb_vecs = df['lamb'][idxSamples]
-
-    if Model == 'Gaussian':
+    if 'r0' in VarNames:
         r0_vecs = df['r0'][idxSamples]
         w_vecs = df['w'][idxSamples]
         if nGaussians == 1:
@@ -191,40 +163,46 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
         for iDraw in range(nDraws):
             P = dd_gauss(r,r0_vecs[iDraw],w_vecs[iDraw],a_vecs[iDraw])
             Ps.append(P)
-            
+    else:
+        for iDraw in range(nDraws):
+            P = df['P'][idxSamples[iDraw]]
+            Ps.append(P)
+
+    # Draw corresponding time domain parameters ---------------------------------
+    if 'V0' in VarNames:
+        V0_vecs = df['V0'][idxSamples]
+
+    if 'k' in VarNames:
+        k_vecs = df['k'][idxSamples]
+
+    if 'lamb' in VarNames:   
+        lamb_vecs = df['lamb'][idxSamples]
+
+    # Generate V's from P's and other parameters --------------------------------
+    Vs = []
+    K0 = dl.dipolarkernel(t,r,integralop=False)
+    dr = r[1] - r[0]
+
+    for iDraw in range(nDraws):
+        K_ = copy.copy(K0)
+
+        # The below construction of the kernel only takes into account RVs that were actually sampled
+        # During development the model was sometimes run with fixed values for λ, k, or V₀
+        if 'lamb' in VarNames: 
+            K_ = (1-lamb_vecs[iDraw]) + lamb_vecs[iDraw]*K_
+
+        if 'k' in VarNames:
             B = bg_exp(t,k_vecs[iDraw])
-            F = np.dot(K,P)
-            Vs.append(deerTrace(F,B,V0_vecs[iDraw],lamb_vecs[iDraw]))
+            K_ = K_*B[:, np.newaxis]
 
-    elif Model == 'Regularization':
- 
-        for iDraw in range(nDraws):
-            P = df['P'][idxSamples[iDraw]]
-            Ps.append(P)
+        if 'V0' in VarNames:
+            K_ = V0_vecs[iDraw]*K_
 
-            B = bg_exp(t,k_vecs[iDraw])
-            F = np.dot(K,P)
-            Vs.append(deerTrace(F,B,V0_vecs[iDraw],0.5))
-            # Vs.append(deerTrace(F,B,V0_vecs[iDraw],lamb_vecs[iDraw]))
-
-    elif Model == 'Edwards':
-
-        for iDraw in range(nDraws):
-            P = df['P'][idxSamples[iDraw]]
-            Ps.append(P)
-            if 'V0' not in VarNames:
-                Vs.append(np.dot(K,P))
-            else:  
-                Vs.append(V0_vecs[iDraw]*np.dot(K,P))
-
-    elif Model == 'ExpandedEdwards':
-
-        for iDraw in range(nDraws):
-            P = df['P'][idxSamples[iDraw]]
-            Ps.append(P)
-            Vs.append(V0_vecs[iDraw]*np.dot(K,P))
+        K_ = K_*dr
+        Vs.append(K_@Ps[iDraw])
 
     return Ps, Vs, t, r
+
 
 def plotMCMC(Ps,Vs,Vdata,t,r, Pref = None):
 
@@ -260,42 +238,3 @@ def plotMCMC(Ps,Vs,Vdata,t,r, Pref = None):
     plt.grid()
 
     plt.show()
-
-
-
-
-# def drawFromPrior(model):
-#     """
-#     Draw from the prior definition
-#     """
-
-# # Load results
-
-# # Posteriors
-# posts = pm.plot_posterior(tr, ['r0'],credible_interval=0.95,ref_val=3)
-# posts_pl = plt.gcf()
-# posts_pl.savefig('2gauss_r0ref1.svg', bbox_inches='tight')
-
-# traces = pm.traceplot(tr, ['r0'])
-# traces_pl = plt.gcf()
-# traces_pl.savefig('2gauss_r0traces.pdf', bbox_inches='tight')
-
-# # Correlation plots 
-
-# df = pm.trace_to_dataframe(trace)
-# sb.set(style="white")
-# plt.figure(figsize=(6, 6))
-# g = sb.PairGrid(df, diag_sharey=False)
-# g.map_lower(sb.kdeplot)
-# g.map_diag(sb.kdeplot, lw=3)
-# for i, j in zip(*np.triu_indices_from(g.axes, 1)):
-#     g.axes[i, j].set_visible(False)
-# g.axes[0,0].set_xlim((np.amin(r),np.amax(r)))
-# g.axes[0,1].set_xlim((0,1))
-# g.axes[0,2].set_xlim((0,1))
-# g.axes[0,3].set_xlim((0,6))
-# g.axes[0,4].set_xlim((15,25))
-# g.axes[0,5].set_xlim((0,Vmax))
-
-# corr_plots2 = plt.gcf()
-# corr_plots2.savefig('1gauss_corrplots_seaborn.png', bbox_inches = 'tight')
