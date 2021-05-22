@@ -39,8 +39,8 @@ def summary(df,model,Vexp,t,r,nDraws = 100, Pref = None):
     #         Vars = ["V0","sigma","delta",'lg_alpha']
 
     else:
-        # Vars = ["k", "lamb","V0","sigma","delta",'lg_alpha']
-        Vars = [ "lamb","V0","sigma","delta",'lg_alpha']          
+        Vars = ["k","V0","delta",'lg_alpha']
+        # Vars = [ "lamb","V0","sigma","delta",'lg_alpha']          
     
     with model:
         summary = az.summary(df,var_names=Vars)
@@ -151,13 +151,13 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
 
         nSamples = df['r0'].shape[0]
 
-    elif 'k' not in VarNames:
-        if 'sigma' not in VarNames:
-            Model = 'Edwards'
-            nSamples = df['P'].shape[0]
-        else:
-            Model = 'ExpandedEdwards'
-            nSamples = df['P'].shape[0]
+    # elif 'k' not in VarNames:
+    #     if 'sigma' not in VarNames:
+    #         Model = 'Edwards'
+    #         nSamples = df['P'].shape[0]
+    #     else:
+    #         Model = 'ExpandedEdwards'
+    #         nSamples = df['P'].shape[0]
 
     else:
         Model = 'Regularization'
@@ -177,8 +177,8 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
             V0_vecs = df['V0'][idxSamples]
 
         if Model != 'ExpandedEdwards' and Model != 'Edwards':
-            # k_vecs = df['k'][idxSamples]
-            lamb_vecs = df['lamb'][idxSamples]
+            k_vecs = df['k'][idxSamples]
+            # lamb_vecs = df['lamb'][idxSamples]
 
     if Model == 'Gaussian':
         r0_vecs = df['r0'][idxSamples]
@@ -202,10 +202,10 @@ def drawPosteriorSamples(df, r = np.linspace(2, 10,num = 300), t = np.linspace(0
             P = df['P'][idxSamples[iDraw]]
             Ps.append(P)
 
-            # B = bg_exp(t,k_vecs[iDraw])
-            B = bg_exp(t,0)
+            B = bg_exp(t,k_vecs[iDraw])
             F = np.dot(K,P)
-            Vs.append(deerTrace(F,B,V0_vecs[iDraw],lamb_vecs[iDraw]))
+            Vs.append(deerTrace(F,B,V0_vecs[iDraw],0.5))
+            # Vs.append(deerTrace(F,B,V0_vecs[iDraw],lamb_vecs[iDraw]))
 
     elif Model == 'Edwards':
 

@@ -62,7 +62,7 @@ from pymc3.step_methods.arraystep import BlockedStep
 import time
 
 class SampleFullP(BlockedStep):
-    def __init__(self, var, delta, sigma, k, lamb, V0, LtL, t, V, r):
+    def __init__(self, var, delta, sigma, k, lamb, V0, LtL, t, V, r, K0):
             self.vars = [var]
             self.var = var
             self.delta = delta
@@ -74,15 +74,19 @@ class SampleFullP(BlockedStep):
             self.V = V
             self.r = r
             self.t = t
+            self.K0 = K0
 
     def step(self, point: dict):
         # transform parameters
-        sigma = np.exp(point[self.sigma.transformed.name])
+        # sigma = np.exp(point[self.sigma.transformed.name])
+        sigma = self.sigma
         tau = 1/(sigma**2)
         delta = np.exp(point[self.delta.transformed.name])
-        # k = np.exp(point[self.k.transformed.name])
-        k = 0
-        lamb = np.exp(point[self.lamb.transformed.name])
+        k = np.exp(point[self.k.transformed.name])
+        # k = 0
+        # lamb = np.exp(point[self.lamb.transformed.name])
+        lamb = self.lamb
+        # V0 = 1
         V0 = np.exp(point[self.V0.transformed.name])
 
         nr = len(self.r)
@@ -90,12 +94,15 @@ class SampleFullP(BlockedStep):
         # Background
         B = dl.bg_exp(self.t,k) 
         # Kernel
-        K = dl.dipolarkernel(self.t, self.r, mod = lamb, bg = B, integralop=True)
-        K[:,0] = 2*K[:,0]
-        K[:,-1] = 2*K[:,-1]
+        # K = dl.dipolarkernel(self.t, self.r, mod = lamb, bg = B, integralop=True)
+        # K[:,0] = 2*K[:,0]
+        # K[:,-1] = 2*K[:,-1]
+        Kintra = (1-lamb)+lamb*self.K0
+        K = Kintra * B[:, np.newaxis]
+        K = V0*K*(self.r[1]-self.r[0])
 
         KtK = np.matmul(np.transpose(K),K)
-        KtV = np.matmul(np.transpose(K),self.V) / V0
+        KtV = np.matmul(np.transpose(K),self.V) 
 
         new = point.copy()
         Pdraw = randP(delta,tau,KtK,KtV,self.LtL,nr)
