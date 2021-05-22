@@ -1,14 +1,7 @@
 import numpy as np
 import math as m
-from theano import tensor as T
-from theano.tensor import nlinalg as tnp
-from theano.tensor import slinalg as snp
-import pymc3 as pm
 from scipy.linalg import sqrtm
 import deerlab as dl
-import matplotlib.pyplot as plt
-
-
 from pymc3.step_methods.arraystep import BlockedStep
 
 class SampleEdwardsModel(BlockedStep):
@@ -58,108 +51,58 @@ class SampleExpandedEdwardsModel(BlockedStep):
 
         return new
 
-from pymc3.step_methods.arraystep import BlockedStep
-import time
-
-class SampleFullP(BlockedStep):
-    def __init__(self, var, delta, sigma, k, lamb, V0, LtL, t, V, r, K0):
+class SamplePfromV(BlockedStep):
+    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, k, lamb, V0):
             self.vars = [var]
             self.var = var
+            
+            # precalculated values
+            self.K0 = K0
+            self.LtL = LtL
+            self.V = V
+            self.r = r
+            self.t = t
+
+            # random variables
             self.delta = delta
             self.sigma = sigma
             self.k = k
             self.lamb = lamb
-            self.LtL = LtL
-            self.V0 = V0
-            self.V = V
-            self.r = r
-            self.t = t
-            self.K0 = K0
+            self.V0 = V0       
 
     def step(self, point: dict):
         # transform parameters
-        # sigma = np.exp(point[self.sigma.transformed.name])
-        sigma = self.sigma
-        tau = 1/(sigma**2)
+        sigma = np.exp(point[self.sigma.transformed.name])
+        # sigma = self.sigma
         delta = np.exp(point[self.delta.transformed.name])
         k = np.exp(point[self.k.transformed.name])
-        # k = 0
         # lamb = np.exp(point[self.lamb.transformed.name])
         lamb = self.lamb
-        # V0 = 1
         V0 = np.exp(point[self.V0.transformed.name])
 
+        # calculate some values
+        tau = 1/(sigma**2)
         nr = len(self.r)
+        dr = self.r[1] - self.r[0]
 
         # Background
         B = dl.bg_exp(self.t,k) 
+
         # Kernel
-        # K = dl.dipolarkernel(self.t, self.r, mod = lamb, bg = B, integralop=True)
-        # K[:,0] = 2*K[:,0]
-        # K[:,-1] = 2*K[:,-1]
         Kintra = (1-lamb)+lamb*self.K0
         K = Kintra * B[:, np.newaxis]
-        K = V0*K*(self.r[1]-self.r[0])
+        K = V0*K*dr
 
+        # KtXs
         KtK = np.matmul(np.transpose(K),K)
         KtV = np.matmul(np.transpose(K),self.V) 
 
         new = point.copy()
         Pdraw = randP(delta,tau,KtK,KtV,self.LtL,nr)
-
-        # plt.plot(self.r,Pdraw)
-        # plt.show()
         new[self.var.name] = Pdraw
 
         return new
 
-
-class SampleFullP_(BlockedStep):
-    def __init__(self, var, delta, sigma, k, lamb, V0, LtL, t, Vfull, r):
-            self.vars = [var]
-            self.var = var
-            self.delta = delta
-            self.sigma = sigma
-            self.k = k
-            self.lamb = lamb
-            self.LtL = LtL
-            self.V0 = V0
-            self.Vfull = Vfull
-            self.r = r
-            self.t = t
-
-    def step(self, point: dict):
-        # transform parameters
-        sigma = np.exp(point[self.sigma.transformed.name])
-        tau = 1/(sigma**2)
-        delta = np.exp(point[self.delta.transformed.name])
-        k = np.exp(point[self.k.transformed.name])
-        lamb = np.exp(point[self.lamb.transformed.name])
-        V0 = np.exp(point[self.V0.transformed.name])
-
-        nr = len(self.r)
-
-        # Background
-        B = dl.bg_exp(self.t,k) 
-        # Kernel
-        K = dl.dipolarkernel(self.t, self.r, integralop=True)
-        K[:,0] = 2*K[:,0]
-        K[:,-1] = 2*K[:,-1]
-
-        V_ = np.divide(self.Vfull/V0,B)
-        S = (V_-1+lamb)/lamb
-        
-        KtK = np.matmul(np.transpose(K),K)
-        KtS = np.matmul(np.transpose(K),S)
-
-        new = point.copy()
-        Pdraw = randP(delta,tau,KtK,KtS,self.LtL,nr)
-
-        # plt.plot(self.r,Pdraw)
-        # plt.show()
-        new[self.var.name] = Pdraw
-
-        return new
 
 def randP(delta,tau,KtK,KtS,LtL,nr):
     r"""
@@ -186,7 +129,6 @@ def randP(delta,tau,KtK,KtS,LtL,nr):
     return P
 
 def fnnls(AtA,Atb,tol=[],maxiter=[],verbose=False):
-#=====================================================================================
     r"""
     FNNLS   Fast non-negative least-squares algorithm.
     x = fnnls(AtA,Atb) solves the problem min ||b - Ax|| if
@@ -294,5 +236,3 @@ def fnnls(AtA,Atb,tol=[],maxiter=[],verbose=False):
             print('Solution found. \n')
     
     return x
-
-#=====================================================================================
