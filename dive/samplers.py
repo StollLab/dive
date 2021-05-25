@@ -18,10 +18,9 @@ class SampleEdwardsModel(BlockedStep):
             self.nr = nr
 
     def step(self, point: dict):
-        # sigma = np.exp(point[self.sigma.transformed.name])
         sigma = self.sigma
         tau = 1/(sigma**2)
-        delta = np.exp(point[self.delta.transformed.name])
+        delta = undo_transform(point,self.delta.transformed.name)
        
         new = point.copy()
         new[self.var.name] = randP(delta,tau,self.KtK,self.KtS,self.LtL,self.nr)
@@ -41,10 +40,10 @@ class SampleExpandedEdwardsModel(BlockedStep):
             self.nr = nr
 
     def step(self, point: dict):
-        sigma = np.exp(point[self.sigma.transformed.name])
+        sigma = undo_transform(point,self.sigma.transformed.name)
         tau = 1/(sigma**2)
-        delta = np.exp(point[self.delta.transformed.name])
-        V0 = np.exp(point[self.V0.transformed.name])
+        delta = undo_transform(point,self.delta.transformed.name)
+        V0 = undo_transform(point,self.V0.transformed.name)
 
         KtS = self.KtS / V0
        
@@ -70,16 +69,15 @@ class SamplePfromV(BlockedStep):
             self.sigma = sigma
             self.k = k
             self.lamb = lamb
-            self.V0 = V0       
+            self.V0 = V0    
 
     def step(self, point: dict):
         # transform parameters
-        sigma = np.exp(point[self.sigma.transformed.name])
-        delta = np.exp(point[self.delta.transformed.name])
-        k = np.exp(point[self.k.transformed.name])
-        lamb = sp.special.expit(point[self.lamb.transformed.name])
-        V0 = np.exp(point[self.V0.transformed.name])
-        
+        sigma = undo_transform(point,self.sigma.transformed.name)
+        delta = undo_transform(point,self.delta.transformed.name)
+        k = undo_transform(point,self.k.transformed.name)
+        lamb = undo_transform(point,self.lamb.transformed.name)
+        V0 = undo_transform(point,self.V0.transformed.name)        
 
         # calculate some values
         tau = 1/(sigma**2)
@@ -104,6 +102,26 @@ class SamplePfromV(BlockedStep):
 
         return newpoint
 
+def undo_transform(point,key):
+    '''
+    Automatically transforms variables which were sampled on log 
+    or logodds scale back into original scale.
+    '''
+    x = point[key]
+
+    try:
+        transform_marker = key.split('_')[1]
+     
+        if transform_marker == 'log' or transform_marker == 'lowerbound':
+            y = np.exp(x)
+            
+        elif transform_marker == 'logodds':
+            y = sp.special.expit(x)
+
+        return y
+
+    except:
+        return x
 
 def randP(delta,tau,KtK,KtS,LtL,nr):
 # def randP(tauKtS,invSigma):
