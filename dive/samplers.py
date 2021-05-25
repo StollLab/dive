@@ -22,10 +22,14 @@ class SampleEdwardsModel(BlockedStep):
         tau = 1/(sigma**2)
         delta = undo_transform(point,self.delta.transformed.name)
        
-        new = point.copy()
-        new[self.var.name] = randP(delta,tau,self.KtK,self.KtS,self.LtL,self.nr)
+        tauKtS = tau * self.KtS
+        invSigma = tau*self.KtK + delta*self.LtL
+        
+        newpoint = point.copy()
+        Pdraw = randP(tauKtS,invSigma)
+        newpoint[self.var.name] = Pdraw
 
-        return new
+        return newpoint
 
 class SampleExpandedEdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, V0, KtK, KtS, LtL, nr):
@@ -45,12 +49,14 @@ class SampleExpandedEdwardsModel(BlockedStep):
         delta = undo_transform(point,self.delta.transformed.name)
         V0 = undo_transform(point,self.V0.transformed.name)
 
-        KtS = self.KtS / V0
-       
-        new = point.copy()
-        new[self.var.name] = randP(delta,tau,self.KtK,KtS,self.LtL,self.nr)
+        tauKtS = tau * self.KtS / V0
+        invSigma = tau*self.KtK + delta*self.LtL
+        
+        newpoint = point.copy()
+        Pdraw = randP(tauKtS,invSigma)
+        newpoint[self.var.name] = Pdraw
 
-        return new
+        return newpoint
 
 class SamplePfromV(BlockedStep):
     def __init__(self, var, K0, LtL, t, V, r, delta, sigma, k, lamb, V0):
@@ -96,8 +102,11 @@ class SamplePfromV(BlockedStep):
         KtK = np.matmul(np.transpose(K),K)
         KtV = np.matmul(np.transpose(K),self.V) 
 
+        tauKtV = tau*KtV
+        invSigma = tau*KtK + delta*self.LtL
+        
         newpoint = point.copy()
-        Pdraw = randP(delta,tau,KtK,KtV,self.LtL,nr)
+        Pdraw = randP(tauKtV,invSigma)
         newpoint[self.var.name] = Pdraw
 
         return newpoint
@@ -123,14 +132,12 @@ def undo_transform(point,key):
     except:
         return x
 
-def randP(delta,tau,KtK,KtS,LtL,nr):
-# def randP(tauKtS,invSigma):
+def randP(tauKtX,invSigma):
     r"""
     based on:
     J.M. Bardsley, C. Fox, An MCMC method for uncertainty quantification in
     nonnegativity constrained inverse problems, Inverse Probl. Sci. Eng. 20 (2012)
     """
-    invSigma = tau*KtK + delta*LtL
     Sigma = np.linalg.inv(invSigma)
 
     try:
@@ -140,11 +147,11 @@ def randP(delta,tau,KtK,KtS,LtL,nr):
     except:
         C_L = sqrtm(Sigma)
         
-    v = np.random.standard_normal(size=(nr,))
+    v = np.random.standard_normal(size=(len(tauKtX),))
     w = np.linalg.lstsq(np.matrix.transpose(C_L),v,rcond=None)
     w = w[0]
 
-    P = fnnls(invSigma,tau*KtS+w)
+    P = fnnls(invSigma,tauKtX+w)
 
     return P
 
