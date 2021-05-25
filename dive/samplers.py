@@ -3,6 +3,8 @@ import math as m
 from scipy.linalg import sqrtm
 import deerlab as dl
 from pymc3.step_methods.arraystep import BlockedStep
+import pymc3 as pm
+import scipy as sp
 
 class SampleEdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, KtK, KtS, LtL, nr):
@@ -73,12 +75,11 @@ class SamplePfromV(BlockedStep):
     def step(self, point: dict):
         # transform parameters
         sigma = np.exp(point[self.sigma.transformed.name])
-        # sigma = self.sigma
         delta = np.exp(point[self.delta.transformed.name])
         k = np.exp(point[self.k.transformed.name])
-        # lamb = np.exp(point[self.lamb.transformed.name])
-        lamb = self.lamb
+        lamb = sp.special.expit(point[self.lamb.transformed.name])
         V0 = np.exp(point[self.V0.transformed.name])
+        
 
         # calculate some values
         tau = 1/(sigma**2)
@@ -97,14 +98,15 @@ class SamplePfromV(BlockedStep):
         KtK = np.matmul(np.transpose(K),K)
         KtV = np.matmul(np.transpose(K),self.V) 
 
-        new = point.copy()
+        newpoint = point.copy()
         Pdraw = randP(delta,tau,KtK,KtV,self.LtL,nr)
-        new[self.var.name] = Pdraw
+        newpoint[self.var.name] = Pdraw
 
-        return new
+        return newpoint
 
 
 def randP(delta,tau,KtK,KtS,LtL,nr):
+# def randP(tauKtS,invSigma):
     r"""
     based on:
     J.M. Bardsley, C. Fox, An MCMC method for uncertainty quantification in
