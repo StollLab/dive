@@ -12,11 +12,16 @@ import copy
 from .utils import *
 from .models import *
 
-def summary(df, model, Vexp, t, r, nDraws = 100, Pref = None):
+def summary(df, model, Vexp, t, r, nDraws = 100, Pref = None, GroundTruth = []):
 
     # Figure out what Vars are present -----------------------------------------
     PossibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
     PresentVars = df.varnames
+
+    if not GroundTruth:
+        PlotTruth = False
+    else:
+        PlotTruth = True
 
     Vars = []
     for Var in PossibleVars:
@@ -55,6 +60,10 @@ def summary(df, model, Vexp, t, r, nDraws = 100, Pref = None):
         axs[i].set_xlabel(betterLabels(Vars[i]))
         axs[i].yaxis.set_ticks([])
 
+        if PlotTruth and (Vars[i]in GroundTruth.keys()):
+            bottom, top = axs[i].get_ylim()
+            axs[i].vlines(GroundTruth[Vars[i]],bottom,top, color = 'black')
+
     # Clean up figure
     fig.tight_layout()
     plt.show()
@@ -68,7 +77,7 @@ def summary(df, model, Vexp, t, r, nDraws = 100, Pref = None):
         corwidth = 11
         corheight = 11
 
-    # use arviz librarby to plot them
+    # use arviz library to plot them
     with model:
         axs = az.plot_pair(df,var_names=Vars,kind='kde',figsize=(corwidth,corheight))
 

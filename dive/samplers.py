@@ -5,6 +5,7 @@ import deerlab as dl
 from pymc3.step_methods.arraystep import BlockedStep
 import pymc3 as pm
 import scipy as sp
+from pymc3.distributions.transforms import log
 
 class SampleEdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, KtK, KtS, LtL, nr):
@@ -80,14 +81,14 @@ class SamplePfromV(BlockedStep):
     def step(self, point: dict):
         # transform parameters
         sigma = undo_transform(point,self.sigma.transformed.name)
-        delta = undo_transform(point,self.delta.transformed.name)
+        # delta = undo_transform(point,self.delta.transformed.name)
+        delta = undo_transform(point,self.delta.name)
         k = undo_transform(point,self.k.transformed.name)
         lamb = undo_transform(point,self.lamb.transformed.name)
         V0 = undo_transform(point,self.V0.transformed.name)        
 
         # calculate some values
         tau = 1/(sigma**2)
-        nr = len(self.r)
         dr = self.r[1] - self.r[0]
 
         # Background
@@ -107,9 +108,52 @@ class SamplePfromV(BlockedStep):
         
         newpoint = point.copy()
         Pdraw = randP(tauKtV,invSigma)
+        Pdraw =  Pdraw / np.sum(Pdraw) / dr
         newpoint[self.var.name] = Pdraw
 
         return newpoint
+
+class randDelta(BlockedStep):
+    def __init__(self, var, a0, b0, L, P):
+            self.vars = [var]
+            self.var = var
+            self.P = P
+            self.a0 = a0
+            self.b0 = b0
+            self.L = L
+
+    def step(self, point: dict):
+        P = point[self.P.name]
+
+        nr = len(P)
+        a_ = self.a0 + nr/2
+        b_ = self.b0 + (1/2)*np.linalg.norm(self.L@P)**2
+
+        newpoint = point.copy()
+        delta_draw =  np.random.gamma(a_, 1/b_, 1)[0]
+        newpoint[self.var.name] = delta_draw
+
+        return newpoint
+
+class randDelta2(BlockedStep):
+    def __init__(self, var, a0, b0):
+            self.vars = [var]
+            self.var = var
+            self.a0 = a0
+            self.b0 = b0
+
+
+    def step(self, point: dict):
+        newpoint = point.copy()
+        # print(newpoint[self.var.transformed.name])
+        delta_draw =  np.random.gamma(self.a0, 1/self.b0, 1)[0]
+        # newpoint[self.var.transformed.name] = log.forward_val(delta_draw)
+        newpoint[self.var.name] = 2.
+        # newpoint[self.var.name] = 2.
+        # print(newpoint[self.var.transformed.name])
+
+        return newpoint
+
 
 def undo_transform(point,key):
     '''
@@ -148,9 +192,8 @@ def randP(tauKtX,invSigma):
         C_L = sqrtm(Sigma)
         
     v = np.random.standard_normal(size=(len(tauKtX),))
-    w = np.linalg.lstsq(np.matrix.transpose(C_L),v,rcond=None)
-    w = w[0]
-
+    w = np.linalg.solve(np.matrix.transpose(C_L),v)
+   
     P = fnnls(invSigma,tauKtX+w)
 
     return P
