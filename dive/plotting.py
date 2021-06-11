@@ -64,6 +64,9 @@ def summary(df, model, Vexp, t, r, nDraws = 100, Pref = None, GroundTruth = []):
             bottom, top = axs[i].get_ylim()
             axs[i].vlines(GroundTruth[Vars[i]],bottom,top, color = 'black')
 
+    for i in range(nVars,nrows*plotsperrow):
+        axs[i].axis('off')
+
     # Clean up figure
     fig.tight_layout()
     plt.show()

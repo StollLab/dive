@@ -125,8 +125,8 @@ class randDelta(BlockedStep):
     def step(self, point: dict):
         P = point[self.P.name]
 
-        nr = len(P)
-        a_ = self.a0 + nr/2
+        n_p = sum(np.asarray(P)>0)
+        a_ = self.a0 + n_p/2
         b_ = self.b0 + (1/2)*np.linalg.norm(self.L@P)**2
 
         newpoint = point.copy()
@@ -134,26 +134,6 @@ class randDelta(BlockedStep):
         newpoint[self.var.name] = delta_draw
 
         return newpoint
-
-class randDelta2(BlockedStep):
-    def __init__(self, var, a0, b0):
-            self.vars = [var]
-            self.var = var
-            self.a0 = a0
-            self.b0 = b0
-
-
-    def step(self, point: dict):
-        newpoint = point.copy()
-        # print(newpoint[self.var.transformed.name])
-        delta_draw =  np.random.gamma(self.a0, 1/self.b0, 1)[0]
-        # newpoint[self.var.transformed.name] = log.forward_val(delta_draw)
-        newpoint[self.var.name] = 2.
-        # newpoint[self.var.name] = 2.
-        # print(newpoint[self.var.transformed.name])
-
-        return newpoint
-
 
 def undo_transform(point,key):
     '''
