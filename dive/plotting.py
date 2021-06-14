@@ -8,15 +8,24 @@ import arviz as az
 from IPython.display import display
 import deerlab as dl
 import copy
+from scipy.io import loadmat
 
 from .utils import *
 from .models import *
 
-def summary(df, model, Vexp, t, r, nDraws = 100, Pref = None, GroundTruth = []):
+def summary(df, model, Vexp, t, r, nDraws = 100, Pid = None, Pref = None, GroundTruth = []):
 
     # Figure out what Vars are present -----------------------------------------
     PossibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
     PresentVars = df.varnames
+
+    if Pid is not None:
+        P0s = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['P0']
+        rref = np.squeeze(loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['r0'])
+
+        Pref = P0s[Pid-1,:]
+    elif Pref is not None:
+        rref = r
 
     if not GroundTruth:
         PlotTruth = False
@@ -109,7 +118,7 @@ def summary(df, model, Vexp, t, r, nDraws = 100, Pref = None, GroundTruth = []):
     # Draw samples
     Ps, Vs, _, _ = drawPosteriorSamples(df,r,t,nDraws)
     # Plot them
-    plotMCMC(Ps, Vs, Vexp, t, r, Pref)
+    plotMCMC(Ps, Vs, Vexp, t, r, Pref, rref)
 
 
 def betterLabels(x):
@@ -216,7 +225,7 @@ def drawPosteriorSamples(df, r = np.linspace(2, 8,num = 200), t = np.linspace(0,
     return Ps, Vs, t, r
 
 
-def plotMCMC(Ps,Vs,Vdata,t,r, Pref = None):
+def plotMCMC(Ps,Vs,Vdata,t,r, Pref = None, rref = None):
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
@@ -245,7 +254,7 @@ def plotMCMC(Ps,Vs,Vdata,t,r, Pref = None):
     ax2.set_title('distance domain')
 
     if Pref is not None:
-        ax2.plot(r, Pref , color = 'black')
+        ax2.plot(rref, Pref , color = 'black')
 
     plt.grid()
 
