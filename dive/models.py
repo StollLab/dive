@@ -1,60 +1,149 @@
+import pymc3 as pm
 import numpy as np
 import math as m
+import deerlab as dl
 
-from .constants import *
+from .utils import *
+from .deer import *
 
-def deerTrace(S,B,V0,lamb):
+from theano import tensor as T
+from theano.tensor import nlinalg as tnp
+from theano.tensor import slinalg as snp
 
-    V = V0*(1-lamb+lamb*S)*B
+def model(t, Vdata, pars):
 
-    return V
+    allowed_methods = ['regularization', 'gaussian']
 
-def dd_gauss(r,r0,fwhm,a=1):
-    """
-    Calculates a multi-Gauss distance distribution over distance vector r.
-    """
+    # Rescale data to max 1
+    Vscale = np.amax(Vdata)
+    Vdata /= Vscale
 
-    nGauss = np.size(r0)
+    if 'method' not in pars:
+        sys.exit("'method' is a required field")
+    elif pars['method'] not in allowed_methods:
+        sys.exit("keyword 'method' has to be one of the following: " + ', '.join(allowed_methods))
 
-    if np.size(fwhm)!=nGauss:
-        raise ValueError("r0 and fwhm need to have the same number of elements.")
-    if np.size(a)!=nGauss:
-        raise ValueError("r0 and a need to have the same number of elements.")
+    if pars['method'] == 'gaussian':
+        if 'nGauss' not in pars:
+           sys.exit("nGauss is a required key for 'method' " + pars['method']) 
+
+        # Calculate dipolar kernel for integration
+        r = np.linspace(1,10,451)
+        K0 = dipolarkernel(t,r)
+        model_graph = multigaussmodel(pars['nGauss'], t, Vdata, K0, r)
+        model_pars = {"r": r, "ngaussians" : pars['nGauss']}
+
+    elif pars['method'] == 'regularization':
+        if 'r' not in pars:
+           sys.exit("r is a required key for 'method' = " + pars['method']) 
+
+        a0 = 0.01
+        b0 = 1e-6   
+
+        K0 = dl.dipolarkernel(t,pars['r'],integralop=False)
+        model_graph = regularizationmodel(t, Vdata, K0, pars['r'], a0, b0)
+
+        K0 = dl.dipolarkernel(t,pars['r'],integralop=False)   # kernel matrix
+        L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
+        LtL = np.matmul(np.transpose(L),L)
+        K0tK0 = np.matmul(np.transpose(K0),K0)
+        model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a0': a0, 'b0': b0}
     
-    sig = np.array(fwhm)/2/m.sqrt(2*m.log(2))
+    model_pars['method'] = pars['method']
+    model_pars['Vscale'] = Vscale
 
-    if nGauss==1:
-        P = a*gauss(r,r0,sig)
-    else:
-        P = np.zeros_like(r)
-        for k in range(nGauss):
-            P += a[k]*gauss(r,r0[k],sig[k])
+    model = {'model_graph': model_graph, 'model_pars': model_pars, 't': t, 'Vexp': Vdata}
+    return model
 
-    return P
-
-
-def gauss(r,r0,sig):
+def multigaussmodel(nGauss, t, Vdata, K, r):
     """
-    Calculates a single-Gauss distance distribution over distance vector r.
+    Generates a PyMC3 model for a DEER signal over time vector t
+    (in microseconds) given data in Vdata.
+    It uses a multi-Gaussian distributions, where nGauss is the number
+    of Gaussians, plus an exponential background.
     """
-    return m.sqrt(1/2/m.pi)/sig*np.exp(-((r-r0)/sig)**2/2)
+    r0min = 1.3
+    r0max = 7    
 
+    # Model definition
+    model = pm.Model()
+    with model:
+        
+        # Distribution model
+        r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
+        r0 = pm.Deterministic('r0', r0_rel.sort()*(r0max-r0min) + r0min)
+        
+        w = pm.Bound(pm.InverseGamma, lower=0.05, upper=3.0)('w', alpha=0.1, beta=0.2, shape=nGauss) # this is the FWHM of the Gaussian
+        
+        if nGauss>1:
+            a = pm.Dirichlet('a', a=np.ones(nGauss))
+        else:
+            a = np.ones(1)
+        
+        # Calculate distance distribution
+        if nGauss==1:
+            P = gauss(r,r0,FWHM2sigma(w))
+        else:
+            P = np.zeros(np.size(K,1))
+            for i in range(nGauss):
+                P += a[i]*gauss(r,r0[i],FWHM2sigma(w[i]))
+        
+        # Background model
+        k = pm.Gamma('k', alpha=0.5, beta=2)
+        B = bg_exp(t,k)
+        
+        # DEER signal
+        lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+        V0 = pm.Bound(pm.Normal,lower=0.0)('V0', mu=1, sigma=0.2)
+        
+        Vmodel = deerTrace(pm.math.dot(K,P),B,V0,lamb)
 
-def bg_exp(t,k):
-    """
-    Exponential background decay
-    """
-    return np.exp(-np.abs(t)*k)
+        sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
+        
+        # Likelihood
+        pm.Normal('V', mu = Vmodel, sigma = sigma, observed = Vdata)
+        
+    return model
 
+def regularizationmodel(t, Vdata, K0, r, a0, b0):
+    """
+    Generates a PyMC3 model for a DEER signal over time vector t
+    (in microseconds) given data in Vdata.
+    """ 
 
-def bg_hom3d(t,conc,lamb):
-    """
-    Calculates a background decay due to a homogeneous 3D distribution of spins
-    conc: concentration in micromolar
-    lamb: modulation depth
-    """
+    dr = r[1] - r[0]
     
-    conc = conc*1e-6*1e3*NA # umol/L -> mol/L -> mol/m^3 -> spins/m^3
-    
-    B = np.exp(-8*m.pi**2/9/m.sqrt(3)*lamb*conc*D*abs(t*1e-6))
-    return B
+    # Model definition
+    model = pm.Model()
+    with model:
+        # Noise --------------------------------------------------------------
+        sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
+        tau = pm.Deterministic('tau',1/(sigma**2))
+
+        # Regularization parameter -------------------------------------------
+        delta = pm.Gamma('delta', alpha=a0, beta=b0, transform = None)
+        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
+        
+        # Time Domain --------------------------------------------------------
+        lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+        V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+
+        # Background ---------------------------------------------------------
+        k = pm.Gamma('k', alpha=0.5, beta=2)
+        B = dl.bg_exp(t, k)
+
+        # Distance distribution ----------------------------------------------
+        P = pm.Normal("P", mu = 1, sigma = lg_alpha, shape = len(r), transform = None)      
+
+        # Calculate matrices and operators -----------------------------------
+        Kintra = (1-lamb) + lamb*K0
+        B_ = T.transpose( T.tile(B,(len(r),1)) )
+        K = V0*Kintra*B_*dr
+
+        # Time domain model ---------------------------------------------------
+        Vmodel = pm.math.dot(K,P)
+
+        # Likelihood ----------------------------------------------------------
+        pm.Normal('V',mu = Vmodel, sigma = sigma, observed = Vdata)
+        
+    return model

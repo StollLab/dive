@@ -7,7 +7,8 @@ from datetime import date
 import os   
 
 from .constants import *
-from .deerload import*
+from .deerload import *
+from .samplers import *
 
 def addnoise(V,sig):
     """
@@ -75,27 +76,38 @@ def loadTrace(FileName):
 
     return t, Vdata
 
-def sample(Model,MCMCparameters):
+def sample(model_dic, MCMCparameters):
     """ 
     Use pymc3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
-    """
+    """  
     RequiredKeys = ["draws","tune","chains"]
 
     for Key in RequiredKeys:
         if Key not in MCMCparameters:
             sys.exit("{} is a required MCMC parameter".format(Key))            
 
+    model = model_dic['model_graph']
+    model_pars = model_dic['model_pars']
+
+    if 'LtL' not in model_pars:
+        method = 'gaussian'
+    else:
+        method = 'regularization'
+
     if "cores" not in MCMCparameters:
         MCMCparameters["cores"] = 2
     
     # Sampling
-    trace = pm.sample(model=Model, draws=MCMCparameters["draws"], tune=MCMCparameters["tune"], chains=MCMCparameters["chains"],cores=MCMCparameters["cores"],return_inferencedata=False)
-
-    # # Result processing 
-    # df = pm.trace_to_dataframe(trace)
-    removeVariables = ["r0_rel"]
-    
-
+    removeVariables = []
+    if method == 'gaussian':
+        trace = pm.sample(model=model, draws=MCMCparameters["draws"], tune=MCMCparameters["tune"], chains=MCMCparameters["chains"],cores=MCMCparameters["cores"],return_inferencedata=False, progressbar = False)
+        removeVariables.append("r0_rel")
+    elif method == 'regularization':
+        with model:
+            step_P = SamplePfromV(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], model['sigma'], model['k'], model['lamb'], model['V0'])
+            step_delta = randDelta(model['delta'], model_pars['a0'], model_pars['b0'], model_pars['L'], model['P'])
+            trace = pm.sample(step = [step_P, step_delta], chains=MCMCparameters["chains"], cores=MCMCparameters["cores"], draws=MCMCparameters["draws"], tune= MCMCparameters["tune"], return_inferencedata=False, progressbar = False, init = 'adapt_diag')
+        
     for Key in removeVariables:
         if Key in trace.varnames:
             trace.remove_values(Key)

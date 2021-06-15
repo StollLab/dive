@@ -6,7 +6,7 @@ from .constants import *
 from .utils import *
 from .deerload import deerload
 from .models import *
-from .multigauss import *
+from .deer import *
 from .plotting import *
 from .samplers import *
 from .test_data import *

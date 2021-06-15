@@ -11,13 +11,17 @@ import copy
 from scipy.io import loadmat
 
 from .utils import *
-from .models import *
+from .deer import *
 
-def summary(df, model, Vexp, t, r, nDraws = 100, Pid = None, Pref = None, GroundTruth = []):
-
+def summary(df, model_dic, nDraws = 100, Pid = None, Pref = None, GroundTruth = [], rref = None):
     # Figure out what Vars are present -----------------------------------------
     PossibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
     PresentVars = df.varnames
+
+    model = model_dic['model_graph']
+    Vexp = model_dic['Vexp']
+    t = model_dic['t']
+    r = model_dic['model_pars']['r']
 
     if Pid is not None:
         P0s = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['P0']
@@ -25,7 +29,8 @@ def summary(df, model, Vexp, t, r, nDraws = 100, Pid = None, Pref = None, Ground
 
         Pref = P0s[Pid-1,:]
     elif Pref is not None:
-        rref = r
+        if rref is None:
+            sys.exit("If 'Pref' is provided, 'rref' must be provided as well.")
 
     if not GroundTruth:
         PlotTruth = False
