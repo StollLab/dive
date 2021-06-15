@@ -264,3 +264,110 @@ def plotMCMC(Ps,Vs,Vdata,t,r, Pref = None, rref = None):
     plt.grid()
 
     plt.show()
+
+def summary_legacy(df, model, Vexp, t, r, nDraws = 100, Pid = None, Pref = None, GroundTruth = []):
+
+    # Figure out what Vars are present -----------------------------------------
+    PossibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
+    PresentVars = df.varnames
+
+    if Pid is not None:
+        P0s = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['P0']
+        rref = np.squeeze(loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['r0'])
+
+        Pref = P0s[Pid-1,:]
+    elif Pref is not None:
+        rref = r
+
+    if not GroundTruth:
+        PlotTruth = False
+    else:
+        PlotTruth = True
+
+    Vars = []
+    for Var in PossibleVars:
+        if Var in PresentVars:
+            Vars.append(Var)
+    nVars = len(Vars)
+
+    # Print summary for RVs ----------------------------------------------------
+    with model:
+        summary = az.summary(df,var_names=Vars)
+    # replace the labels with their unicode characters before displaying
+    summary.index = betterLabels(summary.index.values)
+    display(summary)
+    
+    # Plot marginalized posteriors ---------------------------------------------
+    plotsperrow = 4
+
+    # figure out layout of plots and creat figure
+    nrows = int(np.ceil(nVars/plotsperrow))
+    if nVars > plotsperrow:
+        fig, axs = plt.subplots(nrows, plotsperrow)
+        axs = np.reshape(axs,(nrows*plotsperrow,))
+        width = 11
+    else:
+        fig, axs = plt.subplots(1, nVars)
+        width = 3*nVars
+    height = nrows*3.5
+   
+    # set figure size
+    fig.set_figheight(height)
+    fig.set_figwidth(width)
+    
+    # KDE of chain samples and plot them
+    for i in range(nVars):
+        az.plot_kde(df[Vars[i]],ax = axs[i])
+        axs[i].set_xlabel(betterLabels(Vars[i]))
+        axs[i].yaxis.set_ticks([])
+
+        if PlotTruth and (Vars[i]in GroundTruth.keys()):
+            bottom, top = axs[i].get_ylim()
+            axs[i].vlines(GroundTruth[Vars[i]],bottom,top, color = 'black')
+
+    for i in range(nVars,nrows*plotsperrow):
+        axs[i].axis('off')
+
+    # Clean up figure
+    fig.tight_layout()
+    plt.show()
+
+    # Pairwise correlation plots ----------------------------------------------
+    # determine figure size
+    if nVars < 3:
+        corwidth = 7
+        corheight = 7
+    else:
+        corwidth = 11
+        corheight = 11
+
+    # use arviz library to plot them
+    with model:
+        axs = az.plot_pair(df,var_names=Vars,kind='kde',figsize=(corwidth,corheight))
+
+    # replace labels with the nicer unicode character versions
+    if len(Vars) > 2:
+        # reshape axes so that we can loop through them
+        axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
+
+        for ax in axs:
+            xlabel = ax.get_xlabel()
+            ylabel = ax.get_ylabel()
+            if xlabel:
+                ax.set_xlabel(betterLabels(xlabel))
+            if ylabel:
+                ax.set_ylabel(betterLabels(ylabel))
+    else:
+        xlabel = axs.get_xlabel()
+        ylabel = axs.get_ylabel()
+        axs.set_xlabel(betterLabels(xlabel))
+        axs.set_ylabel(betterLabels(ylabel))
+
+    # show plot
+    plt.show()
+
+    # Posterior sample plot -----------------------------------------------------
+    # Draw samples
+    Ps, Vs, _, _ = drawPosteriorSamples(df,r,t,nDraws)
+    # Plot them
+    plotMCMC(Ps, Vs, Vexp, t, r, Pref, rref)
