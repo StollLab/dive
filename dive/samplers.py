@@ -60,7 +60,7 @@ class SampleExpandedEdwardsModel(BlockedStep):
         return newpoint
 
 class SamplePfromV(BlockedStep):
-    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, k, lamb, V0):
+    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0):
             self.vars = [var]
             self.var = var
             
@@ -76,19 +76,29 @@ class SamplePfromV(BlockedStep):
             self.sigma = sigma
             self.k = k
             self.lamb = lamb
-            self.V0 = V0    
+            self.V0 = V0
+            self.tau = tau  
 
     def step(self, point: dict):
         # transform parameters
-        sigma = undo_transform(point,self.sigma.transformed.name)
-        # delta = undo_transform(point,self.delta.transformed.name)
+        if self.tau:
+            tau = point[self.tau.name]
+            sigma = 1/np.sqrt(tau)
+        else:
+            sigma =  undo_transform(point,self.sigma.transformed.name)
+            tau = 1/(sigma**2)
+
         delta = undo_transform(point,self.delta.name)
         k = undo_transform(point,self.k.transformed.name)
+        
         lamb = undo_transform(point,self.lamb.transformed.name)
-        V0 = undo_transform(point,self.V0.transformed.name)        
+        V0 = undo_transform(point,self.V0.transformed.name) 
 
+        # k = 0.05
+        # lamb = 0.5
+
+        print('V0: ' + str(V0), 'delta: ' + str(delta), 'k: ' + str(k), 'lamb: ' + str(lamb), 'sigma: ' + str(sigma))
         # calculate some values
-        tau = 1/(sigma**2)
         dr = self.r[1] - self.r[0]
 
         # Background
@@ -114,24 +124,72 @@ class SamplePfromV(BlockedStep):
         return newpoint
 
 class randDelta(BlockedStep):
-    def __init__(self, var, a0, b0, L, P):
+    def __init__(self, var, a_delta, b_delta, L, P):
             self.vars = [var]
             self.var = var
             self.P = P
-            self.a0 = a0
-            self.b0 = b0
+            self.a_delta = a_delta
+            self.b_delta = b_delta
             self.L = L
 
     def step(self, point: dict):
         P = point[self.P.name]
 
         n_p = sum(np.asarray(P)>0)
-        a_ = self.a0 + n_p/2
-        b_ = self.b0 + (1/2)*np.linalg.norm(self.L@P)**2
+        a_ = self.a_delta + n_p/2
+        b_ = self.b_delta + (1/2)*np.linalg.norm(self.L@P)**2
 
         newpoint = point.copy()
         delta_draw =  np.random.gamma(a_, 1/b_, 1)[0]
         newpoint[self.var.name] = delta_draw
+
+        return newpoint
+
+class randTau(BlockedStep):
+    r"""
+    based on:
+    J.M. Bardsley, P.C. Hansen, MCMC Algorithms for Computational UQ of 
+    Nonnegativity Constrained Linear Inverse Problems, 
+    SIAM Journal on Scientific Computing 42 (2020) A1269-A1288 
+    from "Hierarchical Gibbs Sampler" block after Eqn. (2.8)
+    """
+    def __init__(self, var, a_tau, b_tau, K0, P, V, r, t, k, lamb, V0):
+            self.vars = [var]
+            self.var = var
+            self.P = P
+            self.a_tau = a_tau
+            self.b_tau = b_tau
+            self.K0 = K0
+            self.V = V
+            self.k = k
+            self.lamb = lamb
+            self.V0 = V0
+            self.r = r
+            self.t = t
+
+    def step(self, point: dict):
+        P = point[self.P.name]
+        k = undo_transform(point,self.k.transformed.name)
+        lamb = undo_transform(point,self.lamb.transformed.name)
+        V0 = undo_transform(point,self.V0.transformed.name)  
+
+        dr = self.r[1] - self.r[0]
+
+        # Background
+        B = dl.bg_exp(self.t,k) 
+
+        # Kernel
+        Kintra = (1-lamb)+lamb*self.K0
+        K = Kintra * B[:, np.newaxis]
+        K = V0*K*dr
+
+        M = len(self.V)
+        a_ = self.a_tau + M/2
+        b_ = self.b_tau + (1/2)*np.linalg.norm((K@P-self.V))**2
+
+        newpoint = point.copy()
+        tau_draw =  np.random.gamma(a_, b_, 1)[0]
+        newpoint[self.var.name] = tau_draw
 
         return newpoint
 

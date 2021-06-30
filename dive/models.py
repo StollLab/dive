@@ -12,7 +12,7 @@ from theano.tensor import slinalg as snp
 
 def model(t, Vdata, pars):
 
-    allowed_methods = ['regularization', 'gaussian']
+    allowed_methods = ['regularization', 'gaussian', 'regularization_taubased']
 
     # Rescale data to max 1
     Vscale = np.amax(Vdata)
@@ -29,7 +29,7 @@ def model(t, Vdata, pars):
 
         # Calculate dipolar kernel for integration
         r = np.linspace(1,10,451)
-        K0 = dipolarkernel(t,r)
+        K0 = dl.dipolarkernel(t,r)
         model_graph = multigaussmodel(pars['nGauss'], t, Vdata, K0, r)
         model_pars = {"r": r, "ngaussians" : pars['nGauss']}
 
@@ -37,17 +37,38 @@ def model(t, Vdata, pars):
         if 'r' not in pars:
            sys.exit("r is a required key for 'method' = " + pars['method']) 
 
-        a0 = 0.01
-        b0 = 1e-6   
+        a_delta = 0.01
+        b_delta = 1e-6   
 
         K0 = dl.dipolarkernel(t,pars['r'],integralop=False)
-        model_graph = regularizationmodel(t, Vdata, K0, pars['r'], a0, b0)
+        model_graph = regularizationmodel(t, Vdata, K0, pars['r'], a_delta, b_delta)
 
         K0 = dl.dipolarkernel(t,pars['r'],integralop=False)   # kernel matrix
         L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
         LtL = np.matmul(np.transpose(L),L)
         K0tK0 = np.matmul(np.transpose(K0),K0)
-        model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a0': a0, 'b0': b0}
+
+        model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta}
+
+    elif pars['method'] == 'regularization_taubased':
+        if 'r' not in pars:
+           sys.exit("r is a required key for 'method' = " + pars['method']) 
+
+        a_delta = 0.01
+        b_delta = 1e-6
+
+        a_tau = 1
+        b_tau = 1e-4  
+
+        K0 = dl.dipolarkernel(t,pars['r'],integralop=False)
+        model_graph = regularizationmodel_taubased(t, Vdata, K0, pars['r'], a_delta, b_delta, a_tau, b_tau)
+
+        K0 = dl.dipolarkernel(t,pars['r'],integralop=False)   # kernel matrix
+        L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
+        LtL = np.matmul(np.transpose(L),L)
+        K0tK0 = np.matmul(np.transpose(K0),K0)
+
+        model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta, 'a_tau': a_tau, 'b_tau': b_tau}
     
     model_pars['method'] = pars['method']
     model_pars['Vscale'] = Vscale
@@ -55,7 +76,7 @@ def model(t, Vdata, pars):
     model = {'model_graph': model_graph, 'model_pars': model_pars, 't': t, 'Vexp': Vdata}
     return model
 
-def multigaussmodel(nGauss, t, Vdata, K, r):
+def multigaussmodel(nGauss, t, Vdata, K0, r):
     """
     Generates a PyMC3 model for a DEER signal over time vector t
     (in microseconds) given data in Vdata.
@@ -84,7 +105,7 @@ def multigaussmodel(nGauss, t, Vdata, K, r):
         if nGauss==1:
             P = gauss(r,r0,FWHM2sigma(w))
         else:
-            P = np.zeros(np.size(K,1))
+            P = np.zeros(np.size(K0,1))
             for i in range(nGauss):
                 P += a[i]*gauss(r,r0[i],FWHM2sigma(w[i]))
         
@@ -96,7 +117,7 @@ def multigaussmodel(nGauss, t, Vdata, K, r):
         lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
         V0 = pm.Bound(pm.Normal,lower=0.0)('V0', mu=1, sigma=0.2)
         
-        Vmodel = deerTrace(pm.math.dot(K,P),B,V0,lamb)
+        Vmodel = deerTrace(pm.math.dot(K0,P),B,V0,lamb)
 
         sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
         
@@ -105,7 +126,7 @@ def multigaussmodel(nGauss, t, Vdata, K, r):
         
     return model
 
-def regularizationmodel(t, Vdata, K0, r, a0, b0):
+def regularizationmodel(t, Vdata, K0, r, a_delta, b_delta):
     """
     Generates a PyMC3 model for a DEER signal over time vector t
     (in microseconds) given data in Vdata.
@@ -121,7 +142,50 @@ def regularizationmodel(t, Vdata, K0, r, a0, b0):
         tau = pm.Deterministic('tau',1/(sigma**2))
 
         # Regularization parameter -------------------------------------------
-        delta = pm.Gamma('delta', alpha=a0, beta=b0, transform = None)
+        delta = pm.Gamma('delta', alpha=a_delta, beta=b_delta, transform = None)
+        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
+        
+        # Time Domain --------------------------------------------------------
+        lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+        V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+
+        # Background ---------------------------------------------------------
+        k = pm.Gamma('k', alpha=0.5, beta=2)
+        B = dl.bg_exp(t, k)
+
+        # Distance distribution ----------------------------------------------
+        P = pm.Normal("P", mu = 1, sigma = lg_alpha, shape = len(r), transform = None)      
+
+        # Calculate matrices and operators -----------------------------------
+        Kintra = (1-lamb) + lamb*K0
+        B_ = T.transpose( T.tile(B,(len(r),1)) )
+        K = V0*Kintra*B_*dr
+
+        # Time domain model ---------------------------------------------------
+        Vmodel = pm.math.dot(K,P)
+
+        # Likelihood ----------------------------------------------------------
+        pm.Normal('V',mu = Vmodel, sigma = sigma, observed = Vdata)
+        
+    return model
+
+def regularizationmodel_taubased(t, Vdata, K0, r, a_delta, b_delta, a_tau, b_tau):
+    """
+    Generates a PyMC3 model for a DEER signal over time vector t
+    (in microseconds) given data in Vdata.
+    """ 
+
+    dr = r[1] - r[0]
+    
+    # Model definition
+    model = pm.Model()
+    with model:
+        # Noise --------------------------------------------------------------
+        tau = pm.Gamma('tau', alpha=a_tau+100, beta=b_tau, transform = None)
+        sigma = pm.Deterministic('sigma',1/(np.sqrt(tau)))
+
+        # Regularization parameter -------------------------------------------
+        delta = pm.Gamma('delta', alpha=a_delta, beta=b_delta, transform = None)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
         
         # Time Domain --------------------------------------------------------

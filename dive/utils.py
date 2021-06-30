@@ -89,10 +89,7 @@ def sample(model_dic, MCMCparameters):
     model = model_dic['model_graph']
     model_pars = model_dic['model_pars']
 
-    if 'LtL' not in model_pars:
-        method = 'gaussian'
-    else:
-        method = 'regularization'
+    method = model_pars['method']
 
     if "cores" not in MCMCparameters:
         MCMCparameters["cores"] = 2
@@ -100,14 +97,25 @@ def sample(model_dic, MCMCparameters):
     # Sampling
     removeVariables = []
     if method == 'gaussian':
-        trace = pm.sample(model=model, draws=MCMCparameters["draws"], tune=MCMCparameters["tune"], chains=MCMCparameters["chains"],cores=MCMCparameters["cores"],return_inferencedata=False, progressbar = False)
+        trace = pm.sample(model=model, draws=MCMCparameters["draws"], tune=MCMCparameters["tune"], chains=MCMCparameters["chains"],cores=MCMCparameters["cores"],return_inferencedata=False, progressbar = True)
         removeVariables.append("r0_rel")
     elif method == 'regularization':
         with model:
-            step_P = SamplePfromV(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], model['sigma'], model['k'], model['lamb'], model['V0'])
-            step_delta = randDelta(model['delta'], model_pars['a0'], model_pars['b0'], model_pars['L'], model['P'])
-            trace = pm.sample(step = [step_P, step_delta], chains=MCMCparameters["chains"], cores=MCMCparameters["cores"], draws=MCMCparameters["draws"], tune= MCMCparameters["tune"], return_inferencedata=False, progressbar = False, init = 'adapt_diag')
-        
+            # step_P = SamplePfromV(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], model['sigma'], [], model['k'], model['lamb'], model['V0'])
+            step_P = SamplePfromV(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], model['sigma'], [], model['k'], model['lamb'], model['V0'])
+            step_delta = randDelta(model['delta'], model_pars['a_delta'], model_pars['b_delta'], model_pars['L'], model['P'])
+
+            trace = pm.sample(step = [step_P, step_delta], chains=MCMCparameters["chains"], cores=MCMCparameters["cores"], draws=MCMCparameters["draws"], tune= MCMCparameters["tune"], return_inferencedata=False, progressbar = True, init = 'adapt_diag')
+    elif method == 'regularization_taubased':
+        with model:
+            step_tau = randTau(model['tau'], model_pars['a_tau'], model_pars['b_tau'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
+
+            step_P = SamplePfromV(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
+            
+            step_delta = randDelta(model['delta'], model_pars['a_delta'], model_pars['b_delta'], model_pars['L'], model['P'])
+                        
+            trace = pm.sample(step = [step_P, step_tau, step_delta], chains=MCMCparameters["chains"], cores=MCMCparameters["cores"], draws=MCMCparameters["draws"], tune= MCMCparameters["tune"], return_inferencedata=False, progressbar = False, init = 'adapt_diag', start = {'tau': 1})
+   
     for Key in removeVariables:
         if Key in trace.varnames:
             trace.remove_values(Key)

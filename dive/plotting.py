@@ -243,7 +243,7 @@ def plotMCMC(Ps,Vs,Vdata,t,r, Pref = None, rref = None):
 
     for V,P in zip(Vs,Ps):
         ax1.plot(t, V, color = '#3F60AE', alpha=0.2)
-        ax1.plot(t, Vdata-V+residuals_offset, color = '#3F60AE', alpha=0.2)
+        ax1.plot(t, V-Vdata+residuals_offset, color = '#3F60AE', alpha=0.2)
         ax2.plot(r, P, color = '#3F60AE', alpha=0.2)
     ax1.plot(t, Vdata , color = 'black')
     ax1.hlines(residuals_offset,min(t),max(t), color = 'black')
