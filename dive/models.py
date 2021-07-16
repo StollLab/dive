@@ -142,7 +142,7 @@ def regularizationmodel(t, Vdata, K0, r, a_delta, b_delta):
         tau = pm.Deterministic('tau',1/(sigma**2))
 
         # Regularization parameter -------------------------------------------
-        delta = pm.Gamma('delta', alpha=a_delta, beta=b_delta, transform = None)
+        delta = pm.Uniform('delta', lower= 0, upper = 1e20, transform = None)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
         
         # Time Domain --------------------------------------------------------
@@ -154,7 +154,7 @@ def regularizationmodel(t, Vdata, K0, r, a_delta, b_delta):
         B = dl.bg_exp(t, k)
 
         # Distance distribution ----------------------------------------------
-        P = pm.Normal("P", mu = 1, sigma = lg_alpha, shape = len(r), transform = None)      
+        P = pm.Uniform("P", lower= 0, upper = 1000, shape = len(r), transform = None)      
 
         # Calculate matrices and operators -----------------------------------
         Kintra = (1-lamb) + lamb*K0
@@ -181,11 +181,11 @@ def regularizationmodel_taubased(t, Vdata, K0, r, a_delta, b_delta, a_tau, b_tau
     model = pm.Model()
     with model:
         # Noise --------------------------------------------------------------
-        tau = pm.Gamma('tau', alpha=a_tau+100, beta=b_tau, transform = None)
-        sigma = pm.Deterministic('sigma',1/(np.sqrt(tau)))
+        tau = pm.Uniform('tau', lower= 0, upper = 1e20, transform = None)
+        sigma = pm.Deterministic('sigma',1/(tau))
 
         # Regularization parameter -------------------------------------------
-        delta = pm.Gamma('delta', alpha=a_delta, beta=b_delta, transform = None)
+        delta = pm.Uniform('delta', lower= 0, upper = 1e20, transform = None)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
         
         # Time Domain --------------------------------------------------------
@@ -197,7 +197,7 @@ def regularizationmodel_taubased(t, Vdata, K0, r, a_delta, b_delta, a_tau, b_tau
         B = dl.bg_exp(t, k)
 
         # Distance distribution ----------------------------------------------
-        P = pm.Normal("P", mu = 1, sigma = lg_alpha, shape = len(r), transform = None)      
+        P = pm.Uniform("P", lower= 0, upper = 1000, shape = len(r), transform = None)     
 
         # Calculate matrices and operators -----------------------------------
         Kintra = (1-lamb) + lamb*K0

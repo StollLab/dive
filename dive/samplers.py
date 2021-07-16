@@ -94,10 +94,7 @@ class SamplePfromV(BlockedStep):
         lamb = undo_transform(point,self.lamb.transformed.name)
         V0 = undo_transform(point,self.V0.transformed.name) 
 
-        # k = 0.05
-        # lamb = 0.5
-
-        print('V0: ' + str(V0), 'delta: ' + str(delta), 'k: ' + str(k), 'lamb: ' + str(lamb), 'sigma: ' + str(sigma))
+        # print('V0: ' + str(V0), 'delta: ' + str(delta), 'k: ' + str(k), 'lamb: ' + str(lamb), 'sigma: ' + str(sigma))
         # calculate some values
         dr = self.r[1] - self.r[0]
 
