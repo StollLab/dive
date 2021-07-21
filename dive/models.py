@@ -33,35 +33,35 @@ def model(t, Vdata, pars):
         model_graph = multigaussmodel(pars['nGauss'], t, Vdata, K0, r)
         model_pars = {"r": r, "ngaussians" : pars['nGauss']}
 
+    # elif pars['method'] == 'regularization':
+    #     if 'r' not in pars:
+    #        sys.exit("r is a required key for 'method' = " + pars['method']) 
+
+    #     a_delta = 1
+    #     b_delta = 1e-6   
+
+    #     K0 = dl.dipolarkernel(t,pars['r'],integralop=False)
+    #     model_graph = regularizationmodel(t, Vdata, K0, pars['r'], a_delta, b_delta)
+
+    #     K0 = dl.dipolarkernel(t,pars['r'],integralop=False)   # kernel matrix
+    #     L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
+    #     LtL = np.matmul(np.transpose(L),L)
+    #     K0tK0 = np.matmul(np.transpose(K0),K0)
+
+    #     model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta}
+
     elif pars['method'] == 'regularization':
         if 'r' not in pars:
            sys.exit("r is a required key for 'method' = " + pars['method']) 
 
-        a_delta = 0.01
-        b_delta = 1e-6   
-
-        K0 = dl.dipolarkernel(t,pars['r'],integralop=False)
-        model_graph = regularizationmodel(t, Vdata, K0, pars['r'], a_delta, b_delta)
-
-        K0 = dl.dipolarkernel(t,pars['r'],integralop=False)   # kernel matrix
-        L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
-        LtL = np.matmul(np.transpose(L),L)
-        K0tK0 = np.matmul(np.transpose(K0),K0)
-
-        model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta}
-
-    elif pars['method'] == 'regularization_taubased':
-        if 'r' not in pars:
-           sys.exit("r is a required key for 'method' = " + pars['method']) 
-
-        a_delta = 0.01
+        a_delta = 1
         b_delta = 1e-6
 
         a_tau = 1
         b_tau = 1e-4  
 
         K0 = dl.dipolarkernel(t,pars['r'],integralop=False)
-        model_graph = regularizationmodel_taubased(t, Vdata, K0, pars['r'], a_delta, b_delta, a_tau, b_tau)
+        model_graph = regularizationmodel(t, Vdata, K0, pars['r'], a_delta, b_delta, a_tau, b_tau)
 
         K0 = dl.dipolarkernel(t,pars['r'],integralop=False)   # kernel matrix
         L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
@@ -126,50 +126,50 @@ def multigaussmodel(nGauss, t, Vdata, K0, r):
         
     return model
 
-def regularizationmodel(t, Vdata, K0, r, a_delta, b_delta):
-    """
-    Generates a PyMC3 model for a DEER signal over time vector t
-    (in microseconds) given data in Vdata.
-    """ 
+# def regularizationmodel(t, Vdata, K0, r, a_delta, b_delta):
+#     """
+#     Generates a PyMC3 model for a DEER signal over time vector t
+#     (in microseconds) given data in Vdata.
+#     """ 
 
-    dr = r[1] - r[0]
+#     dr = r[1] - r[0]
     
-    # Model definition
-    model = pm.Model()
-    with model:
-        # Noise --------------------------------------------------------------
-        sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
-        tau = pm.Deterministic('tau',1/(sigma**2))
+#     # Model definition
+#     model = pm.Model()
+#     with model:
+#         # Noise --------------------------------------------------------------
+#         sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
+#         tau = pm.Deterministic('tau',1/(sigma**2))
 
-        # Regularization parameter -------------------------------------------
-        delta = pm.Uniform('delta', lower= 0, upper = 1e20, transform = None)
-        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
+#         # Regularization parameter -------------------------------------------
+#         delta = pm.Uniform('delta', lower= 0, upper = 1e20, transform = None)
+#         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
         
-        # Time Domain --------------------------------------------------------
-        lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
-        V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+#         # Time Domain --------------------------------------------------------
+#         lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+#         V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
 
-        # Background ---------------------------------------------------------
-        k = pm.Gamma('k', alpha=0.5, beta=2)
-        B = dl.bg_exp(t, k)
+#         # Background ---------------------------------------------------------
+#         k = pm.Gamma('k', alpha=0.5, beta=2)
+#         B = dl.bg_exp(t, k)
 
-        # Distance distribution ----------------------------------------------
-        P = pm.Uniform("P", lower= 0, upper = 1000, shape = len(r), transform = None)      
+#         # Distance distribution ----------------------------------------------
+#         P = pm.Uniform("P", lower= 0, upper = 1000, shape = len(r), transform = None)      
 
-        # Calculate matrices and operators -----------------------------------
-        Kintra = (1-lamb) + lamb*K0
-        B_ = T.transpose( T.tile(B,(len(r),1)) )
-        K = V0*Kintra*B_*dr
+#         # Calculate matrices and operators -----------------------------------
+#         Kintra = (1-lamb) + lamb*K0
+#         B_ = T.transpose( T.tile(B,(len(r),1)) )
+#         K = V0*Kintra*B_*dr
 
-        # Time domain model ---------------------------------------------------
-        Vmodel = pm.math.dot(K,P)
+#         # Time domain model ---------------------------------------------------
+#         Vmodel = pm.math.dot(K,P)
 
-        # Likelihood ----------------------------------------------------------
-        pm.Normal('V',mu = Vmodel, sigma = sigma, observed = Vdata)
+#         # Likelihood ----------------------------------------------------------
+#         pm.Normal('V',mu = Vmodel, sigma = sigma, observed = Vdata)
         
-    return model
+#     return model
 
-def regularizationmodel_taubased(t, Vdata, K0, r, a_delta, b_delta, a_tau, b_tau):
+def regularizationmodel(t, Vdata, K0, r, a_delta, b_delta, a_tau, b_tau):
     """
     Generates a PyMC3 model for a DEER signal over time vector t
     (in microseconds) given data in Vdata.
@@ -182,7 +182,7 @@ def regularizationmodel_taubased(t, Vdata, K0, r, a_delta, b_delta, a_tau, b_tau
     with model:
         # Noise --------------------------------------------------------------
         tau = pm.Uniform('tau', lower= 0, upper = 1e20, transform = None)
-        sigma = pm.Deterministic('sigma',1/(tau))
+        sigma = pm.Deterministic('sigma',1/np.sqrt(tau))
 
         # Regularization parameter -------------------------------------------
         delta = pm.Uniform('delta', lower= 0, upper = 1e20, transform = None)

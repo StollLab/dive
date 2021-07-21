@@ -185,7 +185,7 @@ class randTau(BlockedStep):
         b_ = self.b_tau + (1/2)*np.linalg.norm((K@P-self.V))**2
 
         newpoint = point.copy()
-        tau_draw =  np.random.gamma(a_, b_, 1)[0]
+        tau_draw =  np.random.gamma(a_, 1/b_, 1)[0]
         newpoint[self.var.name] = tau_draw
 
         return newpoint
