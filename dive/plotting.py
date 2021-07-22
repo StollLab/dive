@@ -125,7 +125,6 @@ def summary(df, model_dic, nDraws = 100, Pid = None, Pref = None, GroundTruth = 
     # Plot them
     plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
 
-
 def betterLabels(x):
     # replace strings with their corresponding (greek) symbols
     if type(x) == str:
@@ -154,6 +153,54 @@ def LabelLookup(input):
         return "α"
     elif input == "lg_alpha":
         return "lg(α)"
+    elif input == "w[0]":
+        return  "w₀"
+    elif input == "w[1]":
+        return  "w₁"
+    elif input == "w[2]":
+        return  "w₂"
+    elif input == "w[3]":
+        return  "w₃"
+    elif input == "a[0]":
+        return  "a₀"
+    elif input == "a[1]":
+        return  "a₁"
+    elif input == "a[2]":
+        return  "a₂"
+    elif input == "a[3]":
+        return  "a₃"
+    elif input == "r0[0]":
+        return  "r₀,₀"
+    elif input == "r0[1]":
+        return  "r₀,₁"
+    elif input == "r0[2]":
+        return  "r₀,₂"
+    elif input == "r0[3]":
+        return  "r₀,₃"
+    elif input == "r0\n0":
+        return  "r₀,₀"
+    elif input == "r0\n1":
+        return  "r₀,₁"
+    elif input == "r0\n2":
+        return  "r₀,₂"
+    elif input == "r0\n3":
+        return  "r₀,₃"
+    elif input == "a\n0":
+        return  "a₀"
+    elif input == "a\n1":
+        return  "a₁"
+    elif input == "a\n2":
+        return  "a₂"
+    elif input == "a\n3":
+        return  "a₃"
+    elif input == "w\n0":
+        return  "w₀"
+    elif input == "w\n1":
+        return  "w₁"
+    elif input == "w\n2":
+        return  "w₂"
+    elif input == "w\n3":
+        return  "w₃"
     else:
         return input
 
