@@ -7,68 +7,47 @@ from .utils import *
 from .deer import *
 
 from theano import tensor as T
-from theano.tensor import nlinalg as tnp
-from theano.tensor import slinalg as snp
+#from theano.tensor import nlinalg as tnp
+#from theano.tensor import slinalg as snp
 
 def model(t, Vdata, pars):
-
-    allowed_methods = ['regularization', 'gaussian', 'regularization_taubased']
-
+    
     # Rescale data to max 1
     Vscale = np.amax(Vdata)
     Vdata /= Vscale
 
     if 'method' not in pars:
-        sys.exit("'method' is a required field")
-    elif pars['method'] not in allowed_methods:
-        sys.exit("keyword 'method' has to be one of the following: " + ', '.join(allowed_methods))
+        raise KeyError("'method' is a required field")
 
     if pars['method'] == 'gaussian':
         if 'nGauss' not in pars:
-           sys.exit("nGauss is a required key for 'method' " + pars['method']) 
+           raise KeyError("nGauss is a required key for 'method' " + pars['method']) 
 
-        # Calculate dipolar kernel for integration
         r = np.linspace(1,10,451)
         K0 = dl.dipolarkernel(t,r)
         model_graph = multigaussmodel(pars['nGauss'], t, Vdata, K0, r)
-        model_pars = {"r": r, "ngaussians" : pars['nGauss']}
-
-    # elif pars['method'] == 'regularization':
-    #     if 'r' not in pars:
-    #        sys.exit("r is a required key for 'method' = " + pars['method']) 
-
-    #     a_delta = 1
-    #     b_delta = 1e-6   
-
-    #     K0 = dl.dipolarkernel(t,pars['r'],integralop=False)
-    #     model_graph = regularizationmodel(t, Vdata, K0, pars['r'], a_delta, b_delta)
-
-    #     K0 = dl.dipolarkernel(t,pars['r'],integralop=False)   # kernel matrix
-    #     L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
-    #     LtL = np.matmul(np.transpose(L),L)
-    #     K0tK0 = np.matmul(np.transpose(K0),K0)
-
-    #     model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta}
+        
+        model_pars = {'K0': K0, "r": r, "ngaussians": pars['nGauss']}
 
     elif pars['method'] == 'regularization':
         if 'r' not in pars:
            sys.exit("r is a required key for 'method' = " + pars['method']) 
 
+        K0 = dl.dipolarkernel(t, pars['r'], integralop=False)
+        model_graph = regularizationmodel(t, Vdata, K0, pars['r'])
+
         a_delta = 1
         b_delta = 1e-6
-
         a_tau = 1
-        b_tau = 1e-4  
-
-        K0 = dl.dipolarkernel(t,pars['r'],integralop=False)
-        model_graph = regularizationmodel(t, Vdata, K0, pars['r'], a_delta, b_delta, a_tau, b_tau)
-
-        K0 = dl.dipolarkernel(t,pars['r'],integralop=False)   # kernel matrix
+        b_tau = 1e-4
         L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
-        LtL = np.matmul(np.transpose(L),L)
-        K0tK0 = np.matmul(np.transpose(K0),K0)
+        LtL = L.T@L
+        K0tK0 = K0.T@K0
 
         model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta, 'a_tau': a_tau, 'b_tau': b_tau}
+    
+    else:
+        raise ValueError(f"Unknown model '{pars['method']}'.")
     
     model_pars['method'] = pars['method']
     model_pars['Vscale'] = Vscale
@@ -115,99 +94,120 @@ def multigaussmodel(nGauss, t, Vdata, K0, r):
         
         # DEER signal
         lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
-        V0 = pm.Bound(pm.Normal,lower=0.0)('V0', mu=1, sigma=0.2)
+        V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
         
         Vmodel = deerTrace(pm.math.dot(K0,P),B,V0,lamb)
 
         sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
         
         # Likelihood
-        pm.Normal('V', mu = Vmodel, sigma = sigma, observed = Vdata)
+        pm.Normal('V', mu=Vmodel, sigma=sigma, observed=Vdata)
         
     return model
 
-# def regularizationmodel(t, Vdata, K0, r, a_delta, b_delta):
-#     """
-#     Generates a PyMC3 model for a DEER signal over time vector t
-#     (in microseconds) given data in Vdata.
-#     """ 
-
-#     dr = r[1] - r[0]
-    
-#     # Model definition
-#     model = pm.Model()
-#     with model:
-#         # Noise --------------------------------------------------------------
-#         sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
-#         tau = pm.Deterministic('tau',1/(sigma**2))
-
-#         # Regularization parameter -------------------------------------------
-#         delta = pm.Uniform('delta', lower= 0, upper = 1e20, transform = None)
-#         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
-        
-#         # Time Domain --------------------------------------------------------
-#         lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
-#         V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
-
-#         # Background ---------------------------------------------------------
-#         k = pm.Gamma('k', alpha=0.5, beta=2)
-#         B = dl.bg_exp(t, k)
-
-#         # Distance distribution ----------------------------------------------
-#         P = pm.Uniform("P", lower= 0, upper = 1000, shape = len(r), transform = None)      
-
-#         # Calculate matrices and operators -----------------------------------
-#         Kintra = (1-lamb) + lamb*K0
-#         B_ = T.transpose( T.tile(B,(len(r),1)) )
-#         K = V0*Kintra*B_*dr
-
-#         # Time domain model ---------------------------------------------------
-#         Vmodel = pm.math.dot(K,P)
-
-#         # Likelihood ----------------------------------------------------------
-#         pm.Normal('V',mu = Vmodel, sigma = sigma, observed = Vdata)
-        
-#     return model
-
-def regularizationmodel(t, Vdata, K0, r, a_delta, b_delta, a_tau, b_tau):
+def regularizationmodel(t, Vdata, K0, r):
     """
     Generates a PyMC3 model for a DEER signal over time vector t
     (in microseconds) given data in Vdata.
-    """ 
+    Model parameters:
+      P      distance distribution vector (nm^-1)
+      tau    noise precision (inverse of noise variance)
+      delta  smoothing hyperparameter (= alpha^2/sigma^2)
+      lamb   modulation amplitude
+      k      background decay rate (µs^-1)
+      V0     overall amplitude
+    This model is intended to be used with Gibbs sampling with
+    separate independent sampling steps for P, delta, and tau,
+    plus a NUTS step for k, lambda, and V0.
+    """
 
     dr = r[1] - r[0]
     
     # Model definition
     model = pm.Model()
     with model:
-        # Noise --------------------------------------------------------------
-        tau = pm.Uniform('tau', lower= 0, upper = 1e20, transform = None)
-        sigma = pm.Deterministic('sigma',1/np.sqrt(tau))
+        # Noise parameter -----------------------------------------------------
+        tau = pm.NoDistribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the custom sampler)
+        sigma = pm.Deterministic('sigma',1/np.sqrt(tau)) # for reporting only
 
-        # Regularization parameter -------------------------------------------
-        delta = pm.Uniform('delta', lower= 0, upper = 1e20, transform = None)
-        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )
+        # Regularization parameter --------------------------------------------
+        delta = pm.NoDistribution('delta', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the custom sampler)
+        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting only
         
-        # Time Domain --------------------------------------------------------
+        # Time-domain parameters ----------------------------------------------
         lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
         V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
 
-        # Background ---------------------------------------------------------
+        # Background parameters -----------------------------------------------
         k = pm.Gamma('k', alpha=0.5, beta=2)
+
+        # Distance distribution -----------------------------------------------
+        P = pm.NoDistribution('P', shape=len(r), dtype='float64', testval=np.zeros(len(r))) # no prior (it's included in the custom sampler)
+        #P = pm.Uniform("P", lower=0, upper=1000, shape=len(r), transform=None) # dummy distribution (needed by NUTS)
+
+        # Calculate kernel matrix ---------------------------------------------
         B = dl.bg_exp(t, k)
-
-        # Distance distribution ----------------------------------------------
-        P = pm.Uniform("P", lower= 0, upper = 1000, shape = len(r), transform = None)     
-
-        # Calculate matrices and operators -----------------------------------
-        Kintra = (1-lamb) + lamb*K0
         B_ = T.transpose( T.tile(B,(len(r),1)) )
+        Kintra = (1-lamb) + lamb*K0
         K = V0*Kintra*B_*dr
 
-        # Time domain model ---------------------------------------------------
+        # Time-domain signal --------------------------------------------------
         Vmodel = pm.math.dot(K,P)
 
         # Likelihood ----------------------------------------------------------
-        pm.Normal('V',mu = Vmodel, sigma = sigma, observed = Vdata)
+        pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
+        
+    return model
+
+def regularizationmodel2(t, Vdata, K0, r):
+    """
+    Generates a PyMC3 model for a DEER signal over time vector t
+    (in microseconds) given data in Vdata.
+    Model parameters:
+      P      distance distribution vector (nm^-1)
+      tau    noise precision (inverse of noise variance)
+      delta  smoothing hyperparameter (= alpha^2/sigma^2)
+      lamb   modulation amplitude
+      k      background decay rate (µs^-1)
+      V0     overall amplitude
+    This model is intended to be used with Gibbs sampling with
+    a separate independent sampling step for P plus a NUTS step
+    for delta, tau, k, lambda, and V0.
+    """
+
+    dr = r[1] - r[0]
+    
+    # Model definition
+    model = pm.Model()
+    with model:
+        # Noise parameter -----------------------------------------------------
+        tau = pm.Exponential('tau', lam=1e4)
+        sigma = pm.Deterministic('sigma',1/np.sqrt(tau)) # for reporting only
+
+        # Regularization parameter --------------------------------------------
+        delta = pm.Exponential('delta',lam=1e4)
+        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting only
+        
+        # Time domain parameters ----------------------------------------------
+        lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+        V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+
+        # Background parameters -----------------------------------------------
+        k = pm.Gamma('k', alpha=0.5, beta=2)
+
+        # Distance distribution -----------------------------------------------
+        P = pm.Uniform("P", lower=0, upper=1000, shape=len(r), transform=None) # dummy distribution (needed by NUTS)
+
+        # Calculate kernel matrix ---------------------------------------------
+        Kintra = (1-lamb) + lamb*K0
+        B = dl.bg_exp(t, k)
+        B_ = T.transpose( T.tile(B,(len(r),1)) )
+        K = V0*Kintra*B_*dr
+
+        # Time domain signal --------------------------------------------------
+        Vmodel = pm.math.dot(K,P)
+
+        # Likelihood ----------------------------------------------------------
+        pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
         
     return model
