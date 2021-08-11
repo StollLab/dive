@@ -47,7 +47,7 @@ def model(t, Vdata, pars):
         model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta, 'a_tau': a_tau, 'b_tau': b_tau}
     
     else:
-        raise ValueError(f"Unknown model '{pars['method']}'.")
+        raise ValueError(f"Unknown method '{pars['method']}'.")
     
     model_pars['method'] = pars['method']
     model_pars['Vscale'] = Vscale
