@@ -14,9 +14,10 @@ from .utils import *
 from .deer import *
 
 def summary(df, model_dic, nDraws = 100, Pid = None, Pref = None, GroundTruth = [], rref = None):
+    
     # Figure out what Vars are present -----------------------------------------
-    PossibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
-    PresentVars = df.varnames
+    possibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
+    presentVars = df.varnames
 
     model = model_dic['model_graph']
     Vexp = model_dic['Vexp']
@@ -26,34 +27,31 @@ def summary(df, model_dic, nDraws = 100, Pid = None, Pref = None, GroundTruth = 
     if Pid is not None:
         P0s = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['P0']
         rref = np.squeeze(loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['r0'])
-
         Pref = P0s[Pid-1,:]
+        
     elif Pref is not None:
         if rref is None:
-            sys.exit("If 'Pref' is provided, 'rref' must be provided as well.")
+            raise KeyError("If 'Pref' is provided, 'rref' must be provided as well.")
 
-    if not GroundTruth:
-        PlotTruth = False
+    if GroundTruth:
+        plotTruth = True
     else:
-        PlotTruth = True
+        plotTruth = False
 
-    Vars = []
-    for Var in PossibleVars:
-        if Var in PresentVars:
-            Vars.append(Var)
+    Vars = [Var for Var in possibleVars if Var in presentVars]
     nVars = len(Vars)
 
     # Print summary for RVs ----------------------------------------------------
     with model:
-        summary = az.summary(df,var_names=Vars)
+        summary = az.summary(df, var_names=Vars)
     # replace the labels with their unicode characters before displaying
     summary.index = betterLabels(summary.index.values)
     display(summary)
     
     # Plot marginalized posteriors ---------------------------------------------
-    plotsperrow = 4
+    plotsperrow = 6
 
-    # figure out layout of plots and creat figure
+    # figure out layout of plots and create figure
     nrows = int(np.ceil(nVars/plotsperrow))
     if nVars > plotsperrow:
         fig, axs = plt.subplots(nrows, plotsperrow)
@@ -70,15 +68,15 @@ def summary(df, model_dic, nDraws = 100, Pid = None, Pref = None, GroundTruth = 
     
     # KDE of chain samples and plot them
     for i in range(nVars):
-        az.plot_kde(df[Vars[i]],ax = axs[i])
+        az.plot_kde(df[Vars[i]], ax=axs[i])
         axs[i].set_xlabel(betterLabels(Vars[i]))
         axs[i].yaxis.set_ticks([])
 
-        if PlotTruth and (Vars[i]in GroundTruth.keys()):
+        if plotTruth and (Vars[i]in GroundTruth.keys()):
             bottom, top = axs[i].get_ylim()
-            axs[i].vlines(GroundTruth[Vars[i]],bottom,top, color = 'black')
+            axs[i].vlines(GroundTruth[Vars[i]], bottom, top, color='black')
 
-    for i in range(nVars,nrows*plotsperrow):
+    for i in range(nVars, nrows*plotsperrow):
         axs[i].axis('off')
 
     # Clean up figure
@@ -91,12 +89,12 @@ def summary(df, model_dic, nDraws = 100, Pid = None, Pref = None, GroundTruth = 
         corwidth = 7
         corheight = 7
     else:
-        corwidth = 11
-        corheight = 11
+        corwidth = 10
+        corheight = 10
 
     # use arviz library to plot them
     with model:
-        axs = az.plot_pair(df,var_names=Vars,kind='kde',figsize=(corwidth,corheight))
+        axs = az.plot_pair(df, var_names=Vars, kind='kde', figsize=(corwidth,corheight))
 
     # replace labels with the nicer unicode character versions
     if len(Vars) > 2:
