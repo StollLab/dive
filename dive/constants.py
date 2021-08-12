@@ -8,6 +8,5 @@ h = 6.62607015e-34 # Planck constant, J/Hz
 ge = 2.00231930436256 # free-electron g factor
 hbar = h/2/m.pi # reduced Planck constant, J/(rad/s)
 
-w0 = 1e-7*(muB*ge)**2/hbar # rad s^-1
-
-D = (mu0/4/m.pi)*(muB*ge)**2/hbar # dipolar constant, m^3 rad s^-1
+# Dipolar constant
+D = (mu0/4/m.pi)*(muB*ge)**2/hbar # m^3 rad s^-1

@@ -20,7 +20,7 @@ def addnoise(V,sig):
 
 def FWHM2sigma(FWHM):
     """
-    Take a Gaussian FWHM linewidth to sigma which is the width/standard deviation of the Gaussian.
+    Take a Gaussian FWHM linewidth to sigma which is the standard deviation of the Gaussian.
     """
     sigma = FWHM/(2*m.sqrt(2*m.log(2)))
 
@@ -28,7 +28,7 @@ def FWHM2sigma(FWHM):
 
 def sigma2FWHM(sigma):
     """
-    Take the width/standard deviation of the Gaussian and return the FWHM. 
+    Take the standard deviation of a Gaussian and return the FWHM. 
     """
     FWHM = sigma/(2*m.sqrt(2*m.log(2)))
 
@@ -40,24 +40,24 @@ def dipolarkernel(t,r):
     Calculate dipolar kernel matrix.
     Assumes t in microseconds and r in nanometers
     """
-    wr = w0/(r*1e-9)**3  # rad s^-1
-        
+    omega = 1e-6 * D/(r*1e-9)**3 # rad µs^-1
+    
     # Calculation using Fresnel integrals
     nr = np.size(r)
     nt = np.size(t)
     K = np.zeros((nt,nr))
     for ir in range(nr):
-        ph = wr[ir]*(np.abs(t)*1e-6)
-        kappa = np.sqrt(6*ph/m.pi)
-        S, C = fresnel(kappa)
-        K[:,ir] = (np.cos(ph)*C+np.sin(ph)*S)/kappa
+        ph = omega[ir]*np.abs(t)
+        z = np.sqrt(6*ph/m.pi)
+        S, C = fresnel(z)
+        K[:,ir] = (C*np.cos(ph)+S*np.sin(ph))/z
     
     K[t==0,:] = 1   # fix div by zero
     
     # Include delta-r factor for integration
     if len(r)>1:
         dr = np.mean(np.diff(r))
-        K = K*dr
+        K *= dr
     
     return K
 
