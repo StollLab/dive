@@ -107,9 +107,9 @@ def sample(model_dic, MCMCparameters):
         removeVars = []
         
         with model:
-            step_tau = randTau(model['tau'], model_pars['a_tau'], model_pars['b_tau'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
-            step_P = SamplePfromV(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
-            step_delta = randDelta(model['delta'], model_pars['a_delta'], model_pars['b_delta'], model_pars['L'], model['P'])
+            step_tau = randTau_posterior(model['tau'], model_pars['a_tau'], model_pars['b_tau'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
+            step_P = randP_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
+            step_delta = randDelta_posterior(model['delta'], model_pars['a_delta'], model_pars['b_delta'], model_pars['L'], model['P'])
             step_kV0lamb = pm.NUTS([model['k'], model['V0'], model['lamb']])
         
         step = [step_P, step_tau, step_delta, step_kV0lamb]

@@ -50,18 +50,14 @@ def summary(df, model_dic, nDraws=100, Pid=None, Pref=None, GroundTruth=[], rref
     
     # Plot marginalized posteriors ---------------------------------------------
     if marginalsPlot:
-        plotsperrow = 6
 
         # figure out layout of plots and create figure
-        nrows = int(np.ceil(nVars/plotsperrow))
-        if nVars > plotsperrow:
-            fig, axs = plt.subplots(nrows, plotsperrow)
-            axs = np.reshape(axs,(nrows*plotsperrow,))
-            width = 11
-        else:
-            fig, axs = plt.subplots(1, nVars)
-            width = 3*nVars
-        height = nrows*3.5
+        nCols = min(nVars,6)
+        nRows = int(np.ceil(nVars/nCols))
+        fig, axs = plt.subplots(nRows, nCols)
+        axs = axs.flatten()
+        width = min(3*nVars,12)
+        height = nRows*3.5
     
         # set figure size
         fig.set_figheight(height)
@@ -70,14 +66,15 @@ def summary(df, model_dic, nDraws=100, Pid=None, Pref=None, GroundTruth=[], rref
         # KDE of chain samples and plot them
         for i in range(nVars):
             az.plot_kde(df[Vars[i]], ax=axs[i])
-            axs[i].set_xlabel(betterLabels(Vars[i]))
+            axs[i].set_xlabel(betterLabels(Vars[i]),fontsize='large')
             axs[i].yaxis.set_ticks([])
+            axs[i].grid(axis='x')
 
             if plotTruth and (Vars[i]in GroundTruth.keys()):
                 bottom, top = axs[i].get_ylim()
                 axs[i].vlines(GroundTruth[Vars[i]], bottom, top, color='black')
 
-        for i in range(nVars, nrows*plotsperrow):
+        for i in range(nVars, len(axs)):
             axs[i].axis('off')
 
         # Clean up figure

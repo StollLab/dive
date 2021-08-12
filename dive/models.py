@@ -143,7 +143,7 @@ def regularizationmodel(t, Vdata, K0, r):
         P = pm.NoDistribution('P', shape=len(r), dtype='float64', testval=np.zeros(len(r))) # no prior (it's included in the custom sampler)
 
         # Calculate kernel matrix ---------------------------------------------
-        B = dl.bg_exp(t, k)
+        B = bg_exp(t, k)
         B_ = tt.tile(B,(len(r),1)).T
         Kintra = (1-lamb) + lamb*K0
         K = V0*Kintra*B_*dr

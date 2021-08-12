@@ -7,7 +7,9 @@ import pymc3 as pm
 import scipy as sp
 from pymc3.distributions.transforms import log
 
-class SampleEdwardsModel(BlockedStep):
+from .deer import *
+
+class randP_EdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, KtK, KtS, LtL, nr):
             self.vars = [var]
             self.var = var
@@ -27,12 +29,12 @@ class SampleEdwardsModel(BlockedStep):
         invSigma = tau*self.KtK + delta*self.LtL
         
         newpoint = point.copy()
-        Pdraw = randP(tauKtS,invSigma)
+        Pdraw = _randP(tauKtS,invSigma)
         newpoint[self.var.name] = Pdraw
 
         return newpoint
 
-class SampleExpandedEdwardsModel(BlockedStep):
+class randP_ExpandedEdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, V0, KtK, KtS, LtL, nr):
             self.vars = [var]
             self.var = var
@@ -54,12 +56,12 @@ class SampleExpandedEdwardsModel(BlockedStep):
         invSigma = tau*self.KtK + delta*self.LtL
         
         newpoint = point.copy()
-        Pdraw = randP(tauKtS,invSigma)
+        Pdraw = _randP(tauKtS,invSigma)
         newpoint[self.var.name] = Pdraw
 
         return newpoint
 
-class SamplePfromV(BlockedStep):
+class randP_posterior(BlockedStep):
     def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0):
             self.vars = [var]
             self.var = var
@@ -99,7 +101,7 @@ class SamplePfromV(BlockedStep):
         dr = self.r[1] - self.r[0]
 
         # Background
-        B = dl.bg_exp(self.t,k) 
+        B = bg_exp(self.t,k) 
 
         # Kernel
         Kintra = (1-lamb)+lamb*self.K0
@@ -114,13 +116,13 @@ class SamplePfromV(BlockedStep):
         invSigma = tau*KtK + delta*self.LtL
         
         newpoint = point.copy()
-        Pdraw = randP(tauKtV,invSigma)
+        Pdraw = _randP(tauKtV,invSigma)
         Pdraw =  Pdraw / np.sum(Pdraw) / dr
         newpoint[self.var.name] = Pdraw
 
         return newpoint
 
-class randDelta(BlockedStep):
+class randDelta_posterior(BlockedStep):
     def __init__(self, var, a_delta, b_delta, L, P):
             self.vars = [var]
             self.var = var
@@ -142,7 +144,7 @@ class randDelta(BlockedStep):
 
         return newpoint
 
-class randTau(BlockedStep):
+class randTau_posterior(BlockedStep):
     r"""
     based on:
     J.M. Bardsley, P.C. Hansen, MCMC Algorithms for Computational UQ of 
@@ -173,7 +175,7 @@ class randTau(BlockedStep):
         dr = self.r[1] - self.r[0]
 
         # Background
-        B = dl.bg_exp(self.t,k) 
+        B = bg_exp(self.t,k) 
 
         # Kernel
         Kintra = (1-lamb)+lamb*self.K0
@@ -211,7 +213,7 @@ def undo_transform(point,key):
     except:
         return x
 
-def randP(tauKtX,invSigma):
+def _randP(tauKtX,invSigma):
     r"""
     based on:
     J.M. Bardsley, C. Fox, An MCMC method for uncertainty quantification in
