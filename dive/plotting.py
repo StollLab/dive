@@ -13,7 +13,7 @@ from scipy.io import loadmat
 from .utils import *
 from .deer import *
 
-def summary(df, model_dic, nDraws = 100, Pid = None, Pref = None, GroundTruth = [], rref = None):
+def summary(df, model_dic, nDraws=100, Pid=None, Pref=None, GroundTruth=[], rref=None, corrPlot=True, marginalsPlot=True):
     
     # Figure out what Vars are present -----------------------------------------
     possibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
@@ -49,73 +49,75 @@ def summary(df, model_dic, nDraws = 100, Pid = None, Pref = None, GroundTruth = 
     display(summary)
     
     # Plot marginalized posteriors ---------------------------------------------
-    plotsperrow = 6
+    if marginalsPlot:
+        plotsperrow = 6
 
-    # figure out layout of plots and create figure
-    nrows = int(np.ceil(nVars/plotsperrow))
-    if nVars > plotsperrow:
-        fig, axs = plt.subplots(nrows, plotsperrow)
-        axs = np.reshape(axs,(nrows*plotsperrow,))
-        width = 11
-    else:
-        fig, axs = plt.subplots(1, nVars)
-        width = 3*nVars
-    height = nrows*3.5
-   
-    # set figure size
-    fig.set_figheight(height)
-    fig.set_figwidth(width)
+        # figure out layout of plots and create figure
+        nrows = int(np.ceil(nVars/plotsperrow))
+        if nVars > plotsperrow:
+            fig, axs = plt.subplots(nrows, plotsperrow)
+            axs = np.reshape(axs,(nrows*plotsperrow,))
+            width = 11
+        else:
+            fig, axs = plt.subplots(1, nVars)
+            width = 3*nVars
+        height = nrows*3.5
     
-    # KDE of chain samples and plot them
-    for i in range(nVars):
-        az.plot_kde(df[Vars[i]], ax=axs[i])
-        axs[i].set_xlabel(betterLabels(Vars[i]))
-        axs[i].yaxis.set_ticks([])
+        # set figure size
+        fig.set_figheight(height)
+        fig.set_figwidth(width)
+        
+        # KDE of chain samples and plot them
+        for i in range(nVars):
+            az.plot_kde(df[Vars[i]], ax=axs[i])
+            axs[i].set_xlabel(betterLabels(Vars[i]))
+            axs[i].yaxis.set_ticks([])
 
-        if plotTruth and (Vars[i]in GroundTruth.keys()):
-            bottom, top = axs[i].get_ylim()
-            axs[i].vlines(GroundTruth[Vars[i]], bottom, top, color='black')
+            if plotTruth and (Vars[i]in GroundTruth.keys()):
+                bottom, top = axs[i].get_ylim()
+                axs[i].vlines(GroundTruth[Vars[i]], bottom, top, color='black')
 
-    for i in range(nVars, nrows*plotsperrow):
-        axs[i].axis('off')
+        for i in range(nVars, nrows*plotsperrow):
+            axs[i].axis('off')
 
-    # Clean up figure
-    fig.tight_layout()
-    plt.show()
+        # Clean up figure
+        fig.tight_layout()
+        plt.show()
 
     # Pairwise correlation plots ----------------------------------------------
-    # determine figure size
-    if nVars < 3:
-        corwidth = 7
-        corheight = 7
-    else:
-        corwidth = 10
-        corheight = 10
+    if corrPlot:
+        # determine figure size
+        if nVars < 3:
+            corwidth = 7
+            corheight = 7
+        else:
+            corwidth = 10
+            corheight = 10
 
-    # use arviz library to plot them
-    with model:
-        axs = az.plot_pair(df, var_names=Vars, kind='kde', figsize=(corwidth,corheight))
+        # use arviz library to plot them
+        with model:
+            axs = az.plot_pair(df, var_names=Vars, kind='kde', figsize=(corwidth,corheight))
 
-    # replace labels with the nicer unicode character versions
-    if len(Vars) > 2:
-        # reshape axes so that we can loop through them
-        axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
+        # replace labels with the nicer unicode character versions
+        if len(Vars) > 2:
+            # reshape axes so that we can loop through them
+            axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
 
-        for ax in axs:
-            xlabel = ax.get_xlabel()
-            ylabel = ax.get_ylabel()
-            if xlabel:
-                ax.set_xlabel(betterLabels(xlabel))
-            if ylabel:
-                ax.set_ylabel(betterLabels(ylabel))
-    else:
-        xlabel = axs.get_xlabel()
-        ylabel = axs.get_ylabel()
-        axs.set_xlabel(betterLabels(xlabel))
-        axs.set_ylabel(betterLabels(ylabel))
+            for ax in axs:
+                xlabel = ax.get_xlabel()
+                ylabel = ax.get_ylabel()
+                if xlabel:
+                    ax.set_xlabel(betterLabels(xlabel))
+                if ylabel:
+                    ax.set_ylabel(betterLabels(ylabel))
+        else:
+            xlabel = axs.get_xlabel()
+            ylabel = axs.get_ylabel()
+            axs.set_xlabel(betterLabels(xlabel))
+            axs.set_ylabel(betterLabels(ylabel))
 
-    # show plot
-    plt.show()
+        # show plot
+        plt.show()
 
     # Posterior sample plot -----------------------------------------------------
     # Draw samples
@@ -202,7 +204,7 @@ def LabelLookup(input):
     else:
         return input
 
-def drawPosteriorSamples(df, r = np.linspace(2, 8,num = 200), t = np.linspace(0,3,num = 200), nDraws = 100):
+def drawPosteriorSamples(df, r=np.linspace(2, 8,num=200), t=np.linspace(0, 3, num=200), nDraws=100):
     VarNames = df.varnames
 
     # Determine if a Gaussian model was used and how many iterations were run -------
@@ -217,7 +219,7 @@ def drawPosteriorSamples(df, r = np.linspace(2, 8,num = 200), t = np.linspace(0,
     else:
         nChainSamples = df['P'].shape[0]
 
-    # Generate random indeces from chain samples ------------------------------------
+    # Generate random indices from chain samples ------------------------------------
     idxSamples = random.sample(range(nChainSamples),nDraws)
 
     # Draw P's -------------------------------------------------------------------
@@ -239,7 +241,7 @@ def drawPosteriorSamples(df, r = np.linspace(2, 8,num = 200), t = np.linspace(0,
             P = df['P'][idxSamples[iDraw]]
             Ps.append(P)
 
-    # Draw corresponding time domain parameters ---------------------------------
+    # Draw corresponding time-domain parameters ---------------------------------
     if 'V0' in VarNames:
         V0_vecs = df['V0'][idxSamples]
 
@@ -277,7 +279,7 @@ def drawPosteriorSamples(df, r = np.linspace(2, 8,num = 200), t = np.linspace(0,
     return Ps, Vs, Bs, t, r
 
 
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref = None, rref = None):
+def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None):
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
@@ -289,15 +291,17 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref = None, rref = None):
         residuals_offset = 0
 
     for V,P,B in zip(Vs,Ps,Bs):
+        residuals = V - Vdata
+        rmsd = np.sqrt(np.mean(np.square(residuals)))
         ax1.plot(t, V, color = '#3F60AE', alpha=0.2)
         ax1.plot(t, B, color = '#FCC43F', alpha=0.2)
-        ax1.plot(t, V-Vdata+residuals_offset, color = '#3F60AE', alpha=0.2)
+        ax1.plot(t, residuals+residuals_offset, color = '#3F60AE', alpha=0.2)
         ax2.plot(r, P, color = '#3F60AE', alpha=0.2)
     ax1.scatter(t, Vdata , color = '#BFBFBF', s = 5)
     ax1.hlines(residuals_offset,min(t),max(t), color = 'black')
 
     ax1.set_xlabel('$t$ (µs)')
-    ax1.set_ylabel('$V$ (arb.u)')
+    ax1.set_ylabel('$V$ (arb.u.)')
     ax1.set_xlim((min(t), max(t)))
     ax1.set_title('time domain and residuals')
 
@@ -307,8 +311,7 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref = None, rref = None):
     ax2.set_title('distance domain')
 
     if Pref is not None:
-        ax2.plot(rref, Pref , color = 'black')
+        ax2.plot(rref, Pref, color='black')
 
     plt.grid()
-
     plt.show()
