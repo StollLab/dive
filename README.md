@@ -1,22 +1,15 @@
 # dive
 
-<!-- ![PyPI](https://img.shields.io/pypi/v/dive) -->
-<!-- ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/dive) -->
-<!-- ![Website]() -->
-<!-- ![PyPI - Downloads](https://img.shields.io/pypi/dm/dive?color=brightgreen) -->
-
 ### About
 `dive` is a Python package for Bayesian analysis of dipolar EPR (electron paramagnetic resonance) spectroscopy data.
 
 ### Requirements
 
-`dive` is available for Windows, Mac and Linux systems and requires **Python 3.8** and **pymc 3.11.0**.
-
-<!-- All additional dependencies (pymc3, theano, etc.) are automatically downloaded and installed during the setup. -->
+`dive` is available for Windows, Mac and Linux systems and requires **Python 3.8** or later and **PyMC3 3.11.0** or later.
  
 ### Setup
 
-As long as `dive` is in a development state, the following procedure can be used to for installtion:
+As long as `dive` is in a development state, use the following installation procedure:
 
 If using `conda`, install the following packages to the environment of your choice:
 
