@@ -76,7 +76,7 @@ def loadTrace(FileName):
 
     return t, Vdata
 
-def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None):
+def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None):
     """ 
     Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
     """  
@@ -107,7 +107,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None):
                 NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
-            step_NUTS = pm.NUTS(NUTS_varlist)
+            if NUTSpars is None:
+                step_NUTS = pm.NUTS(NUTS_varlist)
+            else:
+                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
+                
 
         step = step_NUTS
 
@@ -121,7 +125,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None):
             NUTS_varlist = [model['k'], model['V0'], model['lamb']]
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
-            step_NUTS = pm.NUTS(NUTS_varlist)
+            if NUTSpars is None:
+                step_NUTS = pm.NUTS(NUTS_varlist)
+            else:
+                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
+            
             step_tau = randTau_posterior(model['tau'], model_pars['a_tau'], model_pars['b_tau'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
             step_P = randP_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
             step_delta = randDelta_posterior(model['delta'], model_pars['a_delta'], model_pars['b_delta'], model_pars['L'], model['P'])
