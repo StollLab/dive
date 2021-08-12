@@ -6,9 +6,7 @@ import deerlab as dl
 from .utils import *
 from .deer import *
 
-from theano import tensor as T
-#from theano.tensor import nlinalg as tnp
-#from theano.tensor import slinalg as snp
+import theano.tensor as tt
 
 def model(t, Vdata, pars):
     
@@ -17,11 +15,12 @@ def model(t, Vdata, pars):
     Vdata /= Vscale
 
     if 'method' not in pars:
-        raise KeyError("'method' is a required field")
+        raise KeyError("'method' is a required field.")
+    method = pars['method']
 
-    if pars['method'] == 'gaussian':
+    if method == 'gaussian':
         if 'nGauss' not in pars:
-           raise KeyError("nGauss is a required key for 'method' " + pars['method']) 
+           raise KeyError(f"nGauss is a required key for 'method' = '{method}'.") 
 
         r = np.linspace(1,10,451)
         K0 = dl.dipolarkernel(t,r)
@@ -29,9 +28,9 @@ def model(t, Vdata, pars):
         
         model_pars = {'K0': K0, "r": r, "ngaussians": pars['nGauss']}
 
-    elif pars['method'] == 'regularization':
+    elif method == 'regularization':
         if 'r' not in pars:
-           sys.exit("r is a required key for 'method' = " + pars['method']) 
+           raise KeyError(f"r is a required key for 'method' = '{method}'.")
 
         K0 = dl.dipolarkernel(t, pars['r'], integralop=False)
         model_graph = regularizationmodel(t, Vdata, K0, pars['r'])
@@ -47,9 +46,9 @@ def model(t, Vdata, pars):
         model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta, 'a_tau': a_tau, 'b_tau': b_tau}
     
     else:
-        raise ValueError(f"Unknown method '{pars['method']}'.")
+        raise ValueError(f"Unknown method '{method}'.")
     
-    model_pars['method'] = pars['method']
+    model_pars['method'] = method
     model_pars['Vscale'] = Vscale
 
     model = {'model_graph': model_graph, 'model_pars': model_pars, 't': t, 'Vexp': Vdata}
@@ -118,14 +117,13 @@ def regularizationmodel(t, Vdata, K0, r):
       V0     overall amplitude
     This model is intended to be used with Gibbs sampling with
     separate independent sampling steps for P, delta, and tau,
-    plus a NUTS step for k, lambda, and V0.
+    plus a NUTS step for (k, lambda, V0).
     """
 
     dr = r[1] - r[0]
     
     # Model definition
-    model = pm.Model()
-    with model:
+    with pm.Model() as model:
         # Noise parameter -----------------------------------------------------
         tau = pm.NoDistribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the custom sampler)
         sigma = pm.Deterministic('sigma',1/np.sqrt(tau)) # for reporting only
@@ -143,11 +141,10 @@ def regularizationmodel(t, Vdata, K0, r):
 
         # Distance distribution -----------------------------------------------
         P = pm.NoDistribution('P', shape=len(r), dtype='float64', testval=np.zeros(len(r))) # no prior (it's included in the custom sampler)
-        #P = pm.Uniform("P", lower=0, upper=1000, shape=len(r), transform=None) # dummy distribution (needed by NUTS)
 
         # Calculate kernel matrix ---------------------------------------------
         B = dl.bg_exp(t, k)
-        B_ = T.transpose( T.tile(B,(len(r),1)) )
+        B_ = tt.tile(B,(len(r),1)).T
         Kintra = (1-lamb) + lamb*K0
         K = V0*Kintra*B_*dr
 
