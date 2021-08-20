@@ -3,12 +3,6 @@ import math as m
 
 from .constants import *
 
-def deerTrace(S,B,V0,lamb):
-
-    V = V0*(1-lamb+lamb*S)*B
-
-    return V
-
 def dd_gauss(r,r0,fwhm,a=1):
     """
     Calculates a multi-Gauss distance distribution over distance vector r.

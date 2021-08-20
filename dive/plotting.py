@@ -19,10 +19,10 @@ def summary(df, model_dic, nDraws=100, Pid=None, Pref=None, GroundTruth=[], rref
     possibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
     presentVars = df.varnames
 
-    model = model_dic['model_graph']
+    model = model_dic['model']
     Vexp = model_dic['Vexp']
     t = model_dic['t']
-    r = model_dic['model_pars']['r']
+    r = model_dic['pars']['r']
 
     if Pid is not None:
         P0s = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['P0']

@@ -74,7 +74,7 @@ class randP_ExpandedEdwardsModel(BlockedStep):
 
         return newpoint
 
-class randP_posterior(BlockedStep):
+class randPnorm_posterior(BlockedStep):
     def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0):
             self.vars = [var]
             self.var = var
@@ -103,10 +103,10 @@ class randP_posterior(BlockedStep):
         V0 = undo_transform(point, self.V0) 
 
         # Calculate kernel matrix
+        K = (1-lamb) + lamb*self.K0
         B = bg_exp(self.t,k) 
-        Kintra = (1-lamb)+lamb*self.K0
-        K = Kintra * B[:, np.newaxis]
-        K = V0*K*self.dr
+        K *= B[:, np.newaxis]
+        K *= V0*self.dr
 
         # Calculate distribution parameters
         KtK = np.matmul(np.transpose(K), K)
@@ -126,13 +126,13 @@ class randP_posterior(BlockedStep):
 
 class randDelta_posterior(BlockedStep):
     
-    def __init__(self, var, a_delta, b_delta, L, P):
+    def __init__(self, var, delta_prior, L, P):
             self.vars = [var]
             self.var = var
             
             # constants
-            self.a_delta = a_delta
-            self.b_delta = b_delta
+            self.a_delta = delta_prior[0]
+            self.b_delta = delta_prior[1]
             self.L = L
             
             # random variables
@@ -165,7 +165,7 @@ class randTau_posterior(BlockedStep):
     SIAM Journal on Scientific Computing 42 (2020) A1269-A1288 
     from "Hierarchical Gibbs Sampler" block after Eqn. (2.8)
     """
-    def __init__(self, var, a_tau, b_tau, K0, P, V, r, t, k, lamb, V0):
+    def __init__(self, var, tau_prior, K0, P, V, r, t, k, lamb, V0):
             self.vars = [var]
             self.var = var
             
@@ -174,10 +174,9 @@ class randTau_posterior(BlockedStep):
             self.t = t
             
             # constants
-            self.a_tau = a_tau
-            self.b_tau = b_tau
-            self.K0 = K0
-            self.dr = r[1]-r[0]
+            self.a_tau = tau_prior[0]
+            self.b_tau = tau_prior[1]
+            self.K0dr = K0*(r[1]-r[0])
             
             # random variables
             self.P = P
@@ -194,18 +193,19 @@ class randTau_posterior(BlockedStep):
         V0 = undo_transform(point, self.V0)  
 
         # Calculate kernel matrix
+        Vmodel = self.K0dr@P
+        Vmodel = (1-lamb) + lamb*Vmodel
         B = bg_exp(self.t, k) 
-        Kintra = (1-lamb) + lamb*self.K0
-        K = Kintra * B[:, np.newaxis]
-        K = V0*K*self.dr
-
+        Vmodel *= B
+        Vmodel *= V0
+        
         # Calculate distribution parameters
         M = len(self.V)
         a_ = self.a_tau + M/2
-        b_ = self.b_tau + (1/2)*np.linalg.norm((K@P-self.V))**2
+        b_ = self.b_tau + (1/2)*np.linalg.norm((Vmodel-self.V))**2
 
         # Draw new sample of tau
-        tau_draw =  np.random.gamma(a_, 1/b_)
+        tau_draw = np.random.gamma(a_, 1/b_)
 
         # Save new sample
         newpoint = point.copy()
