@@ -114,8 +114,6 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
                 
 
         step = step_NUTS
-
-        start = None # default starting point
         
     elif method == 'regularization':
         
@@ -137,15 +135,32 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         step = [step_P, step_tau, step_delta, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
+                
+    elif method == 'regularization2':
         
-        start = None # {'delta': 20000, 'tau': 100}
+        removeVars = []
         
+        with model:
+            NUTS_varlist = [model['tau'],model['delta'],model['k'], model['V0'], model['lamb']]
+            if NUTSorder is not None:
+                NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
+            if NUTSpars is None:
+                step_NUTS = pm.NUTS(NUTS_varlist)
+            else:
+                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
+            
+            step_P = randP_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
+        
+        step = [step_P, step_NUTS]
+        if steporder is not None:
+            step = [step[i] for i in steporder]
+                
     else:
         
-        raise KeyError(f"Unknown method {method}.",method)
+        raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    trace = pm.sample(model=model, step=step, start=start, **MCMCparameters)
+    trace = pm.sample(model=model, step=step, **MCMCparameters)
 
     # Remove undesired variables
     [trace.remove_values(key) for key in removeVars if key in trace.varnames]

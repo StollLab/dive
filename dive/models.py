@@ -33,8 +33,6 @@ def model(t, Vdata, pars):
            raise KeyError(f"r is a required key for 'method' = '{method}'.")
 
         K0 = dl.dipolarkernel(t, pars['r'], integralop=False)
-        model_graph = regularizationmodel(t, Vdata, K0, pars['r'])
-
         a_delta = 1
         b_delta = 1e-6
         a_tau = 1
@@ -42,6 +40,25 @@ def model(t, Vdata, pars):
         L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
         LtL = L.T@L
         K0tK0 = K0.T@K0
+        
+        model_graph = regularizationmodel(t, Vdata, K0, pars['r'])
+
+        model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta, 'a_tau': a_tau, 'b_tau': b_tau}
+    
+    elif method == 'regularization2':
+        if 'r' not in pars:
+           raise KeyError(f"r is a required key for 'method' = '{method}'.")
+
+        K0 = dl.dipolarkernel(t, pars['r'], integralop=False)
+        a_delta = 1
+        b_delta = 1e-6
+        a_tau = 1
+        b_tau = 1e-4
+        L = dl.regoperator(np.linspace(1,len(pars['r']),len(pars['r'])), 2)
+        LtL = L.T@L
+        K0tK0 = K0.T@K0
+        
+        model_graph = regularizationmodel2(t, Vdata, K0, pars['r'], a_delta, b_delta, a_tau, b_tau)
 
         model_pars = {'K0': K0, 'L': L, 'LtL': LtL, 'K0tK0': K0tK0, "r": pars['r'], 'a_delta': a_delta, 'b_delta': b_delta, 'a_tau': a_tau, 'b_tau': b_tau}
     
@@ -126,11 +143,11 @@ def regularizationmodel(t, Vdata, K0, r):
     with pm.Model() as model:
         # Noise parameter -----------------------------------------------------
         tau = pm.NoDistribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the custom sampler)
-        sigma = pm.Deterministic('sigma',1/np.sqrt(tau)) # for reporting only
+        sigma = pm.Deterministic('sigma',1/np.sqrt(tau)) # for reporting
 
         # Regularization parameter --------------------------------------------
         delta = pm.NoDistribution('delta', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the custom sampler)
-        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting only
+        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting
         
         # Time-domain parameters ----------------------------------------------
         lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
@@ -141,6 +158,59 @@ def regularizationmodel(t, Vdata, K0, r):
 
         # Distance distribution -----------------------------------------------
         P = pm.NoDistribution('P', shape=len(r), dtype='float64', testval=np.zeros(len(r))) # no prior (it's included in the custom sampler)
+
+        # Calculate kernel matrix ---------------------------------------------
+        B = bg_exp(t, k)
+        B_ = tt.tile(B,(len(r),1)).T
+        Kintra = (1-lamb) + lamb*K0
+        K = V0*Kintra*B_*dr
+
+        # Time-domain signal --------------------------------------------------
+        Vmodel = pm.math.dot(K,P)
+
+        # Likelihood ----------------------------------------------------------
+        pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
+        
+    return model
+
+
+def regularizationmodel2(t, Vdata, K0, r, a_delta, b_delta, a_tau, b_tau):
+    """
+    Generates a PyMC3 model for a DEER signal over time vector t
+    (in microseconds) given data in Vdata.
+    Model parameters:
+      P      distance distribution vector (nm^-1)
+      tau    noise precision (inverse of noise variance)
+      delta  smoothing hyperparameter (= alpha^2/sigma^2)
+      lamb   modulation amplitude
+      k      background decay rate (µs^-1)
+      V0     overall amplitude
+    This model is intended to be used with Gibbs sampling with
+    separate independent sampling steps for P plus a NUTS step
+    for (tau, delta, k, lambda, V0).
+    """
+
+    dr = r[1] - r[0]
+    
+    # Model definition
+    with pm.Model() as model:
+        # Noise parameter -----------------------------------------------------
+        tau = pm.Gamma('tau', alpha=a_tau, beta=b_tau)
+        sigma = pm.Deterministic('sigma',1/np.sqrt(tau)) # for reporting
+
+        # Regularization parameter --------------------------------------------
+        delta = pm.Gamma('delta', alpha=a_delta, beta=b_delta)
+        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting
+        
+        # Time-domain parameters ----------------------------------------------
+        lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+        V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+
+        # Background parameters -----------------------------------------------
+        k = pm.Gamma('k', alpha=0.5, beta=2)
+
+        # Distance distribution -----------------------------------------------
+        P = pm.NoDistribution('P', shape=len(r), dtype='float64', testval=np.zeros(len(r))) # skip prior (it's included in the custom sampler)
 
         # Calculate kernel matrix ---------------------------------------------
         B = bg_exp(t, k)

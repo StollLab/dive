@@ -13,6 +13,7 @@ class randP_EdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, KtK, KtS, LtL, nr):
             self.vars = [var]
             self.var = var
+            
             self.delta = delta
             self.sigma = sigma
             self.KtK = KtK
@@ -21,15 +22,21 @@ class randP_EdwardsModel(BlockedStep):
             self.nr = nr
 
     def step(self, point: dict):
+        
+        # Get model parameters
         sigma = self.sigma
         tau = 1/(sigma**2)
-        delta = undo_transform(point,self.delta.transformed.name)
+        delta = undo_transform(point, self.delta)
        
+        # Calculate distribution parameters 
         tauKtS = tau * self.KtS
         invSigma = tau*self.KtK + delta*self.LtL
         
-        newpoint = point.copy()
+        # Draw new sample of P
         Pdraw = _randP(tauKtS,invSigma)
+        
+        # Save new sample
+        newpoint = point.copy()
         newpoint[self.var.name] = Pdraw
 
         return newpoint
@@ -47,16 +54,22 @@ class randP_ExpandedEdwardsModel(BlockedStep):
             self.nr = nr
 
     def step(self, point: dict):
-        sigma = undo_transform(point,self.sigma.transformed.name)
+        
+        # Get model parameters
+        sigma = undo_transform(point, self.sigma)
         tau = 1/(sigma**2)
-        delta = undo_transform(point,self.delta.transformed.name)
-        V0 = undo_transform(point,self.V0.transformed.name)
+        delta = undo_transform(point, self.delta)
+        V0 = undo_transform(point, self.V0)
 
+        # Calculate distribution parameters
         tauKtS = tau * self.KtS / V0
         invSigma = tau*self.KtK + delta*self.LtL
         
+        # Draw new sample of P
+        Pdraw = _randP(tauKtS, invSigma)
+        
+        # Save new sample
         newpoint = point.copy()
-        Pdraw = _randP(tauKtS,invSigma)
         newpoint[self.var.name] = Pdraw
 
         return newpoint
@@ -70,8 +83,8 @@ class randP_posterior(BlockedStep):
             self.K0 = K0
             self.LtL = LtL
             self.V = V
-            self.r = r
             self.t = t
+            self.dr = r[1]-r[0]
 
             # random variables
             self.delta = delta
@@ -82,66 +95,66 @@ class randP_posterior(BlockedStep):
             self.tau = tau  
 
     def step(self, point: dict):
-        # transform parameters
-        if self.tau:
-            tau = point[self.tau.name]
-            sigma = 1/np.sqrt(tau)
-        else:
-            sigma =  undo_transform(point,self.sigma.transformed.name)
-            tau = 1/(sigma**2)
+        # Get parameters
+        tau = undo_transform(point, self.tau)
+        delta = undo_transform(point, self.delta)
+        k = undo_transform(point, self.k)
+        lamb = undo_transform(point, self.lamb)
+        V0 = undo_transform(point, self.V0) 
 
-        delta = undo_transform(point,self.delta.name)
-        k = undo_transform(point,self.k.transformed.name)
-        
-        lamb = undo_transform(point,self.lamb.transformed.name)
-        V0 = undo_transform(point,self.V0.transformed.name) 
-
-        # print('V0: ' + str(V0), 'delta: ' + str(delta), 'k: ' + str(k), 'lamb: ' + str(lamb), 'sigma: ' + str(sigma))
-        # calculate some values
-        dr = self.r[1] - self.r[0]
-
-        # Background
+        # Calculate kernel matrix
         B = bg_exp(self.t,k) 
-
-        # Kernel
         Kintra = (1-lamb)+lamb*self.K0
         K = Kintra * B[:, np.newaxis]
-        K = V0*K*dr
+        K = V0*K*self.dr
 
-        # KtXs
-        KtK = np.matmul(np.transpose(K),K)
-        KtV = np.matmul(np.transpose(K),self.V) 
-
+        # Calculate distribution parameters
+        KtK = np.matmul(np.transpose(K), K)
+        KtV = np.matmul(np.transpose(K), self.V) 
         tauKtV = tau*KtV
         invSigma = tau*KtK + delta*self.LtL
         
+        # Draw new sample of P and normalize
+        Pdraw = _randP(tauKtV, invSigma)
+        Pdraw =  Pdraw / np.sum(Pdraw) / self.dr
+        
+        # Store new sample
         newpoint = point.copy()
-        Pdraw = _randP(tauKtV,invSigma)
-        Pdraw =  Pdraw / np.sum(Pdraw) / dr
         newpoint[self.var.name] = Pdraw
 
         return newpoint
 
 class randDelta_posterior(BlockedStep):
+    
     def __init__(self, var, a_delta, b_delta, L, P):
             self.vars = [var]
             self.var = var
-            self.P = P
+            
+            # constants
             self.a_delta = a_delta
             self.b_delta = b_delta
             self.L = L
+            
+            # random variables
+            self.P = P
 
     def step(self, point: dict):
-        P = point[self.P.name]
+        
+        # Get parameters
+        P = undo_transform(point, self.P)
 
+        # Calculate distribution parameters
         n_p = sum(np.asarray(P)>0)
         a_ = self.a_delta + n_p/2
         b_ = self.b_delta + (1/2)*np.linalg.norm(self.L@P)**2
 
+        # Draw new sample of delta
+        delta_draw = np.random.gamma(a_, 1/b_)
+        
+        # Save sample
         newpoint = point.copy()
-        delta_draw =  np.random.gamma(a_, 1/b_, 1)[0]
         newpoint[self.var.name] = delta_draw
-
+        
         return newpoint
 
 class randTau_posterior(BlockedStep):
@@ -155,63 +168,74 @@ class randTau_posterior(BlockedStep):
     def __init__(self, var, a_tau, b_tau, K0, P, V, r, t, k, lamb, V0):
             self.vars = [var]
             self.var = var
-            self.P = P
+            
+            # data
+            self.V = V
+            self.t = t
+            
+            # constants
             self.a_tau = a_tau
             self.b_tau = b_tau
             self.K0 = K0
-            self.V = V
+            self.dr = r[1]-r[0]
+            
+            # random variables
+            self.P = P
             self.k = k
             self.lamb = lamb
             self.V0 = V0
-            self.r = r
-            self.t = t
 
     def step(self, point: dict):
-        P = point[self.P.name]
-        k = undo_transform(point,self.k.transformed.name)
-        lamb = undo_transform(point,self.lamb.transformed.name)
-        V0 = undo_transform(point,self.V0.transformed.name)  
+        
+        # Get parameters
+        P = undo_transform(point, self.P)
+        k = undo_transform(point, self.k)
+        lamb = undo_transform(point, self.lamb)
+        V0 = undo_transform(point, self.V0)  
 
-        dr = self.r[1] - self.r[0]
-
-        # Background
-        B = bg_exp(self.t,k) 
-
-        # Kernel
-        Kintra = (1-lamb)+lamb*self.K0
+        # Calculate kernel matrix
+        B = bg_exp(self.t, k) 
+        Kintra = (1-lamb) + lamb*self.K0
         K = Kintra * B[:, np.newaxis]
-        K = V0*K*dr
+        K = V0*K*self.dr
 
+        # Calculate distribution parameters
         M = len(self.V)
         a_ = self.a_tau + M/2
         b_ = self.b_tau + (1/2)*np.linalg.norm((K@P-self.V))**2
 
+        # Draw new sample of tau
+        tau_draw =  np.random.gamma(a_, 1/b_)
+
+        # Save new sample
         newpoint = point.copy()
-        tau_draw =  np.random.gamma(a_, 1/b_, 1)[0]
         newpoint[self.var.name] = tau_draw
 
         return newpoint
 
-def undo_transform(point,key):
+def undo_transform(point, rv):
     '''
-    Automatically transforms variables which were sampled on log 
-    or logodds scale back into original scale.
+    Automatically transforms transformed random variables
+    (log, logodds, etc) back to their original scale.
     '''
-    x = point[key]
+    
+    # Don't untransform if variable is not transformed
+    if isinstance(rv, pm.model.FreeRV):
+        value = point[rv.name]
+        return value
 
-    try:
-        transform_marker = key.split('_')[1]
-     
-        if transform_marker == 'log' or transform_marker == 'lowerbound':
-            y = np.exp(x)
-            
-        elif transform_marker == 'logodds':
-            y = sp.special.expit(x)
-
-        return y
-
-    except:
-        return x
+    key = rv.transformed.name
+    transform_marker = key.split('_')[1]
+    value = point[key]
+    
+    if transform_marker == 'log':
+        return np.exp(value)
+    elif transform_marker == 'lowerbound':
+        return np.exp(value)
+    elif transform_marker == 'logodds':
+        return sp.special.expit(value)
+    else:
+        raise ValueError('Could not figure out RV transformation.')
 
 def _randP(tauKtX,invSigma):
     r"""
@@ -222,20 +246,18 @@ def _randP(tauKtX,invSigma):
     Sigma = np.linalg.inv(invSigma)
 
     try:
-        #'lower' syntax is faster for sparse matrices. Also matches convention in
-        # Bardsley paper.
         C_L = np.linalg.cholesky(Sigma)
     except:
         C_L = sqrtm(Sigma)
         
     v = np.random.standard_normal(size=(len(tauKtX),))
-    w = np.linalg.solve(np.matrix.transpose(C_L),v)
-   
-    P = fnnls(invSigma,tauKtX+w)
-
+    w = np.linalg.solve(np.matrix.transpose(C_L), v)
+    
+    P = fnnls(invSigma, tauKtX+w)
+    
     return P
 
-def fnnls(AtA,Atb,tol=[],maxiter=[],verbose=False):
+def fnnls(AtA, Atb, tol=[], maxiter=[], verbose=False):
     r"""
     FNNLS   Fast non-negative least-squares algorithm.
     x = fnnls(AtA,Atb) solves the problem min ||b - Ax|| if
@@ -295,7 +317,7 @@ def fnnls(AtA,Atb,tol=[],maxiter=[],verbose=False):
         if np.sum(passive)==1:
             x_[passive] = Atb[passive]/AtA[passive,passive]
         else:
-            x_[passive] = np.linalg.solve(AtA[np.ix_(passive,passive)],Atb[passive])
+            x_[passive] = np.linalg.solve(AtA[np.ix_(passive,passive)], Atb[passive])
         
         # Inner loop: Iteratively eliminate negative variables from candidate solution.
         iIteration = 0
@@ -330,7 +352,7 @@ def fnnls(AtA,Atb,tol=[],maxiter=[],verbose=False):
         w = Atb - AtA@x
         w[passive] = -m.inf
         if verbose:
-            print('{:10.0f}{:15.0f}{:20.4e}\n'.format(outIteration,iIteration,max(w)) )
+            print(f"{outIteration:10.0f}{iIteration:15.0f}{max(w):20.4e}\n")
 
     if verbose:
         if unsolvable:
