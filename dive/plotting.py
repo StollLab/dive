@@ -16,7 +16,7 @@ from .deer import *
 def summary(df, model_dic, nDraws=100, Pid=None, Pref=None, GroundTruth=[], rref=None, corrPlot=True, marginalsPlot=True):
     
     # Figure out what Vars are present -----------------------------------------
-    possibleVars = ["r0","w","a","k","lamb","V0","sigma","delta",'lg_alpha']
+    possibleVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "delta", "lg_alpha"]
     presentVars = df.varnames
 
     model = model_dic['model']
@@ -122,84 +122,51 @@ def summary(df, model_dic, nDraws=100, Pid=None, Pref=None, GroundTruth=[], rref
     # Plot them
     plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
 
+# look up table that contains the strings and their symbols
+_table = {
+    "lamb": "λ",
+    "lamba": "λ",
+    "sigma": "σ",
+    "delta": "δ",
+    "tau": "τ",
+    "V0": "V₀",
+    "r0": "r₀",
+    "alpha": "α",
+    "lg_alpha": "lg(α)",
+    "w[0]": "w₀",
+    "w[1]": "w₁",
+    "w[2]": "w₂",
+    "w[3]": "w₃",
+    "a[0]": "a₀",
+    "a[1]": "a₁",
+    "a[2]": "a₂",
+    "a[3]": "a₃",
+    "r0[0]": "r₀,₀",
+    "r0[1]": "r₀,₁",
+    "r0[2]": "r₀,₂",
+    "r0[3]": "r₀,₃",
+    "r0\n0": "r₀,₀",
+    "r0\n1": "r₀,₁",
+    "r0\n2": "r₀,₂",
+    "r0\n3": "r₀,₃",
+    "a\n0": "a₀",
+    "a\n1": "a₁",
+    "a\n2": "a₂",
+    "a\n3": "a₃",
+    "w\n0": "w₀",
+    "w\n1": "w₁",
+    "w\n2": "w₂",
+    "w\n3": "w₃",
+}
+
 def betterLabels(x):
-    # replace strings with their corresponding (greek) symbols
-    if type(x) == str:
-        x = LabelLookup(x)
+    """
+    Replace strings with their corresponding (greek) symbols
+    """
+    if isinstance(x, str):
+        return _table.get(x,x)
     else:
-        for i in range(len(x)):
-            x[i] = LabelLookup(x[i])
-
-    return x
-
-def LabelLookup(input):
-    # look up table that contains the strings and their symbols
-    if input == "lamb":
-        return "λ"
-    elif input == "sigma":
-        return "σ"
-    elif input == "delta":
-        return "δ"
-    elif input == "tau":
-        return "τ" 
-    elif input == "V0":
-        return "V₀"
-    elif input == "r0":
-        return "r₀"
-    elif input == "alpha":
-        return "α"
-    elif input == "lg_alpha":
-        return "lg(α)"
-    elif input == "w[0]":
-        return  "w₀"
-    elif input == "w[1]":
-        return  "w₁"
-    elif input == "w[2]":
-        return  "w₂"
-    elif input == "w[3]":
-        return  "w₃"
-    elif input == "a[0]":
-        return  "a₀"
-    elif input == "a[1]":
-        return  "a₁"
-    elif input == "a[2]":
-        return  "a₂"
-    elif input == "a[3]":
-        return  "a₃"
-    elif input == "r0[0]":
-        return  "r₀,₀"
-    elif input == "r0[1]":
-        return  "r₀,₁"
-    elif input == "r0[2]":
-        return  "r₀,₂"
-    elif input == "r0[3]":
-        return  "r₀,₃"
-    elif input == "r0\n0":
-        return  "r₀,₀"
-    elif input == "r0\n1":
-        return  "r₀,₁"
-    elif input == "r0\n2":
-        return  "r₀,₂"
-    elif input == "r0\n3":
-        return  "r₀,₃"
-    elif input == "a\n0":
-        return  "a₀"
-    elif input == "a\n1":
-        return  "a₁"
-    elif input == "a\n2":
-        return  "a₂"
-    elif input == "a\n3":
-        return  "a₃"
-    elif input == "w\n0":
-        return  "w₀"
-    elif input == "w\n1":
-        return  "w₁"
-    elif input == "w\n2":
-        return  "w₂"
-    elif input == "w\n3":
-        return  "w₃"
-    else:
-        return input
+        return [_table.get(x_,x_) for x_ in x]
 
 def drawPosteriorSamples(df, r=np.linspace(2, 8,num=200), t=np.linspace(0, 3, num=200), nDraws=100):
     VarNames = df.varnames
@@ -312,3 +279,6 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None):
 
     plt.grid()
     plt.show()
+    
+    print(f"RMSD: {rmsd}")
+    

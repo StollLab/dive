@@ -5,36 +5,42 @@ import deerlab as dl
 from .utils import *
 from .deer import *
 
-def model(t, Vdata, pars):
+def model(t, Vexp, pars):
+    """
+    Returns a dictionary m that contains the DEER data in m['t'] and m['Vexp']
+    and the PyMC3 model in m['model']. Additional (constant) model parameters
+    are in m['pars'].
+    The data are rescaled internally to max(Vexp)==1.
+    """
     
     # Rescale data to max 1
-    Vscale = np.amax(Vdata)
-    Vdata /= Vscale
+    Vscale = np.amax(Vexp)
+    Vexp /= Vscale
 
     if "method" not in pars:
         raise KeyError("'method' is a required field.")
     method = pars["method"]
 
+    if "r" not in pars:
+        raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
+
     if method == "gaussian":
         if "nGauss" not in pars:
            raise KeyError(f"nGauss is a required key for ""method"" = ""{method}"".") 
-        if "r" not in pars:
-           raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
-
-        r = pars["r"]
-        K0 = dl.dipolarkernel(t,r,integralop=True)
-        model_pymc = multigaussmodel(t, Vdata, K0, r, pars["nGauss"])
-        
-        model_pars = {"K0": K0, "r": r, "ngaussians": pars["nGauss"]}
-
-    elif method == "regularization" or method == "regularization2":
-        if "r" not in pars:
-           raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
+        nGauss = pars["nGauss"]
 
         #r = np.linspace(1,10,451)
         r = pars["r"]
+        K0 = dl.dipolarkernel(t,r,integralop=True)
+        model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss)
+        
+        model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
+
+    elif method == "regularization" or method == "regularization2":
+
+        r = pars["r"]
         K0 = dl.dipolarkernel(t, r,integralop=False)
-        L = dl.regoperator(np.arange(len(r)), 2)
+        L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
         LtL = L.T@L
         K0tK0 = K0.T@K0
 
@@ -43,7 +49,7 @@ def model(t, Vdata, pars):
         
         tauGibbs = method == "regularization"
         deltaGibbs = method == "regularization"
-        model_pymc = regularizationmodel(t, Vdata, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs)
+        model_pymc = regularizationmodel(t, Vexp, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs)
 
         model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
     
@@ -53,7 +59,14 @@ def model(t, Vdata, pars):
     model_pars['method'] = method
     model_pars['Vscale'] = Vscale
 
-    model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vdata}
+    model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp}
+    
+    print(f"Time-domain data:   {len(t):4d} points from {min(t):g} µs to {max(t):g} µs")
+    print(f"Distance vector:    {len(r):4d} points from {min(r):g} nm to {max(r):g} nm")
+    print(f"Model:              {method}")
+    if method == "gaussian":
+        print(f"Number of Gaussian: {nGauss}")
+    
     return model
 
 def multigaussmodel(t, Vdata, K0, r, nGauss=1,
