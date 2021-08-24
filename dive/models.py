@@ -100,6 +100,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
             P = np.zeros(np.size(K0,1))
             for i in range(nGauss):
                 P += a[i]*gauss(r,r0[i],FWHM2sigma(w[i]))
+        pm.Deterministic('P', P)  # for reporting
         
         # Time-domain model signal
         Vmodel = pm.math.dot(K0,P)

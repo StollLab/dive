@@ -95,7 +95,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
     model_pars = model_dic['pars']
     method = model_pars['method']
     
-    # Set stepping methods and starting point, depending on model
+    # Set stepping methods, depending on model
     if method == 'gaussian':
         
         removeVars  = ["r0_rel"]

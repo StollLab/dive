@@ -1,6 +1,6 @@
 ## Plotting 
 
-# # Import modules
+# Import modules
 import matplotlib.pyplot as plt
 import numpy as np
 import random
@@ -13,17 +13,122 @@ from scipy.io import loadmat
 from .utils import *
 from .deer import *
 
-def summary(df, model_dic, nDraws=100, Pid=None, Pref=None, GroundTruth=[], rref=None, corrPlot=True, marginalsPlot=True):
+
+def _relevantVariables(trace):
+    desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "delta", "lg_alpha"]
+    Vars = [Var for Var in desiredVars if Var in trace.varnames]
+    return Vars
+
+
+def printsummary(trace, model_dic):
+    """
+    Print table of all parameters, including their means, standard deviations,
+    effective sample sizes, Monte Carlo standard errors, and R-hat diagnostics.
+    """
+    Vars = _relevantVariables(trace)
+    with model_dic['model']:
+        summary = az.summary(trace, var_names=Vars)
+    # replace the labels with their unicode characters before displaying
+    summary.index = betterLabels(summary.index.values)
+    display(summary)
+
+
+def plotmarginals(trace, GroundTruth=None):
+    """
+    Plot marginalized posteriors
+    """
+    Vars = _relevantVariables(trace)
+    nVars = len(Vars)
+
+    # figure out layout of plots and create figure
+    nCols = min(nVars,6)
+    nRows = int(np.ceil(nVars/nCols))
+    fig, axs = plt.subplots(nRows, nCols)
+    axs = axs.flatten()
+    width = min(3*nVars,12)
+    height = nRows*3.5
+
+    # set figure size
+    fig.set_figheight(height)
+    fig.set_figwidth(width)
     
-    # Figure out what Vars are present -----------------------------------------
-    possibleVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "delta", "lg_alpha"]
-    presentVars = df.varnames
+    # KDE of chain samples and plot them
+    for i in range(nVars):
+        az.plot_kde(trace[Vars[i]], ax=axs[i])
+        axs[i].set_xlabel(betterLabels(Vars[i]),fontsize='large')
+        axs[i].yaxis.set_ticks([])
+        axs[i].grid(axis='x')
 
-    model = model_dic['model']
-    Vexp = model_dic['Vexp']
-    t = model_dic['t']
-    r = model_dic['pars']['r']
+        if GroundTruth:
+            if Vars[i] in GroundTruth.keys():
+                bottom, top = axs[i].get_ylim()
+                axs[i].vlines(GroundTruth[Vars[i]], bottom, top, color='black')
 
+    for i in range(nVars, len(axs)):
+        axs[i].axis('off')
+
+    # Clean up figure
+    fig.tight_layout()
+    plt.show()
+
+
+def plotcorrelations(trace, model_dic):
+    """
+    Matrix of pairwise correlation plots between model parameters.
+    """
+    Vars = _relevantVariables(trace)
+    nVars = len(Vars)
+    # determine figure size
+    if nVars < 3:
+        corwidth = 7
+        corheight = 7
+    else:
+        corwidth = 10
+        corheight = 10
+
+    # use arviz library to plot them
+    with model_dic["model"]:
+        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=(corwidth,corheight))
+
+    # replace labels with the nicer unicode character versions
+    if len(Vars) > 2:
+        # reshape axes so that we can loop through them
+        axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
+
+        for ax in axs:
+            xlabel = ax.get_xlabel()
+            ylabel = ax.get_ylabel()
+            if xlabel:
+                ax.set_xlabel(betterLabels(xlabel))
+            if ylabel:
+                ax.set_ylabel(betterLabels(ylabel))
+    else:
+        xlabel = axs.get_xlabel()
+        ylabel = axs.get_ylabel()
+        axs.set_xlabel(betterLabels(xlabel))
+        axs.set_ylabel(betterLabels(ylabel))
+
+    # show plot
+    plt.show()
+
+
+def summary(trace, model_dic):
+    
+    printsummary(trace, model_dic)    
+    plotmarginals(trace)
+    plotcorrelations(trace, model_dic)
+    plotresult(trace, model_dic)
+
+
+def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None):
+    """
+    Plot the MCMC results in the time domain and in the distance domain, using an
+    ensemble of P draws from the posterior, and the associated time-domain signals.
+    Also shown in the time domain: the ensemble of residual vectors, and the ensemble
+    of backgrounds.
+    """
+
+    # Get reference distribution if specified ------------------------------------
     if Pid is not None:
         P0s = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['P0']
         rref = np.squeeze(loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['r0'])
@@ -33,96 +138,19 @@ def summary(df, model_dic, nDraws=100, Pid=None, Pref=None, GroundTruth=[], rref
         if rref is None:
             raise KeyError("If 'Pref' is provided, 'rref' must be provided as well.")
 
-    if GroundTruth:
-        plotTruth = True
-    else:
-        plotTruth = False
 
-    Vars = [Var for Var in possibleVars if Var in presentVars]
-    nVars = len(Vars)
-
-    # Print summary for RVs ----------------------------------------------------
-    with model:
-        summary = az.summary(df, var_names=Vars)
-    # replace the labels with their unicode characters before displaying
-    summary.index = betterLabels(summary.index.values)
-    display(summary)
+    Vexp = model_dic['Vexp']
+    t = model_dic['t']
+    r = model_dic['pars']['r']
     
-    # Plot marginalized posteriors ---------------------------------------------
-    if marginalsPlot:
-
-        # figure out layout of plots and create figure
-        nCols = min(nVars,6)
-        nRows = int(np.ceil(nVars/nCols))
-        fig, axs = plt.subplots(nRows, nCols)
-        axs = axs.flatten()
-        width = min(3*nVars,12)
-        height = nRows*3.5
+    # Draw samples and plot them
+    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, r, t, nDraws)
+    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
+    plt.figure(fig)
     
-        # set figure size
-        fig.set_figheight(height)
-        fig.set_figwidth(width)
-        
-        # KDE of chain samples and plot them
-        for i in range(nVars):
-            az.plot_kde(df[Vars[i]], ax=axs[i])
-            axs[i].set_xlabel(betterLabels(Vars[i]),fontsize='large')
-            axs[i].yaxis.set_ticks([])
-            axs[i].grid(axis='x')
+    return fig
 
-            if plotTruth and (Vars[i]in GroundTruth.keys()):
-                bottom, top = axs[i].get_ylim()
-                axs[i].vlines(GroundTruth[Vars[i]], bottom, top, color='black')
-
-        for i in range(nVars, len(axs)):
-            axs[i].axis('off')
-
-        # Clean up figure
-        fig.tight_layout()
-        plt.show()
-
-    # Pairwise correlation plots ----------------------------------------------
-    if corrPlot:
-        # determine figure size
-        if nVars < 3:
-            corwidth = 7
-            corheight = 7
-        else:
-            corwidth = 10
-            corheight = 10
-
-        # use arviz library to plot them
-        with model:
-            axs = az.plot_pair(df, var_names=Vars, kind='kde', figsize=(corwidth,corheight))
-
-        # replace labels with the nicer unicode character versions
-        if len(Vars) > 2:
-            # reshape axes so that we can loop through them
-            axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
-
-            for ax in axs:
-                xlabel = ax.get_xlabel()
-                ylabel = ax.get_ylabel()
-                if xlabel:
-                    ax.set_xlabel(betterLabels(xlabel))
-                if ylabel:
-                    ax.set_ylabel(betterLabels(ylabel))
-        else:
-            xlabel = axs.get_xlabel()
-            ylabel = axs.get_ylabel()
-            axs.set_xlabel(betterLabels(xlabel))
-            axs.set_ylabel(betterLabels(ylabel))
-
-        # show plot
-        plt.show()
-
-    # Posterior sample plot -----------------------------------------------------
-    # Draw samples
-    Ps, Vs, Bs,  _, _ = drawPosteriorSamples(df,r,t,nDraws)
-    # Plot them
-    plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
-
-# look up table that contains the strings and their symbols
+# Look-up table that maps variable strings to better symbols for printing
 _table = {
     "lamb": "λ",
     "lamba": "λ",
@@ -168,57 +196,52 @@ def betterLabels(x):
     else:
         return [_table.get(x_,x_) for x_ in x]
 
-def drawPosteriorSamples(df, r=np.linspace(2, 8,num=200), t=np.linspace(0, 3, num=200), nDraws=100):
-    VarNames = df.varnames
+def drawPosteriorSamples(trace, r=np.linspace(2, 8,num=200), t=np.linspace(0, 3, num=200), nDraws=100):
+    VarNames = trace.varnames
 
     # Determine if a Gaussian model was used and how many iterations were run -------
-    if 'r0' in VarNames:
-        if df['r0'].ndim == 1:
-            nGaussians = 1
-        else:
-            nGaussians = df['r0'].shape[1]
+    GaussianModel = "r0" in VarNames
+    if GaussianModel:
+        nGaussians = trace['r0'].shape[1]
 
-        nChainSamples = df['r0'].shape[0]
-
-    else:
-        nChainSamples = df['P'].shape[0]
+    nChainSamples = trace['P'].shape[0]
 
     # Generate random indices from chain samples ------------------------------------
-    idxSamples = random.sample(range(nChainSamples),nDraws)
+    idxSamples = random.sample(range(nChainSamples), nDraws)
 
     # Draw P's -------------------------------------------------------------------
     Ps = []
 
-    if 'r0' in VarNames:
-        r0_vecs = df['r0'][idxSamples]
-        w_vecs = df['w'][idxSamples]
+    if GaussianModel:
+        r0_vecs = trace['r0'][idxSamples]
+        w_vecs = trace['w'][idxSamples]
         if nGaussians == 1:
             a_vecs = np.ones_like(idxSamples)
         else:
-            a_vecs = df['a'][idxSamples]
+            a_vecs = trace['a'][idxSamples]
 
         for iDraw in range(nDraws):
             P = dd_gauss(r,r0_vecs[iDraw],w_vecs[iDraw],a_vecs[iDraw])
             Ps.append(P)
     else:
         for iDraw in range(nDraws):
-            P = df['P'][idxSamples[iDraw]]
+            P = trace['P'][idxSamples[iDraw]]
             Ps.append(P)
 
     # Draw corresponding time-domain parameters ---------------------------------
     if 'V0' in VarNames:
-        V0_vecs = df['V0'][idxSamples]
+        V0 = trace['V0'][idxSamples]
 
     if 'k' in VarNames:
-        k_vecs = df['k'][idxSamples]
+        k = trace['k'][idxSamples]
 
-    if 'lamb' in VarNames:   
-        lamb_vecs = df['lamb'][idxSamples]
+    if 'lamb' in VarNames:
+        lamb = trace['lamb'][idxSamples]
 
     # Generate V's from P's and other parameters --------------------------------
     Vs = []
     Bs = []
-    K0 = dl.dipolarkernel(t,r,integralop=False)
+    K0 = dl.dipolarkernel(t, r, integralop=False)
     dr = r[1] - r[0]
 
     for iDraw in range(nDraws):
@@ -227,18 +250,17 @@ def drawPosteriorSamples(df, r=np.linspace(2, 8,num=200), t=np.linspace(0, 3, nu
         # The below construction of the kernel only takes into account RVs that were actually sampled
         # During development the model was sometimes run with fixed values for λ, k, or V₀
         if 'lamb' in VarNames: 
-            K_ = (1-lamb_vecs[iDraw]) + lamb_vecs[iDraw]*K_
+            K_ = (1-lamb[iDraw]) + lamb[iDraw]*K_
 
         if 'k' in VarNames:
-            B = bg_exp(t,k_vecs[iDraw])
+            B = bg_exp(t,k[iDraw])
             K_ = K_*B[:, np.newaxis]
 
         if 'V0' in VarNames:
-            K_ = V0_vecs[iDraw]*K_
+            K_ = V0[iDraw]*K_
 
-        K_ = K_*dr
-        Bs.append((1-lamb_vecs[iDraw])*B)
-        Vs.append(K_@Ps[iDraw])
+        Bs.append((1-lamb[iDraw])*B)
+        Vs.append(dr*K_@Ps[iDraw])
 
     return Ps, Vs, Bs, t, r
 
@@ -256,7 +278,6 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None):
 
     for V,P,B in zip(Vs,Ps,Bs):
         residuals = V - Vdata
-        rmsd = np.sqrt(np.mean(np.square(residuals)))
         ax1.plot(t, V, color = '#3F60AE', alpha=0.2)
         ax1.plot(t, B, color = '#FCC43F', alpha=0.2)
         ax1.plot(t, residuals+residuals_offset, color = '#3F60AE', alpha=0.2)
@@ -278,7 +299,5 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None):
         ax2.plot(rref, Pref, color='black')
 
     plt.grid()
-    plt.show()
     
-    print(f"RMSD: {rmsd}")
-    
+    return fig
