@@ -15,7 +15,7 @@ from .deer import *
 
 
 def _relevantVariables(trace):
-    desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "delta", "lg_alpha"]
+    desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
     Vars = [Var for Var in desiredVars if Var in trace.varnames]
     return Vars
 
@@ -29,7 +29,7 @@ def printsummary(trace, model_dic):
     with model_dic['model']:
         summary = az.summary(trace, var_names=Vars)
     # replace the labels with their unicode characters before displaying
-    summary.index = betterLabels(summary.index.values)
+    summary.index = _betterLabels(summary.index.values)
     display(summary)
 
 
@@ -55,7 +55,7 @@ def plotmarginals(trace, GroundTruth=None):
     # KDE of chain samples and plot them
     for i in range(nVars):
         az.plot_kde(trace[Vars[i]], ax=axs[i])
-        axs[i].set_xlabel(betterLabels(Vars[i]),fontsize='large')
+        axs[i].set_xlabel(_betterLabels(Vars[i]), fontsize='large')
         axs[i].yaxis.set_ticks([])
         axs[i].grid(axis='x')
 
@@ -69,26 +69,27 @@ def plotmarginals(trace, GroundTruth=None):
 
     # Clean up figure
     fig.tight_layout()
-    plt.show()
+    return fig
 
 
-def plotcorrelations(trace, model_dic):
+def plotcorrelations(trace, model_dic, figsize=None, marginals=True):
     """
     Matrix of pairwise correlation plots between model parameters.
     """
+    # determine variables to include
     Vars = _relevantVariables(trace)
     nVars = len(Vars)
-    # determine figure size
-    if nVars < 3:
-        corwidth = 7
-        corheight = 7
-    else:
-        corwidth = 10
-        corheight = 10
+    
+    # Set default figure size
+    if figsize is None:
+        if nVars < 3:
+            figsize = (7, 7)
+        else:
+            figsize = (10, 10)
 
-    # use arviz library to plot them
+    # use arviz library to plot correlations
     with model_dic["model"]:
-        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=(corwidth,corheight))
+        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=figsize, marginals=marginals)
 
     # replace labels with the nicer unicode character versions
     if len(Vars) > 2:
@@ -99,22 +100,22 @@ def plotcorrelations(trace, model_dic):
             xlabel = ax.get_xlabel()
             ylabel = ax.get_ylabel()
             if xlabel:
-                ax.set_xlabel(betterLabels(xlabel))
+                ax.set_xlabel(_betterLabels(xlabel))
             if ylabel:
-                ax.set_ylabel(betterLabels(ylabel))
+                ax.set_ylabel(_betterLabels(ylabel))
     else:
         xlabel = axs.get_xlabel()
         ylabel = axs.get_ylabel()
-        axs.set_xlabel(betterLabels(xlabel))
-        axs.set_ylabel(betterLabels(ylabel))
+        axs.set_xlabel(_betterLabels(xlabel))
+        axs.set_ylabel(_betterLabels(ylabel))
 
-    # show plot
-    plt.show()
+    fig = plt.gcf()
+    return fig
 
 
 def summary(trace, model_dic):
     
-    printsummary(trace, model_dic)    
+    printsummary(trace, model_dic)
     plotmarginals(trace)
     plotcorrelations(trace, model_dic)
     plotresult(trace, model_dic)
@@ -144,50 +145,38 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None):
     r = model_dic['pars']['r']
     
     # Draw samples and plot them
-    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, r, t, nDraws)
+    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
     fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
-    plt.figure(fig)
     
     return fig
 
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
-    "lamb": "λ",
-    "lamba": "λ",
-    "sigma": "σ",
-    "delta": "δ",
-    "tau": "τ",
-    "V0": "V₀",
-    "r0": "r₀",
-    "alpha": "α",
-    "lg_alpha": "lg(α)",
-    "w[0]": "w₀",
-    "w[1]": "w₁",
-    "w[2]": "w₂",
-    "w[3]": "w₃",
-    "a[0]": "a₀",
-    "a[1]": "a₁",
-    "a[2]": "a₂",
-    "a[3]": "a₃",
+    "k": "$k$",
+    "lamb": "$λ$",
+    "lamba": "$λ$",
+    "sigma": "$σ$",
+    "delta": "$δ$",
+    "tau": "$τ$",
+    "V0": "$V_0$",
+    "r0": "$r_0$",
+    "alpha": "$α$",
+    "lg_alpha": "$\mathrm{lg}(α)$",
+    "w[0]": "$w_0$",
+    "w[1]": "$w_1$",
+    "w[2]": "$w_2$",
+    "w[3]": "$w_3$",
+    "a[0]": "$a_0$",
+    "a[1]": "$a_1$",
+    "a[2]": "$a_2$",
+    "a[3]": "$a_3$",
     "r0[0]": "r₀,₀",
     "r0[1]": "r₀,₁",
     "r0[2]": "r₀,₂",
     "r0[3]": "r₀,₃",
-    "r0\n0": "r₀,₀",
-    "r0\n1": "r₀,₁",
-    "r0\n2": "r₀,₂",
-    "r0\n3": "r₀,₃",
-    "a\n0": "a₀",
-    "a\n1": "a₁",
-    "a\n2": "a₂",
-    "a\n3": "a₃",
-    "w\n0": "w₀",
-    "w\n1": "w₁",
-    "w\n2": "w₂",
-    "w\n3": "w₃",
 }
 
-def betterLabels(x):
+def _betterLabels(x):
     """
     Replace strings with their corresponding (greek) symbols
     """
@@ -196,14 +185,14 @@ def betterLabels(x):
     else:
         return [_table.get(x_,x_) for x_ in x]
 
-def drawPosteriorSamples(trace, r=np.linspace(2, 8,num=200), t=np.linspace(0, 3, num=200), nDraws=100):
+def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None):
     VarNames = trace.varnames
 
     # Determine if a Gaussian model was used and how many iterations were run -------
     GaussianModel = "r0" in VarNames
     if GaussianModel:
         nGaussians = trace['r0'].shape[1]
-
+    
     nChainSamples = trace['P'].shape[0]
 
     # Generate random indices from chain samples ------------------------------------
@@ -246,21 +235,23 @@ def drawPosteriorSamples(trace, r=np.linspace(2, 8,num=200), t=np.linspace(0, 3,
 
     for iDraw in range(nDraws):
         K_ = copy.copy(K0)
+        V_ = dr*K0@Ps[iDraw]
 
         # The below construction of the kernel only takes into account RVs that were actually sampled
         # During development the model was sometimes run with fixed values for λ, k, or V₀
-        if 'lamb' in VarNames: 
-            K_ = (1-lamb[iDraw]) + lamb[iDraw]*K_
+        if 'lamb' in VarNames:
+            V_ = (1-lamb[iDraw]) + lamb[iDraw]*V_
 
         if 'k' in VarNames:
             B = bg_exp(t,k[iDraw])
-            K_ = K_*B[:, np.newaxis]
+            V_ *= B
+            Blamb = (1-lamb[iDraw])*B
+            Bs.append(Blamb)
 
         if 'V0' in VarNames:
-            K_ = V0[iDraw]*K_
+            V_ *= V0[iDraw]
 
-        Bs.append((1-lamb[iDraw])*B)
-        Vs.append(dr*K_@Ps[iDraw])
+        Vs.append(V_)
 
     return Ps, Vs, Bs, t, r
 
@@ -276,25 +267,26 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None):
     else:
         residuals_offset = 0
 
-    for V,P,B in zip(Vs,Ps,Bs):
+    # Plot time-domain quantities
+    for V, B in zip(Vs, Bs):
         residuals = V - Vdata
-        ax1.plot(t, V, color = '#3F60AE', alpha=0.2)
-        ax1.plot(t, B, color = '#FCC43F', alpha=0.2)
-        ax1.plot(t, residuals+residuals_offset, color = '#3F60AE', alpha=0.2)
-        ax2.plot(r, P, color = '#3F60AE', alpha=0.2)
-    ax1.scatter(t, Vdata , color = '#BFBFBF', s = 5)
-    ax1.hlines(residuals_offset,min(t),max(t), color = 'black')
-
+        ax1.plot(t, V, color='#3F60AE', alpha=0.2)
+        ax1.plot(t, B, color='#FCC43F', alpha=0.2)
+        ax1.plot(t, residuals+residuals_offset, color='#3F60AE', alpha=0.2)
+    ax1.scatter(t, Vdata, color='#BFBFBF', s = 5)
+    ax1.hlines(residuals_offset, min(t), max(t), color='black')
     ax1.set_xlabel('$t$ (µs)')
     ax1.set_ylabel('$V$ (arb.u.)')
     ax1.set_xlim((min(t), max(t)))
     ax1.set_title('time domain and residuals')
 
+    # Plot distance distributions
+    for P in Ps:
+        ax2.plot(r, P, color='#3F60AE', alpha=0.2)
     ax2.set_xlabel('$r$ (nm)')
     ax2.set_ylabel('$P$ (nm$^{-1}$)')
     ax2.set_xlim((min(r), max(r)))
     ax2.set_title('distance domain')
-
     if Pref is not None:
         ax2.plot(rref, Pref, color='black')
 

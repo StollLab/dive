@@ -1,7 +1,7 @@
 import numpy as np
 import math as m
 import sys
-from scipy.special import fresnel # pylint: disable=no-name-in-module 
+from scipy.special import fresnel
 import pymc3 as pm
 from datetime import date
 import os   
@@ -10,29 +10,33 @@ from .constants import *
 from .deerload import *
 from .samplers import *
 
+
 def addnoise(V,sig):
     """
     Add Gaussian noise with standard deviation sig to signal
     """
-    noise = np.random.normal(0,sig,np.size(V))
+    noise = np.random.normal(0, sig, np.size(V))
     Vnoisy = V + noise
     return Vnoisy
 
+
 def FWHM2sigma(FWHM):
     """
-    Take a Gaussian FWHM linewidth to sigma which is the standard deviation of the Gaussian.
+    Convert the full width at half maximum, FWHM, of a Gaussian to the standard deviation, sigma.
     """
     sigma = FWHM/(2*m.sqrt(2*m.log(2)))
 
     return sigma
 
+
 def sigma2FWHM(sigma):
     """
-    Take the standard deviation of a Gaussian and return the FWHM. 
+    Convert the standard deviation, sigma, of a Gaussian to the full width at half maximum, FWHM.
     """
     FWHM = sigma/(2*m.sqrt(2*m.log(2)))
 
     return FWHM
+
 
 def dipolarkernel(t,r):
     """
@@ -45,7 +49,7 @@ def dipolarkernel(t,r):
     # Calculation using Fresnel integrals
     nr = np.size(r)
     nt = np.size(t)
-    K = np.zeros((nt,nr))
+    K = np.zeros((nt, nr))
     for ir in range(nr):
         ph = omega[ir]*np.abs(t)
         z = np.sqrt(6*ph/m.pi)
@@ -61,6 +65,7 @@ def dipolarkernel(t,r):
     
     return K
 
+
 def loadTrace(FileName):
     """
     Load a DEER trace, can be a bruker or comma separated file.
@@ -75,6 +80,7 @@ def loadTrace(FileName):
         sys.exit('The file format is not recognized.')
 
     return t, Vdata
+
 
 def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None):
     """ 
@@ -96,7 +102,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
     method = model_pars['method']
     
     # Set stepping methods, depending on model
-    if method == 'gaussian':
+    if method == "gaussian":
         
         removeVars  = ["r0_rel"]
         
@@ -112,12 +118,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
                 
-
         step = step_NUTS
         
-    elif method == 'regularization':
+    elif method == "regularization":
         
-        removeVars = []
+        removeVars = None
         
         with model:
             NUTS_varlist = [model['k'], model['V0'], model['lamb']]
@@ -136,9 +141,9 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         if steporder is not None:
             step = [step[i] for i in steporder]
                 
-    elif method == 'regularization2':
+    elif method == "regularization2":
         
-        removeVars = []
+        removeVars = None
         
         with model:
             NUTS_varlist = [model['tau'], model['delta'], model['k'], model['V0'], model['lamb']]
@@ -163,11 +168,13 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
     trace = pm.sample(model=model, step=step, **MCMCparameters)
 
     # Remove undesired variables
-    [trace.remove_values(key) for key in removeVars if key in trace.varnames]
+    if removeVars is not None:
+        [trace.remove_values(key) for key in removeVars if key in trace.varnames]
 
     return trace
 
-def saveTrace(df,Parameters,SaveName='empty'):
+
+def saveTrace(df, Parameters, SaveName='empty'):
     """
     Save a trace to a CSV file.
     """

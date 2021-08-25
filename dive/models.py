@@ -176,7 +176,7 @@ def regularizationmodel(t, Vdata, K0, r,
             tau = pm.NoDistribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the Gibbs sampler)
         else:
             tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
-        sigma = pm.Deterministic('sigma',1/np.sqrt(tau)) # for reporting
+        sigma = pm.Deterministic('sigma', 1/np.sqrt(tau)) # for reporting
 
         # Regularization parameter
         if deltaGibbs:
