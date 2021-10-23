@@ -237,8 +237,6 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
         K_ = copy.copy(K0)
         V_ = dr*K0@Ps[iDraw]
 
-        # The below construction of the kernel only takes into account RVs that were actually sampled
-        # During development the model was sometimes run with fixed values for λ, k, or V₀
         if 'lamb' in VarNames:
             V_ = (1-lamb[iDraw]) + lamb[iDraw]*V_
 
@@ -246,6 +244,8 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
             B = bg_exp(t,k[iDraw])
             V_ *= B
             Blamb = (1-lamb[iDraw])*B
+            if 'V0' in VarNames:
+                Blamb *= V0[iDraw]
             Bs.append(Blamb)
 
         if 'V0' in VarNames:
