@@ -121,7 +121,7 @@ def summary(trace, model_dic):
     plotresult(trace, model_dic)
 
 
-def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None):
+def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None,alternative = False,show_ave = False):
     """
     Plot the MCMC results in the time domain and in the distance domain, using an
     ensemble of P draws from the posterior, and the associated time-domain signals.
@@ -129,6 +129,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None):
     of backgrounds.
     """
 
+    
     # Get reference distribution if specified ------------------------------------
     if Pid is not None:
         P0s = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['P0']
@@ -143,11 +144,15 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None):
     Vexp = model_dic['Vexp']
     t = model_dic['t']
     r = model_dic['pars']['r']
-    
+    if show_ave:
+        Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t,show_ave = True)
+        fig = plotpretty(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
     # Draw samples and plot them
-    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
-    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
+    else:
+        Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
+        fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
     
+
     return fig
 
 # Look-up table that maps variable strings to better symbols for printing
@@ -243,6 +248,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
         if 'k' in VarNames:
             B = bg_exp(t,k[iDraw])
             V_ *= B
+            
             Blamb = (1-lamb[iDraw])*B
             if 'V0' in VarNames:
                 Blamb *= V0[iDraw]
@@ -256,7 +262,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     return Ps, Vs, Bs, t, r
 
 
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None):
+def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None,show_ave = False):
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
@@ -273,23 +279,43 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None):
         ax1.plot(t, V, color='#3F60AE', alpha=0.2)
         ax1.plot(t, B, color='#FCC43F', alpha=0.2)
         ax1.plot(t, residuals+residuals_offset, color='#3F60AE', alpha=0.2)
+    Vave = np.mean(Vs,0)
+    Bave = np.mean(Bs,0)
+    Pave = np.mean(Ps,0)
+    
+
+    
+
+    
+
     ax1.scatter(t, Vdata, color='#BFBFBF', s = 5)
     ax1.hlines(residuals_offset, min(t), max(t), color='black')
     ax1.set_xlabel('$t$ (µs)')
     ax1.set_ylabel('$V$ (arb.u.)')
     ax1.set_xlim((min(t), max(t)))
+    ax1.set_ylim(-0.1,1.2)
     ax1.set_title('time domain and residuals')
+
+    ax1.plot(t,Vave,color='yellow',label= 'Vexp Average')
+    ax1.plot(t,Bave,color = 'purple',label = 'Background Average')
+    #ax1.plot(t,Vave-residuals,color = 'red')
+    ax1.legend()
 
     # Plot distance distributions
     for P in Ps:
         ax2.plot(r, P, color='#3F60AE', alpha=0.2)
     ax2.set_xlabel('$r$ (nm)')
     ax2.set_ylabel('$P$ (nm$^{-1}$)')
-    ax2.set_xlim((min(r), max(r)))
+    ax2.set_xlim(min(r), max(r))
+    ax2.set_ylim(0,2)
     ax2.set_title('distance domain')
     if Pref is not None:
         ax2.plot(rref, Pref, color='black')
-
+    ax2.plot(r,Pave,color = 'black',label = 'Average')
+    ax2.legend()
     plt.grid()
     
     return fig
+
+
+
