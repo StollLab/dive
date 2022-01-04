@@ -130,7 +130,6 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
     """
 
     if show_ave is not None:
-     
         print('Showing posterior average')
         
          
