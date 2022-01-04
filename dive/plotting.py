@@ -121,7 +121,7 @@ def summary(trace, model_dic):
     plotresult(trace, model_dic)
 
 
-def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None,show_ave = False):
+def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None):
     """
     Plot the MCMC results in the time domain and in the distance domain, using an
     ensemble of P draws from the posterior, and the associated time-domain signals.
@@ -129,10 +129,16 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None,show
     of backgrounds.
     """
 
-    if show_ave is True:
-        post_ave = 1
-    if show_ave is True:
-        post_ave = 0
+    if show_ave is not None:
+     
+        print('Showing posterior average')
+        
+         
+    
+    if show_ave is None:
+        print('Posterior average hidden')
+    
+        
 
     
     # Get reference distribution if specified ------------------------------------
@@ -153,7 +159,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None,show
 
    
     Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
-    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref)
+    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref,show_ave)
     
 
     return fig
@@ -265,7 +271,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     return Ps, Vs, Bs, t, r
 
 
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None,show_ave = post_ave):
+def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
@@ -299,11 +305,11 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None,show_ave = post_ave):
     ax1.set_ylim(-0.1,1.2)
     ax1.set_title('time domain and residuals')
 
-    if show_ave ==1:
+    if show_ave is not None:
         ax1.plot(t,Vave,color='yellow',label= 'Vexp Average')
         ax1.plot(t,Bave,color = 'purple',label = 'Background Average')
     #ax1.plot(t,Vave-residuals,color = 'red')
-    ax1.legend()
+        
 
     # Plot distance distributions
     for P in Ps:
@@ -313,11 +319,12 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None,show_ave = post_ave):
     ax2.set_xlim(min(r), max(r))
     ax2.set_ylim(0,2)
     ax2.set_title('distance domain')
+
     if Pref is not None:
         ax2.plot(rref, Pref, color='black')
-    if show_ave ==1:
+    if show_ave is not None: 
         ax2.plot(r,Pave,color = 'black',label = 'Average')
-        ax2.legend()
+
     plt.grid()
     
     return fig
