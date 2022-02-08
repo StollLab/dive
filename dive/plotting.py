@@ -128,7 +128,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
     Also shown in the time domain: the ensemble of residual vectors, and the ensemble
     of backgrounds.
     """
-
+#displaying posterior average data:
     if show_ave is not None:
         print('Showing posterior average')
         
