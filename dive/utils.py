@@ -83,7 +83,7 @@ def loadTrace(FileName):
     return t, Vdata
 
 
-def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed = False):
+def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed = False,seeds =[],starts=None):
     """ 
     Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
     """  
@@ -101,7 +101,16 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
     model = model_dic['model']
     model_pars = model_dic['pars']
     method = model_pars['method']
+    tmax= max(model_dic['t'])-min(model_dic['t'])
+    critical_r =(104*tmax)**(1/3)
+  
     
+    if max(model_pars['r']) < critical_r:
+        print('warning: sampler r resolution is below the critical threshold')
+
+    if max(model_pars['r']) > critical_r:
+        print('sampler r resolution is over the critical threshold, uncertainy may occur for larger r values')
+
     # Set stepping methods, depending on model
     if method == "gaussian":
         
@@ -167,7 +176,8 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
 
     # Perform MCMC sampling
     if seed == True:
-        trace = pm.sample(model=model, step=step, random_seed =1,  **MCMCparameters)
+        
+        trace = pm.sample(model=model, step=step, random_seed =seeds,  **MCMCparameters,start =starts)
 
     else: 
         trace = pm.sample(model=model, step=step,  **MCMCparameters)
