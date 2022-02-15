@@ -121,7 +121,7 @@ def summary(trace, model_dic):
     plotresult(trace, model_dic)
 
 
-def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None):
+def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None, chains=None):
     """
     Plot the MCMC results in the time domain and in the distance domain, using an
     ensemble of P draws from the posterior, and the associated time-domain signals.
@@ -133,10 +133,11 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
         print('Showing posterior average')
         
          
-    
     if show_ave is None:
         print('Posterior average hidden')
     
+    if chains is not None:
+       fig1 =az.plot_trace(trace)
         
 
     
@@ -158,10 +159,10 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
 
    
     Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
-    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref,show_ave)
+    fig2 = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref,show_ave)
     
 
-    return fig
+    return fig1,fig2
 
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
