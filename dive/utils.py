@@ -1,3 +1,4 @@
+from random import seed
 import numpy as np
 import math as m
 import sys
@@ -82,7 +83,7 @@ def loadTrace(FileName):
     return t, Vdata
 
 
-def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None):
+def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed = False):
     """ 
     Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
     """  
@@ -108,17 +109,17 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         
         with model:
             if model_pars['ngaussians']==1:
-                NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
+                NUTS_varlist = [model['r0_rel'], model['w'], model['tau'], model['k'], model['V0'], model['lamb']]
             else:
-                NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
+                NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['tau'], model['k'], model['V0'], model['lamb']]
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
                 step_NUTS = pm.NUTS(NUTS_varlist)
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
-                
-        step = step_NUTS
+    
+        step = [step_NUTS]
         
     elif method == "regularization":
         
@@ -165,8 +166,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    trace = pm.sample(model=model, step=step, **MCMCparameters)
+    if seed == True:
+        trace = pm.sample(model=model, step=step, random_seed =1,  **MCMCparameters)
 
+    else: 
+        trace = pm.sample(model=model, step=step,  **MCMCparameters)
     # Remove undesired variables
     if removeVars is not None:
         [trace.remove_values(key) for key in removeVars if key in trace.varnames]
