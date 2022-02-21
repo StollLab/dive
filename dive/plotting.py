@@ -72,7 +72,7 @@ def plotmarginals(trace, GroundTruth=None):
     return fig
 
 
-def plotcorrelations(trace, model_dic, figsize=None, marginals=True):
+def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
     """
     Matrix of pairwise correlation plots between model parameters.
     """
@@ -86,10 +86,15 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True):
             figsize = (7, 7)
         else:
             figsize = (10, 10)
+    if div == True:
+        class Object(object):
+            pass
 
+        trace.sample_stats = Object()
+        trace.sample_stats.diverging = trace.diverging
     # use arviz library to plot correlations
     with model_dic["model"]:
-        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=figsize, marginals=marginals)
+        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=figsize, marginals=marginals, divergences=div)
 
     # replace labels with the nicer unicode character versions
     if len(Vars) > 2:
@@ -110,6 +115,8 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True):
         axs.set_ylabel(_betterLabels(ylabel))
 
     fig = plt.gcf()
+   
+
     return fig
 
 
