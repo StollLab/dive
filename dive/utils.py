@@ -45,7 +45,7 @@ def dipolarkernel(t,r):
     Calculate dipolar kernel matrix.
     Assumes t in microseconds and r in nanometers
     """
-    omega = 1e-6 * D/(r*1e-9)**3 # rad µs^-1
+    omega = 1e-6 * D/(r*1e-9)**3  # rad µs^-1
     
     # Calculation using Fresnel integrals
     nr = np.size(r)
@@ -57,7 +57,7 @@ def dipolarkernel(t,r):
         S, C = fresnel(z)
         K[:,ir] = (C*np.cos(ph)+S*np.sin(ph))/z
     
-    K[t==0,:] = 1   # fix div by zero
+    K[t==0,:] = 1  # fix div by zero
     
     # Include delta-r factor for integration
     if len(r)>1:
@@ -69,24 +69,24 @@ def dipolarkernel(t,r):
 
 def loadTrace(FileName):
     """
-    Load a DEER trace, can be a bruker or comma separated file.
+    Load a DEER trace, can be a Bruker or comma separated file.
     """
     if FileName.endswith('.dat') or FileName.endswith('.txt') or FileName.endswith('.csv'):
-        data = np.genfromtxt(FileName,delimiter=',',skip_header=1)
+        data = np.genfromtxt(FileName, delimiter=',', skip_header=1)
         t = data[:,0]
         Vdata = data[:,1]
-    elif FileName.endswith('.dat'):
+    elif FileName.endswith('.DTA') or FileName.endswith('.DSC'):
         t, Vdata, Parameters = deerload(FileName)
     else:
-        sys.exit('The file format is not recognized.')
+        raise ValueError('The file format is not recognized.')
 
     return t, Vdata
 
 
-def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed = False):
-    """ 
+def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed=None):
+    """
     Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
-    """  
+    """
     
     # Complain about missing required keywords
     requiredKeys = ["draws", "tune", "chains"]
@@ -109,9 +109,9 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         
         with model:
             if model_pars['ngaussians']==1:
-                NUTS_varlist = [model['r0_rel'], model['w'], model['tau'], model['k'], model['V0'], model['lamb']]
+                NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
             else:
-                NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['tau'], model['k'], model['V0'], model['lamb']]
+                NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
@@ -166,11 +166,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    if seed == True:
-        trace = pm.sample(model=model, step=step, random_seed =1,  **MCMCparameters)
-
+    if seed is not None:
+        trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
     else: 
         trace = pm.sample(model=model, step=step,  **MCMCparameters)
+
     # Remove undesired variables
     if removeVars is not None:
         [trace.remove_values(key) for key in removeVars if key in trace.varnames]
