@@ -1,18 +1,22 @@
+from dataclasses import replace
 from random import seed
 import numpy as np
 import math as m
 import sys
 from scipy.special import fresnel
-import pymc3 as pm
+import pymc as pm
 from datetime import date
 import os   
-
+import copy
+import random 
 from .constants import *
 from .deerload import *
 from .samplers import *
-
+import arviz as az
+from .plotting import *
 
 def addnoise(V,sig):
+
     """
     Add Gaussian noise with standard deviation sig to signal
     """
@@ -83,7 +87,7 @@ def loadTrace(FileName):
     return t, Vdata
 
 
-def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed = False,seeds =[],starts=None):
+def fit(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed = False,seeds =[],starts=None):
     """ 
     Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
     """  
@@ -185,40 +189,186 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
     if removeVars is not None:
         [trace.remove_values(key) for key in removeVars if key in trace.varnames]
 
-    return trace
+    return trace, model_dic
+
+
+
+        
+def interpret(trace,model_dic):
+    
+    
+    class FitResult:
+        def __init__(self,trace, model):
+            d = {key: trace[key] for key in trace.varnames}
+            self.__dict__.update(d)
+
+            self.r = model['pars']['r']
+            self.t = model['t']
+            self.Vexp = model['Vexp']
+            self.varnames = trace.varnames
+            self.trace = trace
+            self.K = dl.dipolarkernel(self.t, self.r)
+            self.dr = self.r[1] - self.r[0]
+
+            # self.plots = Plots(trace,model)
+
+        def subsample_fits(self, n=100, seed=1):
+            np.random.seed(seed)
+            idxs = np.random.choice(len(self.trace), n, replace=False)
+            Ps = [self.P[idx].copy() for idx in idxs]
+            Bs, Vs = [], []
+
+
+            for idx in idxs:
+                V_ = self.K@self.P[idx]
+
+                if 'lamb' in self.varnames:
+                    V_ = (1-self.lamb[idx]) + self.lamb[idx]*V_
+
+                if 'k' in self.varnames:
+                    B = dl.bg_exp(self.t, self.k[idx])
+                    V_ *= B
+                    
+                    Blamb = (1-self.lamb[idx])*B
+                
+                if 'V0' in self.varnames:
+                    Blamb *= self.V0[idx]
+                    Bs.append(Blamb)
+                    V_ *= self.V0[idx]
+                Vs.append(V_)
+
+            return Vs, Bs, Ps
+
+        def plot(self,style = 'noodle',j =0.95):
+            plt.style.use('seaborn-darkgrid')
+            
+            plt.rcParams.update({'font.family':'serif'})
+            if style == 'noodle':
+                fig, (ax1, ax2) = plt.subplots(2, figsize=(8, 8))
+                Vs, Bs, Ps = self.subsample_fits()
+                
+                ax1.plot(self.t, self.Vexp,'g.',linewidth=0.5,alpha = 0.3)
+
+                for V, B, P in zip(Vs, Bs, Ps):
+                    ax2.plot(self.r, P, 'cornflowerblue', linewidth=0.3)
+                    ax1.plot(self.t, V,'#0000EE',linewidth=0.3)
+                    ax1.plot(self.t, B,'#FAD02C',linewidth=0.3)
+                    ax1.plot(self.t, V-self.Vexp,'#FF0080',linewidth=0.3)
+
+                leg1= ax1.legend(['Data','Vexp','Background','Residuals'])
+                leg2 = ax2.legend(['Distance Distribution'])
+
+                for lh1,lh2 in zip(leg1.legendHandles,leg2.legendHandles): 
+                    lh1.set_alpha(1)
+                    lh2.set_alpha(1)
+                
+
+                #ax2.set_xlabel(r'time ($\rm\mus$)')
+
+            if style == 'mean-ci':
+                fig, (ax1, ax2) = plt.subplots(2, figsize=(8, 8))
+                Vs, Bs, Ps = self.subsample_fits()
+                
+                l0, = ax1.plot(self.t, self.Vexp,'#808080',marker='.',linewidth=0.5,alpha = 0.3,label = 'Data',linestyle='None')
+
+                Pmean = np.mean(Ps,0)
+                Phd = az.hdi(np.array(Ps),j) 
+
+                Vmean = np.mean(Vs,0)
+                Vhd = az.hdi(np.array(Vs),j) 
+                
+
+                Bmean = np.mean(Bs,0)
+                Bhd = az.hdi(np.array(Bs),j) 
+
+            
+                ax2.plot(self.r, Pmean, '#8E05D4', linewidth=1)
+                ax2.fill_between(self.r,Phd[:,0],Phd[:,1],alpha = 0.7)
+
+
+                l1,=ax1.plot(self.t, Vmean, '#964B00', linewidth=0.5,label='Vexp mean')
+                l2,=ax1.plot(self.t, Bmean, 'b', linewidth=0.5 ,label='Background mean')
+                l3,=ax1.plot(self.t, Vmean-self.Vexp,'#FF0080',linewidth=0.8,label = "Residuals")
+
+
+                ax1.fill_between(self.t,Vhd[:,0],Vhd[:,1],color = 'C0',alpha =0.5)
+                ax1.fill_between(self.t,Bhd[:,0],Bhd[:,1],color = '#FFF68F',alpha =0.1)
+                ax1.legend(handles=[l0,l1,l2,l3])
+                ax2.legend()
+                
+                
+                #ax2.set_xlabel(r'time ($\rm\mus$)')
+            
+            
+
+            
+            ax2.set_xlabel('Distance(nm)')
+            ax2.set_ylabel("Probability($1/nm$)")
+            ax2.xaxis.set_major_locator(plt.MaxNLocator(16))
+
+
+            ax1.set_ylabel('Signal (a.u.)')
+            ax1.set_xlabel("Time(µs)")
+            ax1.xaxis.set_major_locator(plt.MaxNLocator(15))
+           
+
+
+            fig.tight_layout()
+            plt.style.use('seaborn-darkgrid')
+            return fig
+
+        def summary(self):
+            printsummary(self.trace,self.model)
+            
+            
+            
+    fit = FitResult(trace,model_dic)
+
+    return fit
+
+
+
+
+
+
+
+        
+
+
 
 
 def saveTrace(df, Parameters, SaveName='empty'):
-    """
-    Save a trace to a CSV file.
-    """
-    if SaveName == 'empty':
-        today = date.today()
-        datestring = today.strftime("%Y%m%d")
-        SaveName = "./traces/{}_traces.dat".format(datestring)
-    
-    if not SaveName.endswith('.dat'):
-        SaveName = SaveName+'.dat'
+        """
+        Save a trace to a CSV file.
+        """
+        if SaveName == 'empty':
+            today = date.today()
+            datestring = today.strftime("%Y%m%d")
+            SaveName = "./traces/{}_traces.dat".format(datestring)
+        
+        if not SaveName.endswith('.dat'):
+            SaveName = SaveName+'.dat'
 
-    shape = df.shape 
-    cols = df.columns.tolist()
+        shape = df.shape 
+        cols = df.columns.tolist()
 
-    os.makedirs(os.path.dirname(SaveName), exist_ok=True)
+        os.makedirs(os.path.dirname(SaveName), exist_ok=True)
 
-    f = open(SaveName, 'a+')
-    f.write("# Traces from the MCMC simulations with pymc3\n")
-    f.write("# The following {} parameters were investigated:\n".format(shape[1]))
-    f.write("# {}\n".format(cols))
-    f.write("# nParameters nChains nIterations\n")
-    if Parameters['nGauss'] == 1:
-        f.write("{},{},{},0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 2:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 3:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 4:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
+        f = open(SaveName, 'a+')
+        f.write("# Traces from the MCMC simulations with pymc3\n")
+        f.write("# The following {} parameters were investigated:\n".format(shape[1]))
+        f.write("# {}\n".format(cols))
+        f.write("# nParameters nChains nIterations\n")
+        if Parameters['nGauss'] == 1:
+            f.write("{},{},{},0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
+        elif Parameters['nGauss'] == 2:
+            f.write("{},{},{},0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
+        elif Parameters['nGauss'] == 3:
+            f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
+        elif Parameters['nGauss'] == 4:
+            f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
 
-    df.to_csv (f, index=False, header=False)
+        df.to_csv (f, index=False, header=False)
 
-    f.close()
+        f.close()
+
