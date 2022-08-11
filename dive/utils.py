@@ -87,7 +87,7 @@ def loadTrace(FileName):
     return t, Vdata
 
 
-def fit(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed = False,seeds =[],starts=None):
+def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed = False,seeds =[],starts=None):
     """ 
     Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
     """  
@@ -179,12 +179,15 @@ def fit(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    if seed == True:
-        
-        trace = pm.sample(model=model, step=step, random_seed =seeds,  **MCMCparameters,start =starts)
+    
+    if seeds is not None:
 
-    else: 
-        trace = pm.sample(model=model, step=step,  **MCMCparameters)
+        trace = pm.sample(model=model, step=step, random_seed =seeds,  **MCMCparameters)
+
+    else:
+
+        trace = pm.sample(model=model, step=step, **MCMCparameters)
+
     # Remove undesired variables
     if removeVars is not None:
         [trace.remove_values(key) for key in removeVars if key in trace.varnames]

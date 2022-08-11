@@ -143,6 +143,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
     if show_ave is None:
         print('Posterior average hidden')
     
+    fig1 = []
     if chains is not None:
        fig1 =az.plot_trace(trace)
         
@@ -324,7 +325,7 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
     ax2.set_xlabel('$r$ (nm)')
     ax2.set_ylabel('$P$ (nm$^{-1}$)')
     ax2.set_xlim(min(r), max(r))
-    ax2.set_ylim(0,2)
+    ax2.set_ylim(0,max(P)+0.2)
     ax2.set_title('distance domain')
 
     if Pref is not None:
@@ -336,5 +337,6 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
     
     return fig
 
-
+  
+    
 
