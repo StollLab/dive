@@ -170,21 +170,14 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-<<<<<<< Updated upstream
     
-    if seeds is not None:
+    if seed is not None:
 
         trace = pm.sample(model=model, step=step, random_seed =seeds,  **MCMCparameters)
 
     else:
 
         trace = pm.sample(model=model, step=step, **MCMCparameters)
-=======
-    if seed is not None:
-        trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
-    else: 
-        trace = pm.sample(model=model, step=step,  **MCMCparameters)
->>>>>>> Stashed changes
 
     # Remove undesired variables
     if removeVars is not None:
@@ -198,7 +191,6 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
 def interpret(trace,model_dic):
     
     
-<<<<<<< Updated upstream
     class FitResult:
         def __init__(self,trace, model):
             d = {key: trace[key] for key in trace.varnames}
@@ -374,30 +366,3 @@ def saveTrace(df, Parameters, SaveName='empty'):
 
         f.close()
 
-=======
-    if not SaveName.endswith('.dat'):
-        SaveName = SaveName+'.dat'
-
-    shape = df.shape 
-    cols = df.columns.tolist()
-
-    os.makedirs(os.path.dirname(SaveName), exist_ok=True)
-
-    f = open(SaveName, 'a+')
-    f.write("# Traces from the MCMC simulations with pymc3\n")
-    f.write("# The following {} parameters were investigated:\n".format(shape[1]))
-    f.write("# {}\n".format(cols))
-    f.write("# nParameters nChains nIterations\n")
-    if Parameters['nGauss'] == 1:
-        f.write("{},{},{},0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 2:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 3:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 4:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-
-    df.to_csv (f, index=False, header=False)
-
-    f.close()
->>>>>>> Stashed changes
