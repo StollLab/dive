@@ -67,7 +67,7 @@ def model(t, Vexp, pars):
     if method == "gaussian":
         print(f"Number of Gaussian: {nGauss}")
     
-    return model
+    return model, model_pymc
 
 def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
@@ -150,7 +150,10 @@ def regularizationmodel(t, Vdata, K0, r,
     # Model definition
     with pm.Model() as model:
         # Distance distribution
+
         P = pm.NoDistribution('P', shape=len(r), dtype='float64', testval=np.zeros(len(r))) # no prior (it's included in the Gibbs sampler)
+
+
 
         # Time-domain model signal
         Vmodel = pm.math.dot(K0*dr,P)
@@ -168,19 +171,28 @@ def regularizationmodel(t, Vdata, K0, r,
             
         # Add overall amplitude
         if includeAmplitude:
-            V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+
+            V0 = pm.Normal('V0', mu=1, sigma=0.2)
+            #V0 = pm.Bound(V0, lower = 0.)              
+
             Vmodel *= V0
             
         # Noise parameter
         if tauGibbs:
+
             tau = pm.NoDistribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the Gibbs sampler)
+
+
         else:
             tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
         sigma = pm.Deterministic('sigma', 1/np.sqrt(tau)) # for reporting
 
         # Regularization parameter
         if deltaGibbs:
+
             delta = pm.NoDistribution('delta', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the Gibbs sampler)
+
+
         else:
             delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1])
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting

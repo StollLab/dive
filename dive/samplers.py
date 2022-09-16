@@ -5,7 +5,11 @@ import deerlab as dl
 from pymc3.step_methods.arraystep import BlockedStep
 import pymc3 as pm
 import scipy as sp
+
 from pymc3.distributions.transforms import log
+
+
+import aesara
 
 from .deer import *
 
@@ -220,7 +224,7 @@ def undo_transform(point, rv):
     '''
     
     # Don't untransform if variable is not transformed
-    if isinstance(rv, pm.model.FreeRV):
+    if isinstance(rv, aesara.tensor.TensorVariable):
         value = point[rv.name]
         return value
 

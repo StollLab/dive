@@ -150,7 +150,15 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         step = [step_P, step_tau, step_delta, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
-                
+        
+        if seed is not None:
+
+            trace = pm.sample(model=model, step=step, random_seed =seeds,  **MCMCparameters)
+
+        else:
+            trace = pm.sample(model=model, step=step, **MCMCparameters)
+
+
     elif method == "regularization2":
         
         removeVars = None
@@ -175,9 +183,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
+
     if seed == True:
         
         trace = pm.sample(model=model, step=step, random_seed =seeds,  **MCMCparameters,start =starts)
+
 
     else: 
         trace = pm.sample(model=model, step=step,  **MCMCparameters)
