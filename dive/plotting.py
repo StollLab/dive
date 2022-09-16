@@ -71,7 +71,7 @@ def plotmarginals(trace, GroundTruth=None, nCols=6):
     return fig
 
 
-def plotcorrelations(trace, model_dic, figsize=None, marginals=True):
+def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
     """
     Matrix of pairwise correlation plots between model parameters.
     """
@@ -85,10 +85,15 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True):
             figsize = (7, 7)
         else:
             figsize = (10, 10)
+    if div == True:
+        class Object(object):
+            pass
 
+        trace.sample_stats = Object()
+        trace.sample_stats.diverging = trace.diverging
     # use arviz library to plot correlations
     with model_dic["model"]:
-        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=figsize, marginals=marginals)
+        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=figsize, marginals=marginals, divergences=div)
 
     # replace labels with the nicer unicode character versions
     if len(Vars) > 2:
@@ -109,6 +114,8 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True):
         axs.set_ylabel(_betterLabels(ylabel))
 
     fig = plt.gcf()
+   
+
     return fig
 
 
@@ -120,13 +127,25 @@ def summary(trace, model_dic):
     plotresult(trace, model_dic)
 
 
-def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_avg=None):
+def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None, chains=None):
     """
     Plot the MCMC results in the time domain and in the distance domain, using an
     ensemble of P draws from the posterior, and the associated time-domain signals.
     Also shown in the time domain: the ensemble of residual vectors, and the ensemble
     of backgrounds.
     """
+#displaying posterior average data:
+    if show_ave is not None:
+        print('Showing posterior average')
+        
+         
+    if show_ave is None:
+        print('Posterior average hidden')
+    
+    fig1 = []
+    if chains is not None:
+       fig1 =az.plot_trace(trace)
+        
 
     # Get reference distribution if specified ------------------------------------
     if Pid is not None:
@@ -144,9 +163,14 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
     r = model_dic['pars']['r']
     
     Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
-    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_avg)
+    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave)
 
-    return fig
+   
+    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
+    fig2 = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref,show_ave)
+    
+
+    return fig1,fig2
 
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
