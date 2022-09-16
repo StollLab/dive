@@ -170,14 +170,10 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    
     if seed is not None:
-
-        trace = pm.sample(model=model, step=step, random_seed =seeds,  **MCMCparameters)
-
-    else:
-
-        trace = pm.sample(model=model, step=step, **MCMCparameters)
+        trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
+    else: 
+        trace = pm.sample(model=model, step=step,  **MCMCparameters)
 
     # Remove undesired variables
     if removeVars is not None:

@@ -7,7 +7,6 @@ import random
 import arviz as az
 from IPython.display import display
 import deerlab as dl
-import copy
 from scipy.io import loadmat
 
 from .utils import *
@@ -33,7 +32,7 @@ def printsummary(trace, model_dic):
     display(summary)
 
 
-def plotmarginals(trace, GroundTruth=None):
+def plotmarginals(trace, GroundTruth=None, nCols=6):
     """
     Plot marginalized posteriors
     """
@@ -41,7 +40,7 @@ def plotmarginals(trace, GroundTruth=None):
     nVars = len(Vars)
 
     # figure out layout of plots and create figure
-    nCols = min(nVars,6)
+    nCols = min(nVars,nCols)
     nRows = int(np.ceil(nVars/nCols))
     fig, axs = plt.subplots(nRows, nCols)
     axs = axs.flatten()
@@ -148,22 +147,23 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
        fig1 =az.plot_trace(trace)
         
 
-    
     # Get reference distribution if specified ------------------------------------
     if Pid is not None:
-        P0s = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['P0']
-        rref = np.squeeze(loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')['r0'])
+        refdata = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')
+        P0s = refdata['P0']
+        rref = np.squeeze(refdata['r0'])
         Pref = P0s[Pid-1,:]
-        
+    
     elif Pref is not None:
         if rref is None:
             raise KeyError("If 'Pref' is provided, 'rref' must be provided as well.")
-
 
     Vexp = model_dic['Vexp']
     t = model_dic['t']
     r = model_dic['pars']['r']
     
+    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
+    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave)
 
    
     Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
@@ -184,19 +184,32 @@ _table = {
     "r0": "$r_0$",
     "alpha": "$α$",
     "lg_alpha": "$\mathrm{lg}(α)$",
-    "w[0]": "$w_0$",
-    "w[1]": "$w_1$",
-    "w[2]": "$w_2$",
-    "w[3]": "$w_3$",
-    "a[0]": "$a_0$",
-    "a[1]": "$a_1$",
-    "a[2]": "$a_2$",
-    "a[3]": "$a_3$",
-    "r0[0]": "r₀,₀",
-    "r0[1]": "r₀,₁",
-    "r0[2]": "r₀,₂",
-    "r0[3]": "r₀,₃",
+    "w\n0": "$w_1$",
+    "w\n1": "$w_2$",
+    "w\n2": "$w_3$",
+    "w\n3": "$w_4$",
+    "w[0]": "$w_1$",
+    "w[1]": "$w_2$",
+    "w[2]": "$w_3$",
+    "w[3]": "$w_4$",
+    "a[0]": "$a_1$",
+    "a[1]": "$a_2$",
+    "a[2]": "$a_3$",
+    "a[3]": "$a_4$",
+    "a\n0": "$a_1$",
+    "a\n1": "$a_2$",
+    "a\n2": "$a_3$",
+    "a\n3": "$a_4$",
+    "r0[0]": "$r_{0,1}$",
+    "r0[1]": "$r_{0,2}$",
+    "r0[2]": "$r_{0,3}$",
+    "r0[3]": "$r_{0,4}$",
+    "r0\n0": "$r_{0,1}$",
+    "r0\n1": "$r_{0,2}$",
+    "r0\n2": "$r_{0,3}$",
+    "r0\n3": "$r_{0,4}$",
 }
+
 
 def _betterLabels(x):
     """
@@ -207,6 +220,7 @@ def _betterLabels(x):
     else:
         return [_table.get(x_,x_) for x_ in x]
 
+
 def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None):
     VarNames = trace.varnames
 
@@ -214,10 +228,10 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     GaussianModel = "r0" in VarNames
     if GaussianModel:
         nGaussians = trace['r0'].shape[1]
-    
+
     nChainSamples = trace['P'].shape[0]
 
-    # Generate random indices from chain samples ------------------------------------
+    # Generate random indices for chain samples ------------------------------------
     idxSamples = random.sample(range(nChainSamples), nDraws)
 
     # Draw P's -------------------------------------------------------------------
@@ -249,14 +263,13 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     if 'lamb' in VarNames:
         lamb = trace['lamb'][idxSamples]
 
-    # Generate V's from P's and other parameters --------------------------------
+    # Generate V's and B's from P's and other parameters --------------------------------
     Vs = []
     Bs = []
     K0 = dl.dipolarkernel(t, r, integralop=False)
     dr = r[1] - r[0]
 
     for iDraw in range(nDraws):
-        K_ = copy.copy(K0)
         V_ = dr*K0@Ps[iDraw]
 
         if 'lamb' in VarNames:
@@ -265,7 +278,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
         if 'k' in VarNames:
             B = bg_exp(t,k[iDraw])
             V_ *= B
-            
+
             Blamb = (1-lamb[iDraw])*B
             if 'V0' in VarNames:
                 Blamb *= V0[iDraw]
@@ -279,7 +292,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     return Ps, Vs, Bs, t, r
 
 
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
+def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False):
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
@@ -296,47 +309,38 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
         ax1.plot(t, V, color='#3F60AE', alpha=0.2)
         ax1.plot(t, B, color='#FCC43F', alpha=0.2)
         ax1.plot(t, residuals+residuals_offset, color='#3F60AE', alpha=0.2)
-    Vave = np.mean(Vs,0)
-    Bave = np.mean(Bs,0)
-    Pave = np.mean(Ps,0)
-    
+    Vavg = np.mean(Vs, 0)
+    Bavg = np.mean(Bs, 0)
+    Pavg = np.mean(Ps, 0)
 
-    
-
-    
-
-    ax1.scatter(t, Vdata, color='#BFBFBF', s = 5)
+    ax1.scatter(t, Vdata, color='#BFBFBF', s=5)
     ax1.hlines(residuals_offset, min(t), max(t), color='black')
     ax1.set_xlabel('$t$ (µs)')
     ax1.set_ylabel('$V$ (arb.u.)')
     ax1.set_xlim((min(t), max(t)))
-    ax1.set_ylim(-0.1,1.2)
+    ax1.set_ylim(-0.1,1.1)
     ax1.set_title('time domain and residuals')
 
-    if show_ave is not None:
-        ax1.plot(t,Vave,color='yellow',label= 'Vexp Average')
-        ax1.plot(t,Bave,color = 'purple',label = 'Background Average')
-    #ax1.plot(t,Vave-residuals,color = 'red')
-        
+    if show_avg:
+        ax1.plot(t, Vavg, color='yellow', label='Vexp average')
+        ax1.plot(t, Bavg, color='purple', label='background average')
 
     # Plot distance distributions
     for P in Ps:
         ax2.plot(r, P, color='#3F60AE', alpha=0.2)
+    Pmax = max([max(P) for P in Ps])
     ax2.set_xlabel('$r$ (nm)')
     ax2.set_ylabel('$P$ (nm$^{-1}$)')
     ax2.set_xlim(min(r), max(r))
-    ax2.set_ylim(0,max(P)+0.2)
+    ax2.set_ylim(0, Pmax*1.1)
     ax2.set_title('distance domain')
 
+    # Plot reference and posterior mean distribution
     if Pref is not None:
         ax2.plot(rref, Pref, color='black')
-    if show_ave is not None: 
-        ax2.plot(r,Pave,color = 'black',label = 'Average')
+    if show_avg: 
+        ax2.plot(r, Pavg, color='black', label='average')
 
-    plt.grid()
-    
+    #plt.grid()
+
     return fig
-
-  
-    
-

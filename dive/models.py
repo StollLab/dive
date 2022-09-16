@@ -1,5 +1,5 @@
 from re import L
-import pymc as pm
+import pymc3 as pm
 import numpy as np
 import deerlab as dl
 
@@ -77,8 +77,8 @@ def model(t, Vexp, pars,default_r=False):
 
     model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp}
     
-    print(f"Time-domain data:   {len(t):4d} points from {min(t):g} µs to {max(t):g} µs")
-    print(f"Distance vector:    {len(r):4d} points from {min(r):g} nm to {max(r):g} nm")
+    print(f"Time range:         {len(t):4d} points from {min(t):g} µs to {max(t):g} µs")
+    print(f"Distance range:     {len(r):4d} points from {min(r):g} nm to {max(r):g} nm")
     print(f"Model:              {method}")
     if method == "gaussian":
         print(f"Number of Gaussian: {nGauss}")
