@@ -6,7 +6,7 @@ import deerlab as dl
 from .utils import *
 from .deer import *
 
-def model(t, Vexp, pars,default_r=False):
+def model(t, Vexp, pars):
     """
     Returns a dictionary m that contains the DEER data in m['t'] and m['Vexp']
     and the PyMC3 model in m['model']. Additional (constant) model parameters
@@ -24,36 +24,37 @@ def model(t, Vexp, pars,default_r=False):
 
     if "r" not in pars:
         raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
+    
+    if "rmax_opt" not in pars:
+        raise KeyError(f"rmax_opt is a required key for ""method"" = ""{method}"".")
+        
+    rmax_opt = pars["rmax_opt"]
+    if rmax_opt == "auto":
+        r_ = pars["r"]
+        tmax = max(t)-min(t)
+        rmax= (108*tmax)**0.333333333333333
+        dr = (max(r_)-min(r_))/len(r_)
+        num = int((rmax-min(r_))/dr)
+        r = np.linspace(min(r_),rmax,num)
 
+    elif rmax_opt == "user":
+        r=pars["r"]
+
+    else:
+        raise ValueError(f"Unknown rmax selection method '{rmax_opt}'.")
+        
     if method == "gaussian":
         if "nGauss" not in pars:
            raise KeyError(f"nGauss is a required key for ""method"" = ""{method}"".") 
         nGauss = pars["nGauss"]
 
-        r = pars["r"]
         K0 = dl.dipolarkernel(t,r,integralop=True)
         model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss)
         
         model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
 
     elif method == "regularization" or method == "regularization2":
-        if default_r:
-            r = pars["r"]
-            dt= max(t)-min(t)
-            rmax= (108*dt)**0.333333333333333
-            print(f"rmax: {rmax}")
-            rmin = min(r)
-            num = len(r)
-            dr = (max(r)-rmin)/num
-            print(f"dr:  {dr}")
-            num = int((rmax-rmin)/dr)
-            print(f"num: {num}")
 
-            r= np.linspace(rmin,rmax,num)
-
-        else:
-            r = pars["r"]
-        
         K0 = dl.dipolarkernel(t, r,integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
         LtL = L.T@L
@@ -76,8 +77,8 @@ def model(t, Vexp, pars,default_r=False):
 
     model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp}
     
-    print(f"Time range:         {len(t):4d} points from {min(t):g} µs to {max(t):g} µs")
-    print(f"Distance range:     {len(r):4d} points from {min(r):g} nm to {max(r):g} nm")
+    print(f"Time range:         {len(t):4d} points (dt={(max(t)-min(t))/len(t):g}) from {min(t):g} µs to {max(t):g} µs")
+    print(f"Distance range:     {len(r):4d} points (dr={(max(r)-min(r))/len(r):g}) from {min(r):g} nm to {max(r):g} nm")
     print(f"Model:              {method}")
     if method == "gaussian":
         print(f"Number of Gaussian: {nGauss}")
