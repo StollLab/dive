@@ -2,10 +2,10 @@ import numpy as np
 import math as m
 from scipy.linalg import sqrtm
 import deerlab as dl
-from pymc.step_methods.arraystep import BlockedStep
-import pymc as pm
+from pymc3.step_methods.arraystep import BlockedStep
+import pymc3 as pm
 import scipy as sp
-from pymc.distributions.transforms import log
+from pymc3.distributions.transforms import log
 
 from .deer import *
 

@@ -42,13 +42,13 @@ def model(t, Vexp, pars,default_r=False):
             r = pars["r"]
             dt= max(t)-min(t)
             rmax= (108*dt)**0.333333333333333
-            print(rmax)
+            print(f"rmax: {rmax}")
             rmin = min(r)
             num = len(r)
             dr = (max(r)-rmin)/num
-            print(dr)
+            print(f"dr:  {dr}")
             num = int((rmax-rmin)/dr)
-            print(num)
+            print(f"num: {num}")
 
             r= np.linspace(rmin,rmax,num)
 
@@ -183,37 +183,29 @@ def regularizationmodel(t, Vdata, K0, r,
         
         # Add background
         if includeBackground:
-            conc = 0.21   # concentration, µM
-            l=0.47 #mod depth
-            Nav = 6.02214076e23      # Avogadro constant, mol^-1
-            muB = 9.2740100783e-24  # Bohr magneton, J/T (CODATA 2018 value)
-            mu0 = 1.25663706212e-6  # magnetic constant, N A^-2 = T^2 m^3 J^-1 (CODATA 2018)
-            h = 6.62607015e-34      # Planck constant, J/Hz (CODATA 2018)
-            ge = 2.00231930436256   # free-electron g factor (CODATA 2018 value)
-            hbar = h/2/np.pi         # reduced Planck constant, J/(rad/s)
-
-            D = (mu0/4/np.pi)*(muB*ge)**2/hbar   # dipolar constant, m^3 s^-1
-            
-            conc = conc*1e-6*1e3*Nav # umol/L -> mol/L -> mol/m^3 -> spins/m^3
-
-    
-            km = 8*np.pi**2/9/m.sqrt(3)*l*conc*D/10**6
-            print(km)
+            #conc = 0.21   # concentration, µM
+            #l=0.47 #mod depth
+            #Nav = 6.02214076e23      # Avogadro constant, mol^-1
+            #muB = 9.2740100783e-24  # Bohr magneton, J/T (CODATA 2018 value)
+            #mu0 = 1.25663706212e-6  # magnetic constant, N A^-2 = T^2 m^3 J^-1 (CODATA 2018)
+            #h = 6.62607015e-34      # Planck constant, J/Hz (CODATA 2018)
+            #ge = 2.00231930436256   # free-electron g factor (CODATA 2018 value)
+            #hbar = h/2/np.pi         # reduced Planck constant, J/(rad/s)
+            #D = (mu0/4/np.pi)*(muB*ge)**2/hbar   # dipolar constant, m^3 s^-1
+            #conc = conc*1e-6*1e3*Nav # umol/L -> mol/L -> mol/m^3 -> spins/m^3
+            #km = 8*np.pi**2/9/m.sqrt(3)*l*conc*D/10**6
+            #print(f"km: {km}")
 
             #k = pm.Gamma('k', mu=km, sigma=0.5*km,testval = 0.1)
             k = pm.Gamma('k', alpha=0.5, beta=2)
             #c = pm.Gamma('c', mu=km, sigma=0.3*km )
 
             #k = pm.Rice('k',nu=km,sigma = 0.1 )
+            
             B = bg_exp(t, k)
             Vmodel *= B
             
-            Vmodel = pm.math.dot(Vmodel,k)
-            
         # Add overall amplitude
-
-
-        
         if includeAmplitude:
             V0 = pm.Normal('V0', mu=1, sigma=0.2)
             #V0 = pm.Bound(V0, lower = 0.)
