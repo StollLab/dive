@@ -2,7 +2,7 @@ import numpy as np
 import math as m
 from scipy.linalg import sqrtm
 import deerlab as dl
-from pymc.step_methods.arraystep import BlockedStep
+from pymc3.step_methods.arraystep import BlockedStep
 import pymc3 as pm
 import scipy as sp
 from pymc3.distributions.transforms import log
