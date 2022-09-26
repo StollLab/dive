@@ -141,6 +141,14 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
          
     if show_ave is None:
         print('Posterior average hidden')
+
+    
+    fig1 = []
+    if chains is not None:
+       fig1 =az.plot_trace(trace)
+        
+
+
     
     fig1 = []
     if chains is not None:
@@ -292,7 +300,9 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     return Ps, Vs, Bs, t, r
 
 
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False):
+def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
+
+
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
@@ -321,9 +331,13 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False):
     ax1.set_ylim(-0.1,1.1)
     ax1.set_title('time domain and residuals')
 
-    if show_avg:
-        ax1.plot(t, Vavg, color='yellow', label='Vexp average')
-        ax1.plot(t, Bavg, color='purple', label='background average')
+
+    if show_ave is not None:
+        ax1.plot(t,Vave,color='yellow',label= 'Vexp Average')
+        ax1.plot(t,Bave,color = 'purple',label = 'Background Average')
+    #ax1.plot(t,Vave-residuals,color = 'red')
+        
+
 
     # Plot distance distributions
     for P in Ps:
@@ -332,15 +346,19 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False):
     ax2.set_xlabel('$r$ (nm)')
     ax2.set_ylabel('$P$ (nm$^{-1}$)')
     ax2.set_xlim(min(r), max(r))
-    ax2.set_ylim(0, Pmax*1.1)
+    ax2.set_ylim(0,max(P)+0.2)
     ax2.set_title('distance domain')
 
-    # Plot reference and posterior mean distribution
     if Pref is not None:
         ax2.plot(rref, Pref, color='black')
-    if show_avg: 
-        ax2.plot(r, Pavg, color='black', label='average')
+    if show_ave is not None: 
+        ax2.plot(r,Pave,color = 'black',label = 'Average')
 
-    #plt.grid()
+    plt.grid()
+    
+    return fig
+
+  
+    
 
     return fig
