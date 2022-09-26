@@ -48,6 +48,10 @@ def model(t, Vexp, pars):
            raise KeyError(f"nGauss is a required key for ""method"" = ""{method}"".") 
         nGauss = pars["nGauss"]
 
+<<<<<<< HEAD
+=======
+        r = pars["r"]
+>>>>>>> 0b6065e3cb63367f2021a6f1ad2331ce81a6b040
         K0 = dl.dipolarkernel(t,r,integralop=True)
         model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss)
         
