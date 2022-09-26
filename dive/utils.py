@@ -4,7 +4,7 @@ import numpy as np
 import math as m
 import sys
 from scipy.special import fresnel
-import pymc as pm
+import pymc3 as pm
 from datetime import date
 import os   
 import copy
