@@ -6,7 +6,7 @@ import deerlab as dl
 from .utils import *
 from .deer import *
 
-def model(t, Vexp, pars,default_r=False):
+def model(t, Vexp, pars):
     """
     Returns a dictionary m that contains the DEER data in m['t'] and m['Vexp']
     and the PyMC3 model in m['model']. Additional (constant) model parameters
@@ -24,37 +24,37 @@ def model(t, Vexp, pars,default_r=False):
 
     if "r" not in pars:
         raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
+    
+    if "rmax_opt" not in pars:
+        raise KeyError(f"rmax_opt is a required key for ""method"" = ""{method}"".")
+        
+    rmax_opt = pars["rmax_opt"]
+    if rmax_opt == "auto":
+        r_ = pars["r"]
+        tmax = max(t)-min(t)
+        rmax= (108*tmax)**0.333333333333333
+        dr = (max(r_)-min(r_))/len(r_)
+        num = int((rmax-min(r_))/dr)
+        r = np.linspace(min(r_),rmax,num)
 
+    elif rmax_opt == "user":
+        r=pars["r"]
+
+    else:
+        raise ValueError(f"Unknown rmax selection method '{rmax_opt}'.")
+        
     if method == "gaussian":
         if "nGauss" not in pars:
            raise KeyError(f"nGauss is a required key for ""method"" = ""{method}"".") 
         nGauss = pars["nGauss"]
 
-        #r = np.linspace(1,10,451)
-        r = pars["r"]
         K0 = dl.dipolarkernel(t,r,integralop=True)
         model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss)
         
         model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
 
     elif method == "regularization" or method == "regularization2":
-        if default_r:
-            r = pars["r"]
-            dt= max(t)-min(t)
-            rmax= (108*dt)**0.333333333333333
-            print(f"rmax: {rmax}")
-            rmin = min(r)
-            num = len(r)
-            dr = (max(r)-rmin)/num
-            print(f"dr:  {dr}")
-            num = int((rmax-rmin)/dr)
-            print(f"num: {num}")
 
-            r= np.linspace(rmin,rmax,num)
-
-        else:
-            r = pars["r"]
-        
         K0 = dl.dipolarkernel(t, r,integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
         LtL = L.T@L
@@ -77,8 +77,8 @@ def model(t, Vexp, pars,default_r=False):
 
     model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp}
     
-    print(f"Time range:         {len(t):4d} points from {min(t):g} µs to {max(t):g} µs")
-    print(f"Distance range:     {len(r):4d} points from {min(r):g} nm to {max(r):g} nm")
+    print(f"Time range:         {len(t):4d} points (dt={(max(t)-min(t))/len(t):g}) from {min(t):g} µs to {max(t):g} µs")
+    print(f"Distance range:     {len(r):4d} points (dr={(max(r)-min(r))/len(r):g}) from {min(r):g} nm to {max(r):g} nm")
     print(f"Model:              {method}")
     if method == "gaussian":
         print(f"Number of Gaussian: {nGauss}")
@@ -121,9 +121,6 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         
         # Time-domain model signal
         Vmodel = pm.math.dot(K0,P)
-        
-        taumodel = pm.Normal('tau', mu=0,sigma = 1)
-
 
         # Add modulation depth
         if includeModDepth:
@@ -172,7 +169,7 @@ def regularizationmodel(t, Vdata, K0, r,
         # Distance distribution
         testval  = np.zeros(len(r))
         P = pm.NoDistribution('P', shape=len(r), dtype='float64',testval=testval) # no prior (it's included in the Gibbs sampler)
-        #P = pm.Normal('P',20 ,sigma = 40)
+        
         # Time-domain model signal
         Vmodel = pm.math.dot(K0*dr,P)
 
@@ -183,32 +180,13 @@ def regularizationmodel(t, Vdata, K0, r,
         
         # Add background
         if includeBackground:
-            #conc = 0.21   # concentration, µM
-            #l=0.47 #mod depth
-            #Nav = 6.02214076e23      # Avogadro constant, mol^-1
-            #muB = 9.2740100783e-24  # Bohr magneton, J/T (CODATA 2018 value)
-            #mu0 = 1.25663706212e-6  # magnetic constant, N A^-2 = T^2 m^3 J^-1 (CODATA 2018)
-            #h = 6.62607015e-34      # Planck constant, J/Hz (CODATA 2018)
-            #ge = 2.00231930436256   # free-electron g factor (CODATA 2018 value)
-            #hbar = h/2/np.pi         # reduced Planck constant, J/(rad/s)
-            #D = (mu0/4/np.pi)*(muB*ge)**2/hbar   # dipolar constant, m^3 s^-1
-            #conc = conc*1e-6*1e3*Nav # umol/L -> mol/L -> mol/m^3 -> spins/m^3
-            #km = 8*np.pi**2/9/m.sqrt(3)*l*conc*D/10**6
-            #print(f"km: {km}")
-
-            #k = pm.Gamma('k', mu=km, sigma=0.5*km,testval = 0.1)
-            k = pm.Gamma('k', alpha=0.5, beta=2)
-            #c = pm.Gamma('c', mu=km, sigma=0.3*km )
-
-            #k = pm.Rice('k',nu=km,sigma = 0.1 )
-            
+            k = pm.Gamma('k', alpha=0.5, beta=2)            
             B = bg_exp(t, k)
             Vmodel *= B
             
         # Add overall amplitude
         if includeAmplitude:
-            V0 = pm.Normal('V0', mu=1, sigma=0.2)
-            #V0 = pm.Bound(V0, lower = 0.)
+            V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
             Vmodel *= V0
             
         # Noise parameter
