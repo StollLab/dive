@@ -9,7 +9,7 @@ import scipy as sp
 from pymc3.distributions.transforms import log
 
 
-import aesara
+
 
 from .deer import *
 
@@ -224,7 +224,7 @@ def undo_transform(point, rv):
     '''
     
     # Don't untransform if variable is not transformed
-    if isinstance(rv, aesara.tensor.TensorVariable):
+    if isinstance(rv, pm.model.FreeRV):
         value = point[rv.name]
         return value
 

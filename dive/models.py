@@ -1,3 +1,4 @@
+from re import L
 import pymc3 as pm
 import numpy as np
 import deerlab as dl
@@ -5,7 +6,7 @@ import deerlab as dl
 from .utils import *
 from .deer import *
 
-def model(t, Vexp, pars):
+def model(t, Vexp, pars,default_r=False):
     """
     Returns a dictionary m that contains the DEER data in m['t'] and m['Vexp']
     and the PyMC3 model in m['model']. Additional (constant) model parameters
@@ -37,8 +38,23 @@ def model(t, Vexp, pars):
         model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
 
     elif method == "regularization" or method == "regularization2":
+        if default_r:
+            r = pars["r"]
+            dt= max(t)-min(t)
+            rmax= (108*dt)**0.333333333333333
+            print(f"rmax: {rmax}")
+            rmin = min(r)
+            num = len(r)
+            dr = (max(r)-rmin)/num
+            print(f"dr:  {dr}")
+            num = int((rmax-rmin)/dr)
+            print(f"num: {num}")
 
-        r = pars["r"]
+            r= np.linspace(rmin,rmax,num)
+
+        else:
+            r = pars["r"]
+        
         K0 = dl.dipolarkernel(t, r,integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
         LtL = L.T@L
@@ -61,13 +77,13 @@ def model(t, Vexp, pars):
 
     model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp}
     
-    print(f"Time-domain data:   {len(t):4d} points from {min(t):g} µs to {max(t):g} µs")
-    print(f"Distance vector:    {len(r):4d} points from {min(r):g} nm to {max(r):g} nm")
+    print(f"Time range:         {len(t):4d} points from {min(t):g} µs to {max(t):g} µs")
+    print(f"Distance range:     {len(r):4d} points from {min(r):g} nm to {max(r):g} nm")
     print(f"Model:              {method}")
     if method == "gaussian":
         print(f"Number of Gaussian: {nGauss}")
     
-    return model, model_pymc
+    return model
 
 def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
@@ -88,8 +104,9 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         
         # Distribution parameters
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
-        r0 = pm.Deterministic('r0', r0_rel.sort()*(r0max-r0min) + r0min)
-        w = pm.Bound(pm.InverseGamma, lower=0.05, upper=3.0)('w', alpha=0.1, beta=0.2, shape=nGauss) # this is the FWHM of the Gaussian
+        r0 = pm.Deterministic('r0', r0_rel.sort()*(r0max-r0min) + r0min)        
+        w = pm.Bound(pm.InverseGamma, lower=0.05, upper=3.0)('w', alpha=0.1, beta=0.2, shape=nGauss)
+
         if nGauss>1:
             a = pm.Dirichlet('a', a=np.ones(nGauss))
         
@@ -105,6 +122,9 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         # Time-domain model signal
         Vmodel = pm.math.dot(K0,P)
         
+        taumodel = pm.Normal('tau', mu=0,sigma = 1)
+
+
         # Add modulation depth
         if includeModDepth:
             lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
@@ -150,11 +170,9 @@ def regularizationmodel(t, Vdata, K0, r,
     # Model definition
     with pm.Model() as model:
         # Distance distribution
-
-        P = pm.NoDistribution('P', shape=len(r), dtype='float64', testval=np.zeros(len(r))) # no prior (it's included in the Gibbs sampler)
-
-
-
+        testval  = np.zeros(len(r))
+        P = pm.NoDistribution('P', shape=len(r), dtype='float64',testval=testval) # no prior (it's included in the Gibbs sampler)
+        #P = pm.Normal('P',20 ,sigma = 40)
         # Time-domain model signal
         Vmodel = pm.math.dot(K0*dr,P)
 
@@ -165,39 +183,51 @@ def regularizationmodel(t, Vdata, K0, r,
         
         # Add background
         if includeBackground:
+            #conc = 0.21   # concentration, µM
+            #l=0.47 #mod depth
+            #Nav = 6.02214076e23      # Avogadro constant, mol^-1
+            #muB = 9.2740100783e-24  # Bohr magneton, J/T (CODATA 2018 value)
+            #mu0 = 1.25663706212e-6  # magnetic constant, N A^-2 = T^2 m^3 J^-1 (CODATA 2018)
+            #h = 6.62607015e-34      # Planck constant, J/Hz (CODATA 2018)
+            #ge = 2.00231930436256   # free-electron g factor (CODATA 2018 value)
+            #hbar = h/2/np.pi         # reduced Planck constant, J/(rad/s)
+            #D = (mu0/4/np.pi)*(muB*ge)**2/hbar   # dipolar constant, m^3 s^-1
+            #conc = conc*1e-6*1e3*Nav # umol/L -> mol/L -> mol/m^3 -> spins/m^3
+            #km = 8*np.pi**2/9/m.sqrt(3)*l*conc*D/10**6
+            #print(f"km: {km}")
+
+            #k = pm.Gamma('k', mu=km, sigma=0.5*km,testval = 0.1)
             k = pm.Gamma('k', alpha=0.5, beta=2)
+            #c = pm.Gamma('c', mu=km, sigma=0.3*km )
+
+            #k = pm.Rice('k',nu=km,sigma = 0.1 )
+            
             B = bg_exp(t, k)
             Vmodel *= B
             
         # Add overall amplitude
         if includeAmplitude:
-
             V0 = pm.Normal('V0', mu=1, sigma=0.2)
-            #V0 = pm.Bound(V0, lower = 0.)              
-
+            #V0 = pm.Bound(V0, lower = 0.)
             Vmodel *= V0
             
         # Noise parameter
         if tauGibbs:
-
             tau = pm.NoDistribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the Gibbs sampler)
-
-
+            #tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
         else:
             tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
         sigma = pm.Deterministic('sigma', 1/np.sqrt(tau)) # for reporting
 
         # Regularization parameter
         if deltaGibbs:
-
-            delta = pm.NoDistribution('delta', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the Gibbs sampler)
-
-
+            delta = pm.NoDistribution('delta', shape=(), dtype='float64', testval=1.0)
+            #delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1]) # no prior (it's included in the Gibbs sampler)
         else:
             delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1])
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting
         
         # Add likelihood
-        pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
+        likelihood = pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
         
     return model
