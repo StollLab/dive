@@ -137,10 +137,6 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
 #displaying posterior average data:
     if show_ave is not None:
         print('Showing posterior average')
-        
-         
-    if show_ave is None:
-        print('Posterior average hidden')
     
     fig1 = []
     if chains is not None:
@@ -165,12 +161,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
     Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
     fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave)
 
-   
-    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
-    fig2 = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref,show_ave)
-    
-
-    return fig1,fig2
+    return fig, fig1
 
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
