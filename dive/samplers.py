@@ -79,7 +79,8 @@ class randP_ExpandedEdwardsModel(BlockedStep):
         return newpoint
 
 class randPnorm_posterior(BlockedStep):
-    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0):
+    #def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0):
+    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, tauB, lamb, V0):
             self.vars = [var]
             self.var = var
             
@@ -93,7 +94,8 @@ class randPnorm_posterior(BlockedStep):
             # random variables
             self.delta = delta
             self.sigma = sigma
-            self.k = k
+            #self.k = k
+            self.tauB = tauB
             self.lamb = lamb
             self.V0 = V0
             self.tau = tau  
@@ -102,13 +104,15 @@ class randPnorm_posterior(BlockedStep):
         # Get parameters
         tau = undo_transform(point, self.tau)
         delta = undo_transform(point, self.delta)
-        k = undo_transform(point, self.k)
+        #k = undo_transform(point, self.k)
+        tauB = undo_transform(point, self.tauB)
         lamb = undo_transform(point, self.lamb)
         V0 = undo_transform(point, self.V0) 
 
         # Calculate kernel matrix
         K = (1-lamb) + lamb*self.K0
-        B = bg_exp(self.t,k) 
+        #B = bg_exp(self.t,k) 
+        B = bg_exp_time(self.t,tauB) 
         K *= B[:, np.newaxis]
         K *= V0*self.dr
 
@@ -169,7 +173,8 @@ class randTau_posterior(BlockedStep):
     SIAM Journal on Scientific Computing 42 (2020) A1269-A1288 
     from "Hierarchical Gibbs Sampler" block after Eqn. (2.8)
     """
-    def __init__(self, var, tau_prior, K0, P, V, r, t, k, lamb, V0):
+    #def __init__(self, var, tau_prior, K0, P, V, r, t, k, lamb, V0):
+    def __init__(self, var, tau_prior, K0, P, V, r, t, tauB, lamb, V0):
             self.vars = [var]
             self.var = var
             
@@ -184,7 +189,8 @@ class randTau_posterior(BlockedStep):
             
             # random variables
             self.P = P
-            self.k = k
+            #self.k = k
+            self.tauB = tauB
             self.lamb = lamb
             self.V0 = V0
 
@@ -192,14 +198,16 @@ class randTau_posterior(BlockedStep):
         
         # Get parameters
         P = undo_transform(point, self.P)
-        k = undo_transform(point, self.k)
+        #k = undo_transform(point, self.k)
+        tauB = undo_transform(point, self.tauB)
         lamb = undo_transform(point, self.lamb)
         V0 = undo_transform(point, self.V0)  
 
         # Calculate kernel matrix
         Vmodel = self.K0dr@P
         Vmodel = (1-lamb) + lamb*Vmodel
-        B = bg_exp(self.t, k) 
+        #B = bg_exp(self.t, k) 
+        B = bg_exp_time(self.t, tauB) 
         Vmodel *= B
         Vmodel *= V0
         

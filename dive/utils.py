@@ -113,9 +113,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         
         with model:
             if model_pars['ngaussians']==1:
-                NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
+                NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
+                #NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
             else:
-                NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
+                NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
+                #NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
@@ -130,7 +132,8 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         removeVars = None
         
         with model:
-            NUTS_varlist = [model['k'], model['V0'], model['lamb']]
+            #NUTS_varlist = [model['k'], model['V0'], model['lamb']]
+            NUTS_varlist = [model['tauB'], model['V0'], model['lamb']]
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
@@ -138,10 +141,12 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
             
-            step_tau = randTau_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
-            step_P = randPnorm_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
+            #step_tau = randTau_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
+            step_tau = randTau_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['tauB'], model['lamb'], model['V0'])
+            #step_P = randPnorm_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
+            step_P = randPnorm_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['tauB'], model['lamb'], model['V0'])
             step_delta = randDelta_posterior(model['delta'], model_pars['delta_prior'], model_pars['L'], model['P'])
-        
+
         step = [step_P, step_tau, step_delta, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]

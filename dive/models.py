@@ -129,8 +129,12 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
 
         # Add background
         if includeBackground:
-            k = pm.Gamma('k', alpha=0.5, beta=2)
-            B = bg_exp(t,k)
+            #k = pm.Gamma('k', alpha=0.5, beta=2)
+            #B = bg_exp(t,k)
+            #Vmodel *= B
+
+            tauB = pm.Gamma('tauB', alpha=0.5, beta=0.01)
+            B = bg_exp_time(t,tauB)
             Vmodel *= B
         
         # Add overall amplitude
@@ -180,8 +184,12 @@ def regularizationmodel(t, Vdata, K0, r,
         
         # Add background
         if includeBackground:
-            k = pm.Gamma('k', alpha=0.5, beta=2)            
-            B = bg_exp(t, k)
+            #k = pm.Gamma('k', alpha=0.5, beta=2)            
+            #B = bg_exp(t, k)
+            #Vmodel *= B
+
+            tauB = pm.Gamma('tauB', alpha=0.5, beta=0.01)            
+            B = bg_exp_time(t, tauB)
             Vmodel *= B
             
         # Add overall amplitude

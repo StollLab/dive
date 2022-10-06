@@ -40,6 +40,12 @@ def bg_exp(t,k):
     """
     return np.exp(-np.abs(t)*k)
 
+def bg_exp_time(t,tauB):
+    """
+    Exponential background decay
+    """
+    return np.exp(-np.abs(t)/tauB)
+
 
 def bg_hom3d(t,conc,lamb):
     """

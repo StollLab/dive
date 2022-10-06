@@ -14,7 +14,8 @@ from .deer import *
 
 
 def _relevantVariables(trace):
-    desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
+    #desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
+    desiredVars = ["r0", "w", "a", "tauB", "lamb", "V0", "sigma", "lg_alpha"]
     Vars = [Var for Var in desiredVars if Var in trace.varnames]
     return Vars
 
@@ -166,6 +167,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
     "k": "$k$",
+    "tau": "$τ_B$",
     "lamb": "$λ$",
     "lamba": "$λ$",
     "sigma": "$σ$",
@@ -250,6 +252,9 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
 
     if 'k' in VarNames:
         k = trace['k'][idxSamples]
+    
+    if 'tauB' in VarNames:
+        tauB = trace['tauB'][idxSamples]
 
     if 'lamb' in VarNames:
         lamb = trace['lamb'][idxSamples]
@@ -268,6 +273,15 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
 
         if 'k' in VarNames:
             B = bg_exp(t,k[iDraw])
+            V_ *= B
+
+            Blamb = (1-lamb[iDraw])*B
+            if 'V0' in VarNames:
+                Blamb *= V0[iDraw]
+            Bs.append(Blamb)
+        
+        if 'tauB' in VarNames:
+            B = bg_exp_time(t,tauB[iDraw])
             V_ *= B
 
             Blamb = (1-lamb[iDraw])*B
