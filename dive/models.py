@@ -43,15 +43,19 @@ def model(t, Vexp, pars):
     else:
         raise ValueError(f"Unknown rmax selection method '{rmax_opt}'.")
         
+    if "bkgd_var" not in pars: 
+        raise KeyError(f"bkgd_var is a required key for ""method"" = ""{method}"".")
+    bkgd_var = pars["bkgd_var"]
+
     if method == "gaussian":
         if "nGauss" not in pars:
            raise KeyError(f"nGauss is a required key for ""method"" = ""{method}"".") 
         nGauss = pars["nGauss"]
 
         K0 = dl.dipolarkernel(t,r,integralop=True)
-        model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss)
+        model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss, bkgd_var)
         
-        model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
+        model_pars = {"K0": K0, "r": r, "ngaussians": nGauss, "bkgd_var": bkgd_var}
 
     elif method == "regularization" or method == "regularization2":
 
@@ -65,9 +69,9 @@ def model(t, Vexp, pars):
         
         tauGibbs = method == "regularization"
         deltaGibbs = method == "regularization"
-        model_pymc = regularizationmodel(t, Vexp, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs)
+        model_pymc = regularizationmodel(t, Vexp, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var)
 
-        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
+        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior, "bkgd_var": bkgd_var}
     
     else:
         raise ValueError(f"Unknown method '{method}'.")
@@ -85,7 +89,7 @@ def model(t, Vexp, pars):
     
     return model
 
-def multigaussmodel(t, Vdata, K0, r, nGauss=1,
+def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
     ):
     """
@@ -94,18 +98,20 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
     It uses a multi-Gaussian distributions, where nGauss is the number
     of Gaussians, plus an exponential background.
     """
-    
-    # Parameters for r0 prior
-    r0min = 1.3
-    r0max = 7
 
     # Model definition
     with pm.Model() as model:
         
         # Distribution parameters
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
-        r0 = pm.Deterministic('r0', r0_rel.sort()*(r0max-r0min) + r0min)        
+        r0 = pm.Deterministic('r0', r0_rel.sort()*(max(r)-min(r)) + min(r))        
         w = pm.Bound(pm.InverseGamma, lower=0.05, upper=3.0)('w', alpha=0.1, beta=0.2, shape=nGauss)
+
+        # Old multigauss model definition for w
+        #w = pm.Bound(pm.InverseGamma,lower=0.02,upper=4.0)('w',alpha=0.1,beta=0.5,shape=nGauss)
+        #BoundedInvGamma = pm.Bound(pm.InverseGamma, lower=0.02, upper=4.0)
+        #w = BoundedInvGamma('w', alpha=0.1, beta=0.5,shape=nGauss)
+        
 
         if nGauss>1:
             a = pm.Dirichlet('a', a=np.ones(nGauss))
@@ -129,10 +135,23 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
 
         # Add background
         if includeBackground:
-            k = pm.Gamma('k', alpha=0.5, beta=2)
-            B = bg_exp(t,k)
-            Vmodel *= B
-        
+
+            if bkgd_var == "k":
+                # Old k prior
+                #k = pm.Gamma('k',alpha=1,beta=0.05)
+
+                k = pm.Gamma('k', alpha=0.5, beta=2)
+                B = bg_exp(t,k)
+                Vmodel *= B
+
+            elif bkgd_var == "tauB":
+                tauB = pm.Gamma('tauB', alpha=0.5, beta=0.01)
+                B = bg_exp_time(t,tauB)
+                Vmodel *= B
+
+            else:
+                raise ValueError(f"Unknown background method '{bkgd_var}'.")
+
         # Add overall amplitude
         if includeAmplitude:
             V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
@@ -140,7 +159,10 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         
         # Noise level
         sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
-        
+
+        # Old prior
+        #sigma = pm.Gamma('sigma', alpha=1, beta=0.1)
+
         # Likelihood
         pm.Normal('V', mu=Vmodel, sigma=sigma, observed=Vdata)
         
@@ -149,7 +171,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
 def regularizationmodel(t, Vdata, K0, r,
         delta_prior=None, tau_prior=None,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
-        tauGibbs=True, deltaGibbs=True,
+        tauGibbs=True, deltaGibbs=True, bkgd_var="tauB"
     ):
     """
     Generates a PyMC3 model for a DEER signal over time vector t (in µs) given data in Vdata.
@@ -180,10 +202,26 @@ def regularizationmodel(t, Vdata, K0, r,
         
         # Add background
         if includeBackground:
-            k = pm.Gamma('k', alpha=0.5, beta=2)            
-            B = bg_exp(t, k)
-            Vmodel *= B
             
+            if bkgd_var == "k":
+                k = pm.Gamma('k', alpha=0.5, beta=2)            
+                B = bg_exp(t, k)
+                Vmodel *= B
+
+            elif bkgd_var == "tauB":
+                #tauB = pm.Gamma('tauB', alpha=0.5, beta=0.01)
+                #tauB = pm.Gamma('tauB', alpha=0.8, beta=0.04)            
+                #tauB = pm.Gamma('tauB', alpha=0.6, beta=0.07)
+                #tauB = pm.Gamma('tauB', alpha=0.5, beta=0.07)
+                #tauB = pm.Gamma('tauB', alpha=1, beta=0.04)     
+                tauB = pm.Gamma('tauB', alpha=0.7, beta=0.05)
+                #tauB = pm.Gamma('tauB', alpha=0.7, beta=0.1)
+                B = bg_exp_time(t, tauB)
+                Vmodel *= B
+            
+            else: 
+                raise ValueError(f"Unknown background method '{bkgd_var}'.")
+
         # Add overall amplitude
         if includeAmplitude:
             V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
