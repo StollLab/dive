@@ -173,8 +173,8 @@ def regularizationmodel(t, Vdata, K0, r,
     with pm.Model() as model:
         # Distance distribution
         testval  = np.zeros(len(r))
-        P = pm.NoDistribution('P', shape=len(r), dtype='float64',testval=testval) # no prior (it's included in the Gibbs sampler)
-        #P = pm.Normal('P',20 ,sigma = 40)
+        #P = pm.Distribution('P', shape=len(r), dtype='float64',testval=testval) # no prior (it's included in the Gibbs sampler)
+        P = pm.Normal('P',20 ,sigma = 40)
         # Time-domain model signal
         Vmodel = pm.math.dot(K0*dr,P)
 
@@ -210,7 +210,7 @@ def regularizationmodel(t, Vdata, K0, r,
             B = bg_exp(t, k)
             Vmodel *= B
             
-            Vmodel = pm.math.dot(Vmodel,k)
+            #Vmodel = pm.math.dot(Vmodel,B)
             
         # Add overall amplitude
 
@@ -220,10 +220,11 @@ def regularizationmodel(t, Vdata, K0, r,
             V0 = pm.Normal('V0', mu=1, sigma=0.2)
             #V0 = pm.Bound(V0, lower = 0.)
             Vmodel *= V0
+            #Vmodel = pm.math.dot(Vmodel,V0)
             
         # Noise parameter
         if tauGibbs:
-            #tau = pm.NoDistribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the Gibbs sampler)
+            #tau = pm.Distribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the Gibbs sampler)
             tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
         else:
             tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
@@ -231,7 +232,7 @@ def regularizationmodel(t, Vdata, K0, r,
 
         # Regularization parameter
         if deltaGibbs:
-            #delta = pm.NoDistribution('delta', shape=(), dtype='float64', testval=1.0)
+            #delta = pm.Distribution('delta', shape=(), dtype='float64', testval=1.0)
             delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1]) # no prior (it's included in the Gibbs sampler)
         else:
             delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1])
