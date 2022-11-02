@@ -2,10 +2,14 @@ import numpy as np
 import math as m
 from scipy.linalg import sqrtm
 import deerlab as dl
-from pymc.step_methods.arraystep import BlockedStep
-import pymc as pm
+from pymc3.step_methods.arraystep import BlockedStep
+import pymc3 as pm
 import scipy as sp
-from pymc.distributions.transforms import log
+
+from pymc3.distributions.transforms import log
+
+
+
 
 from .deer import *
 
@@ -13,7 +17,6 @@ class randP_EdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, KtK, KtS, LtL, nr):
             self.vars = [var]
             self.var = var
-            
             self.delta = delta
             self.sigma = sigma
             self.KtK = KtK
@@ -74,7 +77,7 @@ class randP_ExpandedEdwardsModel(BlockedStep):
 
         return newpoint
 
-class randPnorm_posterior(BlockedStep):
+class randPnorm_k_posterior(BlockedStep):
     def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0):
             self.vars = [var]
             self.var = var
@@ -104,7 +107,57 @@ class randPnorm_posterior(BlockedStep):
 
         # Calculate kernel matrix
         K = (1-lamb) + lamb*self.K0
-        B = bg_exp(self.t,k) 
+        B = bg_exp(self.t,k)  
+        K *= B[:, np.newaxis]
+        K *= V0*self.dr
+
+        # Calculate distribution parameters
+        KtK = np.matmul(np.transpose(K), K)
+        KtV = np.matmul(np.transpose(K), self.V) 
+        tauKtV = tau*KtV
+        invSigma = tau*KtK + delta*self.LtL
+        
+        # Draw new sample of P and normalize
+        Pdraw = _randP(tauKtV, invSigma)
+        Pdraw =  Pdraw / np.sum(Pdraw) / self.dr
+        
+        # Store new sample
+        newpoint = point.copy()
+        newpoint[self.var.name] = Pdraw
+
+        return newpoint
+
+class randPnorm_tauB_posterior(BlockedStep):
+    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, tauB, lamb, V0):
+            self.vars = [var]
+            self.var = var
+            
+            # precalculated values
+            self.K0 = K0
+            self.LtL = LtL
+            self.V = V
+            self.t = t
+            self.dr = r[1]-r[0]
+
+            # random variables
+            self.delta = delta
+            self.sigma = sigma
+            self.tauB = tauB
+            self.lamb = lamb
+            self.V0 = V0
+            self.tau = tau  
+
+    def step(self, point: dict):
+        # Get parameters
+        tau = undo_transform(point, self.tau)
+        delta = undo_transform(point, self.delta)
+        tauB = undo_transform(point, self.tauB)
+        lamb = undo_transform(point, self.lamb)
+        V0 = undo_transform(point, self.V0) 
+
+        # Calculate kernel matrix
+        K = (1-lamb) + lamb*self.K0
+        B = bg_exp_time(self.t,tauB) 
         K *= B[:, np.newaxis]
         K *= V0*self.dr
 
@@ -157,8 +210,64 @@ class randDelta_posterior(BlockedStep):
         
         return newpoint
 
-class randTau_posterior(BlockedStep):
-    r"""
+class randTau_tauB_posterior(BlockedStep):
+    """
+    based on:
+    J.M. Bardsley, P.C. Hansen, MCMC Algorithms for Computational UQ of 
+    Nonnegativity Constrained Linear Inverse Problems, 
+    SIAM Journal on Scientific Computing 42 (2020) A1269-A1288 
+    from "Hierarchical Gibbs Sampler" block after Eqn. (2.8)
+    """
+    def __init__(self, var, tau_prior, K0, P, V, r, t, tauB, lamb, V0):
+            self.vars = [var]
+            self.var = var
+            
+            # data
+            self.V = V
+            self.t = t
+            
+            # constants
+            self.a_tau = tau_prior[0]
+            self.b_tau = tau_prior[1]
+            self.K0dr = K0*(r[1]-r[0])
+            
+            # random variables
+            self.P = P
+            self.tauB = tauB
+            self.lamb = lamb
+            self.V0 = V0
+
+    def step(self, point: dict):
+        
+        # Get parameters
+        P = undo_transform(point, self.P)
+        tauB = undo_transform(point, self.tauB)
+        lamb = undo_transform(point, self.lamb)
+        V0 = undo_transform(point, self.V0)  
+
+        # Calculate kernel matrix
+        Vmodel = self.K0dr@P
+        Vmodel = (1-lamb) + lamb*Vmodel
+        B = bg_exp_time(self.t, tauB) 
+        Vmodel *= B
+        Vmodel *= V0
+        
+        # Calculate distribution parameters
+        M = len(self.V)
+        a_ = self.a_tau + M/2
+        b_ = self.b_tau + (1/2)*np.linalg.norm((Vmodel-self.V))**2
+
+        # Draw new sample of tau
+        tau_draw = np.random.gamma(a_, 1/b_)
+
+        # Save new sample
+        newpoint = point.copy()
+        newpoint[self.var.name] = tau_draw
+
+        return newpoint
+
+class randTau_k_posterior(BlockedStep):
+    """
     based on:
     J.M. Bardsley, P.C. Hansen, MCMC Algorithms for Computational UQ of 
     Nonnegativity Constrained Linear Inverse Problems, 

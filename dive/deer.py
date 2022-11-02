@@ -3,6 +3,7 @@ import math as m
 
 from .constants import *
 
+# This function can be removed?
 def dd_gauss(r,r0,fwhm,a=1):
     """
     Calculates a multi-Gauss distance distribution over distance vector r.
@@ -33,12 +34,17 @@ def gauss(r,r0,sig):
     """
     return m.sqrt(1/2/m.pi)/sig*np.exp(-((r-r0)/sig)**2/2)
 
-
 def bg_exp(t,k):
     """
     Exponential background decay
     """
     return np.exp(-np.abs(t)*k)
+
+def bg_exp_time(t,tauB):
+    """
+    Exponential background decay
+    """
+    return np.exp(-np.abs(t)/tauB)
 
 
 def bg_hom3d(t,conc,lamb):

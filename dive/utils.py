@@ -4,7 +4,7 @@ import numpy as np
 import math as m
 import sys
 from scipy.special import fresnel
-import pymc as pm
+import pymc3 as pm
 from datetime import date
 import os   
 import copy
@@ -29,6 +29,7 @@ def FWHM2sigma(FWHM):
     """
     Convert the full width at half maximum, FWHM, of a Gaussian to the standard deviation, sigma.
     """
+
     sigma = FWHM/(2*m.sqrt(2*m.log(2)))
 
     return sigma
@@ -113,9 +114,15 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         
         with model:
             if model_pars['ngaussians']==1:
-                NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
+                if model_pars['bkgd_var']=="k":
+                    NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
+                else:
+                    NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
             else:
-                NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
+                if model_pars['bkgd_var']=="k":
+                    NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
+                else: 
+                    NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
@@ -130,7 +137,14 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         removeVars = None
         
         with model:
-            NUTS_varlist = [model['k'], model['V0'], model['lamb']]
+            if model_pars['bkgd_var']=="k":
+                NUTS_varlist = [model['k'], model['V0'], model['lamb']]
+                step_tau = randTau_k_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
+                step_P = randPnorm_k_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
+            else:
+                NUTS_varlist = [model['tauB'], model['V0'], model['lamb']]
+                step_tau = randTau_tauB_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['tauB'], model['lamb'], model['V0'])
+                step_P = randPnorm_tauB_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['tauB'], model['lamb'], model['V0'])
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
@@ -138,10 +152,8 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
             
-            step_tau = randTau_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
-            step_P = randPnorm_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
             step_delta = randDelta_posterior(model['delta'], model_pars['delta_prior'], model_pars['L'], model['P'])
-        
+
         step = [step_P, step_tau, step_delta, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
@@ -151,15 +163,18 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         removeVars = None
         
         with model:
-            NUTS_varlist = [model['tau'], model['delta'], model['k'], model['V0'], model['lamb']]
+            if model_pars['bkgd_var']=="k":
+                NUTS_varlist = [model['tau'], model['delta'], model['k'], model['V0'], model['lamb']]
+                step_P = randPnorm_k_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
+            else:
+                NUTS_varlist = [model['tau'], model['delta'], model['tauB'], model['V0'], model['lamb']]
+                step_P = randPnorm_tauB_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['tauB'], model['lamb'], model['V0'])
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
                 step_NUTS = pm.NUTS(NUTS_varlist)
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
-            
-            step_P = randPnorm_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
         
         step = [step_P, step_NUTS]
         if steporder is not None:
@@ -170,20 +185,21 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    
+
     if seed is not None:
+        trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
+    else: 
+        trace = pm.sample(model=model, step=step,  **MCMCparameters)
 
-        trace = pm.sample(model=model, step=step, random_seed =seeds,  **MCMCparameters)
 
-    else:
 
-        trace = pm.sample(model=model, step=step, **MCMCparameters)
 
     # Remove undesired variables
     if removeVars is not None:
         [trace.remove_values(key) for key in removeVars if key in trace.varnames]
 
-    return trace, model_dic
+    return trace
+
 
 
 
