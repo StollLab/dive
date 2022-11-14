@@ -88,7 +88,7 @@ def loadTrace(FileName):
     return t, Vdata
 
 
-def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed=None):
+def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None):
     """
     Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
     """
@@ -106,6 +106,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
     model = model_dic['model']
     model_pars = model_dic['pars']
     method = model_pars['method']
+    bkgd_var = model_pars['bkgd_var']
     
     # Set stepping methods, depending on model
     if method == "gaussian":
@@ -114,12 +115,12 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         
         with model:
             if model_pars['ngaussians']==1:
-                if model_pars['bkgd_var']=="k":
+                if bkgd_var=="k":
                     NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
                 else:
                     NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
             else:
-                if model_pars['bkgd_var']=="k":
+                if bkgd_var=="k":
                     NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
                 else: 
                     NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
@@ -137,14 +138,19 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         removeVars = None
         
         with model:
-            if model_pars['bkgd_var']=="k":
+            if bkgd_var=="k":
                 NUTS_varlist = [model['k'], model['V0'], model['lamb']]
                 step_tau = randTau_k_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
                 step_P = randPnorm_k_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
-            else:
+            elif bkgd_var=="tauB":
                 NUTS_varlist = [model['tauB'], model['V0'], model['lamb']]
                 step_tau = randTau_tauB_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['tauB'], model['lamb'], model['V0'])
                 step_P = randPnorm_tauB_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['tauB'], model['lamb'], model['V0'])
+            else:
+                NUTS_varlist = [model['Bend'], model['V0'], model['lamb']]
+                step_tau = randTau_Bend_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['Bend'], model['lamb'], model['V0'])
+                step_P = randPnorm_Bend_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['Bend'], model['lamb'], model['V0'])
+            
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
@@ -154,7 +160,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
             
             step_delta = randDelta_posterior(model['delta'], model_pars['delta_prior'], model_pars['L'], model['P'])
 
-        step = [step_P, step_tau, step_delta, step_NUTS]
+        # Original order
+        #step = [step_P, step_tau, step_delta, step_NUTS]
+
+        # As written in manuscript 
+        step = [step_tau, step_delta, step_P, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
                 
@@ -163,12 +173,16 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
         removeVars = None
         
         with model:
-            if model_pars['bkgd_var']=="k":
+            if bkgd_var=="k":
                 NUTS_varlist = [model['tau'], model['delta'], model['k'], model['V0'], model['lamb']]
                 step_P = randPnorm_k_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
-            else:
+            elif bkgd_var=="tauB":
                 NUTS_varlist = [model['tau'], model['delta'], model['tauB'], model['V0'], model['lamb']]
                 step_P = randPnorm_tauB_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['tauB'], model['lamb'], model['V0'])
+            else:
+                NUTS_varlist = [model['tau'], model['delta'], model['Bend'], model['V0'], model['lamb']]
+                step_P = randPnorm_Bend_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['Bend'], model['lamb'], model['V0'])
+            
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
@@ -186,10 +200,10 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
 
     # Perform MCMC sampling
 
-    if seed is not None:
-        trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
-    else: 
-        trace = pm.sample(model=model, step=step,  **MCMCparameters)
+    #if seed is not None:
+    #    trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
+    #else: 
+    trace = pm.sample(model=model, step=step,  **MCMCparameters)
 
 
 
@@ -335,17 +349,6 @@ def interpret(trace,model_dic):
     fit = FitResult(trace,model_dic)
 
     return fit
-
-
-
-
-
-
-
-        
-
-
-
 
 def saveTrace(df, Parameters, SaveName='empty'):
         """

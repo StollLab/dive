@@ -46,7 +46,6 @@ def bg_exp_time(t,tauB):
     """
     return np.exp(-np.abs(t)/tauB)
 
-
 def bg_hom3d(t,conc,lamb):
     """
     Calculates a background decay due to a homogeneous 3D distribution of spins
