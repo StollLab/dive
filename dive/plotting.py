@@ -14,8 +14,13 @@ from .deer import *
 
 
 def _relevantVariables(trace):
-    #desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
-    desiredVars = ["r0", "w", "a", "tauB", "lamb", "V0", "sigma", "lg_alpha"]
+    if "Bend" in trace.varnames:
+        #desiredVars = ["r0", "w", "a", "Bend", "lamb", "V0", "sigma", "lg_alpha"]
+        desiredVars = ["r0", "w", "a", "k", "Bend","lamb", "V0", "sigma", "lg_alpha"]
+    elif "tauB" in trace.varnames:
+        desiredVars = ["r0", "w", "a", "tauB", "lamb", "V0", "sigma", "lg_alpha"]
+    else:
+        desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
     Vars = [Var for Var in desiredVars if Var in trace.varnames]
     return Vars
 
@@ -128,7 +133,7 @@ def summary(trace, model_dic):
     plotresult(trace, model_dic)
 
 
-def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None, chains=None):
+def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None, chains=None, colors=["#4A5899","#F38D68"]):
     """
     Plot the MCMC results in the time domain and in the distance domain, using an
     ensemble of P draws from the posterior, and the associated time-domain signals.
@@ -160,14 +165,15 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
     r = model_dic['pars']['r']
     
     Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
-    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave)
+    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave, colors)
 
     return fig, fig1
 
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
     "k": "$k$",
-    "tau": "$τ_B$",
+    "tauB": "$τ_B$",
+    "Bend": "$B_\mathrm{end}$",
     "lamb": "$λ$",
     "lamba": "$λ$",
     "sigma": "$σ$",
@@ -250,7 +256,13 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     if 'V0' in VarNames:
         V0 = trace['V0'][idxSamples]
 
-    if 'k' in VarNames:
+    if 'Bend' in VarNames:
+        Bend= trace['Bend'][idxSamples]
+
+    elif 'tauB' in VarNames: 
+        tauB = trace['tauB'][idxSamples]
+
+    else:
         k = trace['k'][idxSamples]
     
     if 'tauB' in VarNames:
@@ -271,7 +283,24 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
         if 'lamb' in VarNames:
             V_ = (1-lamb[iDraw]) + lamb[iDraw]*V_
 
-        if 'k' in VarNames:
+        if 'Bend' in VarNames:
+            k = -1/t[-1]*np.log(Bend[iDraw])
+            B = bg_exp(t,k)
+            V_ *= B
+
+            Blamb = (1-lamb[iDraw])*B
+            if 'V0' in VarNames:
+                Blamb *= V0[iDraw]
+            Bs.append(Blamb)
+        elif 'tauB' in VarNames:
+            B = bg_exp_time(t,tauB[iDraw])
+            V_ *= B
+
+            Blamb = (1-lamb[iDraw])*B
+            if 'V0' in VarNames:
+                Blamb *= V0[iDraw]
+            Bs.append(Blamb)
+        else:
             B = bg_exp(t,k[iDraw])
             V_ *= B
 
@@ -297,7 +326,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     return Ps, Vs, Bs, t, r
 
 
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False):
+def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False, colors=["#4A5899","#F38D68"]):
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
@@ -311,9 +340,9 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False):
     # Plot time-domain quantities
     for V, B in zip(Vs, Bs):
         residuals = V - Vdata
-        ax1.plot(t, V, color='#3F60AE', alpha=0.2)
-        ax1.plot(t, B, color='#FCC43F', alpha=0.2)
-        ax1.plot(t, residuals+residuals_offset, color='#3F60AE', alpha=0.2)
+        ax1.plot(t, V, color=colors[0], alpha=0.2)
+        ax1.plot(t, B, color=colors[1], alpha=0.2)
+        ax1.plot(t, residuals+residuals_offset, color=colors[0], alpha=0.2)
     Vavg = np.mean(Vs, 0)
     Bavg = np.mean(Bs, 0)
     Pavg = np.mean(Ps, 0)
@@ -332,7 +361,7 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False):
 
     # Plot distance distributions
     for P in Ps:
-        ax2.plot(r, P, color='#3F60AE', alpha=0.2)
+        ax2.plot(r, P, color=colors[0], alpha=0.2)
     Pmax = max([max(P) for P in Ps])
     ax2.set_xlabel('$r$ (nm)')
     ax2.set_ylabel('$P$ (nm$^{-1}$)')

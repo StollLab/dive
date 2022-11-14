@@ -171,7 +171,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
 def regularizationmodel(t, Vdata, K0, r,
         delta_prior=None, tau_prior=None,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
-        tauGibbs=True, deltaGibbs=True, bkgd_var="tauB"
+        tauGibbs=True, deltaGibbs=True, bkgd_var="Bend"
     ):
     """
     Generates a PyMC3 model for a DEER signal over time vector t (in µs) given data in Vdata.
@@ -197,9 +197,10 @@ def regularizationmodel(t, Vdata, K0, r,
 
         # Add modulation depth
         if includeModDepth:
-            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+            #lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+            lamb = pm.Beta('lamb',alpha=1.0,beta=2.0)
             Vmodel = (1-lamb) + lamb*Vmodel
-        
+
         # Add background
         if includeBackground:
             
@@ -208,15 +209,20 @@ def regularizationmodel(t, Vdata, K0, r,
                 B = bg_exp(t, k)
                 Vmodel *= B
 
-            elif bkgd_var == "tauB":
-                #tauB = pm.Gamma('tauB', alpha=0.5, beta=0.01)
-                #tauB = pm.Gamma('tauB', alpha=0.8, beta=0.04)            
-                #tauB = pm.Gamma('tauB', alpha=0.6, beta=0.07)
-                #tauB = pm.Gamma('tauB', alpha=0.5, beta=0.07)
-                #tauB = pm.Gamma('tauB', alpha=1, beta=0.04)     
-                tauB = pm.Gamma('tauB', alpha=0.7, beta=0.05)
+            elif bkgd_var == "tauB":  
+                #tauB = pm.Gamma('tauB', alpha=0.7, beta=0.05)
                 #tauB = pm.Gamma('tauB', alpha=0.7, beta=0.1)
+
+                tauB = pm.Gamma('tauB',alpha=0.9,beta=0.02)
                 B = bg_exp_time(t, tauB)
+                Vmodel *= B
+
+            elif bkgd_var == "Bend":
+                #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
+                Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
+                #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
+                k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
+                B = bg_exp(t,k)
                 Vmodel *= B
             
             else: 
