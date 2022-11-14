@@ -264,6 +264,9 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
 
     else:
         k = trace['k'][idxSamples]
+    
+    if 'tauB' in VarNames:
+        tauB = trace['tauB'][idxSamples]
 
     if 'lamb' in VarNames:
         lamb = trace['lamb'][idxSamples]
@@ -299,6 +302,15 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
             Bs.append(Blamb)
         else:
             B = bg_exp(t,k[iDraw])
+            V_ *= B
+
+            Blamb = (1-lamb[iDraw])*B
+            if 'V0' in VarNames:
+                Blamb *= V0[iDraw]
+            Bs.append(Blamb)
+        
+        if 'tauB' in VarNames:
+            B = bg_exp_time(t,tauB[iDraw])
             V_ *= B
 
             Blamb = (1-lamb[iDraw])*B

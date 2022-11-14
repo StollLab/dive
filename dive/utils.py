@@ -182,7 +182,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
             else:
                 NUTS_varlist = [model['tau'], model['delta'], model['Bend'], model['V0'], model['lamb']]
                 step_P = randPnorm_Bend_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['Bend'], model['lamb'], model['V0'])
-            
+                
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
