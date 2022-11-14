@@ -25,10 +25,10 @@ def model(t, Vexp, pars):
     if "r" not in pars:
         raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
     
-    if "rmax_opt" not in pars:
-        raise KeyError(f"rmax_opt is a required key for ""method"" = ""{method}"".")
-        
-    rmax_opt = pars["rmax_opt"]
+    # Supplement defaults
+    rmax_opt = pars["rmax_opt"] if "rmax_opt" in pars else "user"
+    bkgd_var = pars["bkgd_var"] if "bkgd_var" in pars else "Bend"
+
     if rmax_opt == "auto":
         r_ = pars["r"]
         tmax = max(t)-min(t)
@@ -38,14 +38,11 @@ def model(t, Vexp, pars):
         r = np.linspace(min(r_),rmax,num)
 
     elif rmax_opt == "user":
-        r=pars["r"]
+        r = pars["r"]
 
     else:
         raise ValueError(f"Unknown rmax selection method '{rmax_opt}'.")
-        
-    if "bkgd_var" not in pars: 
-        raise KeyError(f"bkgd_var is a required key for ""method"" = ""{method}"".")
-    bkgd_var = pars["bkgd_var"]
+
 
     if method == "gaussian":
         if "nGauss" not in pars:
@@ -149,6 +146,14 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
                 B = bg_exp_time(t,tauB)
                 Vmodel *= B
 
+            elif bkgd_var == "Bend":
+                #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
+                Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
+                #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
+                k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
+                B = bg_exp(t,k)
+                Vmodel *= B
+                
             else:
                 raise ValueError(f"Unknown background method '{bkgd_var}'.")
 
@@ -230,7 +235,7 @@ def regularizationmodel(t, Vdata, K0, r,
 
         # Add overall amplitude
         if includeAmplitude:
-            V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+            V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1.0, sigma=0.2)
             Vmodel *= V0
             
         # Noise parameter

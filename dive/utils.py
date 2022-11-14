@@ -117,13 +117,17 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=N
             if model_pars['ngaussians']==1:
                 if bkgd_var=="k":
                     NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
-                else:
+                elif bkgd_var=="tauB":
                     NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
+                elif bkgd_var=="Bend":
+                    NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['Bend'], model['V0'], model['lamb']]
             else:
                 if bkgd_var=="k":
                     NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
-                else: 
+                elif bkgd_var=="tauB":
                     NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
+                elif bkgd_var=="Bend":
+                    NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['Bend'], model['V0'], model['lamb']]
             if NUTSorder is not None:
                 NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
             if NUTSpars is None:
