@@ -227,7 +227,7 @@ def regularizationmodel(t, Vdata, K0, r,
 
         # Add overall amplitude
         if includeAmplitude:
-            V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+            V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
             Vmodel *= V0
             
         # Noise parameter
