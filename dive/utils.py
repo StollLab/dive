@@ -4,7 +4,7 @@ import numpy as np
 import math as m
 import sys
 from scipy.special import fresnel
-import pymc3 as pm
+import pymc as pm
 from datetime import date
 import os   
 import copy
@@ -90,7 +90,7 @@ def loadTrace(FileName):
 
 def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None, seed=None):
     """
-    Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
+    Use PyMC to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
     """
     
     # Complain about missing required keywords
@@ -365,7 +365,7 @@ def saveTrace(df, Parameters, SaveName='empty'):
         os.makedirs(os.path.dirname(SaveName), exist_ok=True)
 
         f = open(SaveName, 'a+')
-        f.write("# Traces from the MCMC simulations with pymc3\n")
+        f.write("# Traces from the MCMC simulations with PyMC\n")
         f.write("# The following {} parameters were investigated:\n".format(shape[1]))
         f.write("# {}\n".format(cols))
         f.write("# nParameters nChains nIterations\n")

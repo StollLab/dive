@@ -11,7 +11,7 @@ from .deer import *
 def model(t, Vexp, pars):
     """
     Returns a dictionary m that contains the DEER data in m['t'] and m['Vexp']
-    and the PyMC3 model in m['model']. Additional (constant) model parameters
+    and the PyMC model in m['model']. Additional (constant) model parameters
     are in m['pars'].
     The data are rescaled internally to max(Vexp)==1.
     """
@@ -95,7 +95,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
     ):
     """
-    Generates a PyMC3 model for a DEER signal over time vector t
+    Generates a PyMC model for a DEER signal over time vector t
     (in µs) given data in Vdata.
     It uses a multi-Gaussian distributions, where nGauss is the number
     of Gaussians, plus an exponential background.
@@ -176,7 +176,7 @@ def regularizationmodel(t, Vdata, K0, r,
         tauGibbs=True, deltaGibbs=True, bkgd_var="tauB"
     ):
     """
-    Generates a PyMC3 model for a DEER signal over time vector t (in µs) given data in Vdata.
+    Generates a PyMC model for a DEER signal over time vector t (in µs) given data in Vdata.
     Model parameters:
       P      distance distribution vector (nm^-1)
       tau    noise precision (inverse of noise variance)
@@ -193,6 +193,7 @@ def regularizationmodel(t, Vdata, K0, r,
         # Distance distribution
         testval  = np.zeros(len(r))
         P = pm.NoDistribution('P', shape=len(r), dtype='float64',testval=testval) # no prior (it's included in the Gibbs sampler)
+        P = pm.Uniform('P', shape=len(r), dtype='float64',testval=testval) # no prior (it's included in the Gibbs sampler)
         
         # Time-domain model signal
         Vmodel = pm.math.dot(K0*dr,P)

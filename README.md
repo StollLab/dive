@@ -5,7 +5,7 @@
 
 ### Requirements
 
-`dive` is available for Windows, Mac and Linux systems and requires **Python 3.8** or later and **PyMC3 3.11.0** or later.
+`dive` is available for Windows, Mac and Linux systems and requires **Python 3.8** or later and **PyMC 4.0** or later.
  
 ### Setup
 
@@ -15,13 +15,13 @@ If using `conda`, install the following packages to the environment of your choi
 
     conda install mkl-service libpython m2w64-toolchain scipy matplotlib pandas
 
-In order to get the newest version of `pymc3`, it is necessary to run
+In order to get the newest version of `pymc`, it is necessary to run
 
-    pip install pymc3 
+    pip install pymc 
 
 Unfortunately, the `conda-forge` version is usually deprecated.
 
-After successful installation of `pymc3`, navigate to the directory that contains the `dive` source code and run
+After successful installation of `pymc`, navigate to the directory that contains the `dive` source code and run
 
     python setup.py develop
 
