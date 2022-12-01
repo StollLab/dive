@@ -44,15 +44,15 @@ class randP_EdwardsModel(BlockedStep):
 
 class randP_ExpandedEdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, V0, KtK, KtS, LtL, nr):
-            self.vars = [var]
-            self.var = var
-            self.delta = delta
-            self.sigma = sigma
-            self.V0 = V0
-            self.KtK = KtK
-            self.KtS = KtS
-            self.LtL = LtL
-            self.nr = nr
+        self.vars = [var]
+        self.var = var
+        self.delta = delta
+        self.sigma = sigma
+        self.V0 = V0
+        self.KtK = KtK
+        self.KtS = KtS
+        self.LtL = LtL
+        self.nr = nr
 
     def step(self, point: dict):
         
@@ -75,25 +75,27 @@ class randP_ExpandedEdwardsModel(BlockedStep):
 
         return newpoint
 
-class randPnorm_posterior(BlockedStep):
-    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0):
-            self.vars = [var]
-            self.var = var
-            
-            # precalculated values
-            self.K0 = K0
-            self.LtL = LtL
-            self.V = V
-            self.t = t
-            self.dr = r[1]-r[0]
+class randPnorm_k_posterior(BlockedStep):
+    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0, model=None):
+        #model = pm.modelcontext(model)
+        #self.vars = [model.rvs_to_values.get(v, v) for v in var]
+        #self.vars = [model.rvs_to_values.get(var, var)]
+        self.vars = [var]
+        
+        # precalculated constants
+        self.K0 = K0
+        self.LtL = LtL
+        self.V = V
+        self.t = t
+        self.dr = r[1]-r[0]
 
-            # random variables
-            self.delta = delta
-            self.sigma = sigma
-            self.k = k
-            self.lamb = lamb
-            self.V0 = V0
-            self.tau = tau  
+        # random variables
+        self.delta = delta
+        self.sigma = sigma
+        self.k = k
+        self.lamb = lamb
+        self.V0 = V0
+        self.tau = tau  
 
     def step(self, point: dict):
         # Get parameters
@@ -128,16 +130,16 @@ class randPnorm_posterior(BlockedStep):
 class randDelta_posterior(BlockedStep):
     
     def __init__(self, var, delta_prior, L, P):
-            self.vars = [var]
-            self.var = var
+        self.vars = [var]
+        self.var = var
             
-            # constants
-            self.a_delta = delta_prior[0]
-            self.b_delta = delta_prior[1]
-            self.L = L
+        # constants
+        self.a_delta = delta_prior[0]
+        self.b_delta = delta_prior[1]
+        self.L = L
             
-            # random variables
-            self.P = P
+        # random variables
+        self.P = P
 
     def step(self, point: dict):
         
@@ -158,7 +160,7 @@ class randDelta_posterior(BlockedStep):
         
         return newpoint
 
-class randTau_posterior(BlockedStep):
+class randTau_k_posterior(BlockedStep):
     r"""
     based on:
     J.M. Bardsley, P.C. Hansen, MCMC Algorithms for Computational UQ of 

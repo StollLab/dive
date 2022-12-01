@@ -28,9 +28,10 @@ def model(t, Vexp, pars):
         raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
     
     if "rmax_opt" not in pars:
-        raise KeyError(f"rmax_opt is a required key for ""method"" = ""{method}"".")
-        
-    rmax_opt = pars["rmax_opt"]
+        rmax_opt = "auto"
+    else:
+        rmax_opt = pars["rmax_opt"]
+
     if rmax_opt == "auto":
         r_ = pars["r"]
         tmax = max(t)-min(t)
@@ -46,8 +47,9 @@ def model(t, Vexp, pars):
         raise ValueError(f"Unknown rmax selection method '{rmax_opt}'.")
         
     if "bkgd_var" not in pars: 
-        raise KeyError(f"bkgd_var is a required key for ""method"" = ""{method}"".")
-    bkgd_var = pars["bkgd_var"]
+        bkgd_var = "k"
+    else:
+        bkgd_var = pars["bkgd_var"]
 
     if method == "gaussian":
         if "nGauss" not in pars:
@@ -182,7 +184,8 @@ def regularizationmodel(t, Vdata, K0, r,
       tau    noise precision (inverse of noise variance)
       delta  smoothing hyperparameter (= alpha^2/sigma^2)
       lamb   modulation amplitude
-      k      background decay rate (µs^-1)
+      k      background decay rate constant (µs^-1)
+      tauB   background decay time constant (µs)
       V0     overall amplitude
     """
     
@@ -190,10 +193,8 @@ def regularizationmodel(t, Vdata, K0, r,
     
     # Model definition
     with pm.Model() as model:
-        # Distance distribution
-        testval  = np.zeros(len(r))
-        P = pm.NoDistribution('P', shape=len(r), dtype='float64',testval=testval) # no prior (it's included in the Gibbs sampler)
-        P = pm.Uniform('P', shape=len(r), dtype='float64',testval=testval) # no prior (it's included in the Gibbs sampler)
+        # Distance distribution - no prior (it's included in the Gibbs sampler)
+        P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), cov=np.identity(len(r)))
         
         # Time-domain model signal
         Vmodel = pm.math.dot(K0*dr,P)
@@ -207,23 +208,14 @@ def regularizationmodel(t, Vdata, K0, r,
         if includeBackground:
             
             if bkgd_var == "k":
-                k = pm.Gamma('k', alpha=0.5, beta=2)            
+                k = pm.Gamma('k', alpha=0.5, beta=2)
                 B = bg_exp(t, k)
-                Vmodel *= B
-
             elif bkgd_var == "tauB":
-                #tauB = pm.Gamma('tauB', alpha=0.5, beta=0.01)
-                #tauB = pm.Gamma('tauB', alpha=0.8, beta=0.04)            
-                #tauB = pm.Gamma('tauB', alpha=0.6, beta=0.07)
-                #tauB = pm.Gamma('tauB', alpha=0.5, beta=0.07)
-                #tauB = pm.Gamma('tauB', alpha=1, beta=0.04)     
                 tauB = pm.Gamma('tauB', alpha=0.7, beta=0.05)
-                #tauB = pm.Gamma('tauB', alpha=0.7, beta=0.1)
                 B = bg_exp_time(t, tauB)
-                Vmodel *= B
-            
             else: 
                 raise ValueError(f"Unknown background method '{bkgd_var}'.")
+            Vmodel *= B
 
         # Add overall amplitude
         if includeAmplitude:
@@ -232,17 +224,15 @@ def regularizationmodel(t, Vdata, K0, r,
             #Vmodel = pm.math.dot(Vmodel,V0)
             
         # Noise parameter
-        if tauGibbs:
-            tau = pm.NoDistribution('tau', shape=(), dtype='float64', testval=1.0) # no prior (it's included in the Gibbs sampler)
-            #tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
+        if tauGibbs: # no prior (it's included in the Gibbs sampler)
+            tau = pm.Flat('tau')
         else:
             tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
-        sigma = pm.Deterministic('sigma', 1/np.sqrt(tau)) # for reporting
+        sigma = pm.Deterministic('sigma', 1/np.sqrt(tau))  # for reporting
 
         # Regularization parameter
-        if deltaGibbs:
-            delta = pm.NoDistribution('delta', shape=(), dtype='float64', testval=1.0)
-            #delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1]) # no prior (it's included in the Gibbs sampler)
+        if deltaGibbs: # no prior (it's included in the Gibbs sampler)
+            delta = pm.Flat('delta')
         else:
             delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1])
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting
