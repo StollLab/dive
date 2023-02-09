@@ -1,8 +1,8 @@
 import numpy as np
-import aesara
 import math as m
 from scipy.linalg import sqrtm
 import deerlab as dl
+import pytensor
 from pymc.step_methods.arraystep import BlockedStep
 import pymc as pm
 import scipy as sp
@@ -12,15 +12,19 @@ from .deer import *
 
 class randP_EdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, KtK, KtS, LtL, nr):
-            self.vars = [var]
-            self.var = var
-            
-            self.delta = delta
-            self.sigma = sigma
-            self.KtK = KtK
-            self.KtS = KtS
-            self.LtL = LtL
-            self.nr = nr
+        # Set self.vars with the list of variables covered by this sampler
+        model = pm.modelcontext(None)
+        value_var = model.rvs_to_values[var]
+        self.vars = [value_var]
+        
+        self.P_name = var.name
+        
+        self.delta = delta
+        self.sigma = sigma
+        self.KtK = KtK
+        self.KtS = KtS
+        self.LtL = LtL
+        self.nr = nr
 
     def step(self, point: dict):
         
@@ -37,15 +41,20 @@ class randP_EdwardsModel(BlockedStep):
         Pdraw = _randP(tauKtS,invSigma)
         
         # Save new sample
-        newpoint = point.copy()
-        newpoint[self.var.name] = Pdraw
+        point[self.P_name] = Pdraw
 
-        return newpoint
+        stats = []
+        return point, stats
 
 class randP_ExpandedEdwardsModel(BlockedStep):
     def __init__(self, var, delta, sigma, V0, KtK, KtS, LtL, nr):
-        self.vars = [var]
-        self.var = var
+        # Set self.vars with the list of variables covered by this sampler
+        model = pm.modelcontext(None)
+        value_var = model.rvs_to_values[var]
+        self.vars = [value_var]
+        
+        self.P_name = var.name
+
         self.delta = delta
         self.sigma = sigma
         self.V0 = V0
@@ -70,17 +79,19 @@ class randP_ExpandedEdwardsModel(BlockedStep):
         Pdraw = _randP(tauKtS, invSigma)
         
         # Save new sample
-        newpoint = point.copy()
-        newpoint[self.var.name] = Pdraw
+        point[self.P_name] = Pdraw
 
-        return newpoint
+        stats = []
+        return point, stats
 
 class randPnorm_k_posterior(BlockedStep):
-    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0, model=None):
-        #model = pm.modelcontext(model)
-        #self.vars = [model.rvs_to_values.get(v, v) for v in var]
-        #self.vars = [model.rvs_to_values.get(var, var)]
-        self.vars = [var]
+    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, k, lamb, V0):
+        # Set self.vars with the list of variables covered by this sampler
+        model = pm.modelcontext(None)
+        value_var = model.rvs_to_values[var]
+        self.vars = [value_var]
+        
+        self.P_name = var.name
         
         # precalculated constants
         self.K0 = K0
@@ -122,16 +133,20 @@ class randPnorm_k_posterior(BlockedStep):
         Pdraw =  Pdraw / np.sum(Pdraw) / self.dr
         
         # Store new sample
-        newpoint = point.copy()
-        newpoint[self.var.name] = Pdraw
+        point[self.P_name] = Pdraw
 
-        return newpoint
+        stats = []
+        return point, stats
 
 class randDelta_posterior(BlockedStep):
     
     def __init__(self, var, delta_prior, L, P):
-        self.vars = [var]
-        self.var = var
+        # Set self.vars with the list of variables covered by this sampler
+        model = pm.modelcontext(None)
+        value_var = model.rvs_to_values[var]
+        self.vars = [value_var]
+        
+        self.delta_name = var
             
         # constants
         self.a_delta = delta_prior[0]
@@ -155,10 +170,10 @@ class randDelta_posterior(BlockedStep):
         delta_draw = np.random.gamma(a_, 1/b_)
         
         # Save sample
-        newpoint = point.copy()
-        newpoint[self.var.name] = delta_draw
+        point[self.delta_name] = delta_draw
         
-        return newpoint
+        stats = []
+        return point, stats
 
 class randTau_k_posterior(BlockedStep):
     r"""
@@ -169,23 +184,27 @@ class randTau_k_posterior(BlockedStep):
     from "Hierarchical Gibbs Sampler" block after Eqn. (2.8)
     """
     def __init__(self, var, tau_prior, K0, P, V, r, t, k, lamb, V0):
-            self.vars = [var]
-            self.var = var
-            
-            # data
-            self.V = V
-            self.t = t
-            
-            # constants
-            self.a_tau = tau_prior[0]
-            self.b_tau = tau_prior[1]
-            self.K0dr = K0*(r[1]-r[0])
-            
-            # random variables
-            self.P = P
-            self.k = k
-            self.lamb = lamb
-            self.V0 = V0
+        # Set self.vars with the list of variables covered by this sampler
+        model = pm.modelcontext(None)
+        value_var = model.rvs_to_values[var]
+        self.vars = [value_var]
+        
+        self.tau_name = var.name
+        
+        # data
+        self.V = V
+        self.t = t
+        
+        # constants
+        self.a_tau = tau_prior[0]
+        self.b_tau = tau_prior[1]
+        self.K0dr = K0*(r[1]-r[0])
+        
+        # random variables
+        self.P = P
+        self.k = k
+        self.lamb = lamb
+        self.V0 = V0
 
     def step(self, point: dict):
         
@@ -211,10 +230,10 @@ class randTau_k_posterior(BlockedStep):
         tau_draw = np.random.gamma(a_, 1/b_)
 
         # Save new sample
-        newpoint = point.copy()
-        newpoint[self.var.name] = tau_draw
+        point[self.tau_name] = tau_draw
 
-        return newpoint
+        stats = []
+        return point, stats
 
 def undo_transform(point, rv):
     '''
@@ -223,7 +242,7 @@ def undo_transform(point, rv):
     '''
     
     # Don't untransform if variable is not transformed
-    if isinstance(rv, aesara.tensor.TensorVariable):
+    if isinstance(rv, pytensor.tensor.TensorVariable):
         value = point[rv.name]
         return value
 

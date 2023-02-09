@@ -100,7 +100,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
             raise KeyError(f"The required MCMC parameter '{key}' is missing.")
     
     # Supplement defaults for optional keywords
-    defaults = {"cores": 2, "progressbar": True, "return_inferencedata": False}
+    defaults = {"cores": 2, "progressbar": True}
     MCMCparameters = {**defaults, **MCMCparameters}
     
     model = model_dic['model']
@@ -143,11 +143,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
                 randPnorm = randPnorm_tauB_posterior
                 randTau = randTau_tauB_posterior
                 
-            step_tau = randTau(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'],
+            conjstep_tau = randTau(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'],
                                model_pars['r'], model_dic['t'], bg_var, model['lamb'], model['V0'])
-            step_P = randPnorm(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'],
+            conjstep_P = randPnorm(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'],
                                model_pars['r'], model['delta'], [], model['tau'], bg_var, model['lamb'], model['V0'])
-            step_delta = randDelta_posterior(model['delta'], model_pars['delta_prior'], model_pars['L'], model['P'])
+            conjstep_delta = randDelta_posterior(model['delta'], model_pars['delta_prior'], model_pars['L'], model['P'])
             
             NUTS_varlist = [bg_var, model['V0'], model['lamb']]
             if NUTSpars is None:
@@ -155,20 +155,11 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
             
-        step = [step_P, step_tau, step_delta, step_NUTS]
+        step = [conjstep_P, conjstep_tau, conjstep_delta, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
-            
-        [print(st.vars) for st in step]
-        #assigned_vars = set()
-        #for st in step:
-        #    assigned_vars = assigned_vars.union(set(st.vars))
-
-        #print(model.value_vars)
-        #[print(type(v)) for v in model.value_vars]
-        #[print(type(v)) for v in assigned_vars]
-
-                
+        
+        
     elif method == "regularization2":
         
         removeVars = None
@@ -182,14 +173,14 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
                 randPnorm = randPnorm_tauB_posterior
                 
             NUTS_varlist = [model['tau'], model['delta'], bg_var, model['V0'], model['lamb']]
-            step_P = randPnorm(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], bg_var, model['lamb'], model['V0'])
+            conjstep_P = randPnorm(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], bg_var, model['lamb'], model['V0'])
             
             if NUTSpars is None:
                 step_NUTS = pm.NUTS(NUTS_varlist)
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
         
-        step = [step_P, step_NUTS]
+        step = [conjstep_P, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
                 
