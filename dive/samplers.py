@@ -235,6 +235,122 @@ class randTau_k_posterior(BlockedStep):
         stats = []
         return point, stats
 
+class randPnorm_Bend_posterior(BlockedStep):
+    def __init__(self, var, K0, LtL, t, V, r, delta, sigma, tau, Bend, lamb, V0):
+        # Set self.vars with the list of variables covered by this sampler
+        model = pm.modelcontext(None)
+        value_var = model.rvs_to_values[var]
+        self.vars = [value_var]
+        
+        self.P_name = var.name
+
+        # precalculated values
+        self.K0 = K0
+        self.LtL = LtL
+        self.V = V
+        self.t = t
+        self.dr = r[1]-r[0]
+
+        # random variables
+        self.delta = delta
+        self.sigma = sigma
+        self.Bend = Bend
+        self.lamb = lamb
+        self.V0 = V0
+        self.tau = tau  
+
+    def step(self, point: dict):
+        # Get parameters
+        tau = undo_transform(point, self.tau)
+        delta = undo_transform(point, self.delta)
+        Bend = undo_transform(point, self.Bend)
+        lamb = undo_transform(point, self.lamb)
+        V0 = undo_transform(point, self.V0) 
+
+        # Calculate kernel matrix
+        K = (1-lamb) + lamb*self.K0
+        #k = (1/np.max(self.t))*np.log((1-lamb)/Bend)
+        k = -1/self.t[-1]*np.log(Bend)
+        B = bg_exp(self.t,k) 
+        K *= B[:, np.newaxis]
+        K *= V0*self.dr
+
+        # Calculate distribution parameters
+        KtK = np.matmul(np.transpose(K), K)
+        KtV = np.matmul(np.transpose(K), self.V) 
+        tauKtV = tau*KtV
+        invSigma = tau*KtK + delta*self.LtL
+
+        # Draw new sample of P and normalize
+        Pdraw = _randP(tauKtV, invSigma)
+        Pdraw =  Pdraw / np.sum(Pdraw) / self.dr
+
+        # Store new sample
+        point[self.P_name] = Pdraw
+        
+        stats = []
+        return point, stats
+
+class randTau_Bend_posterior(BlockedStep):
+    """
+    based on:
+    J.M. Bardsley, P.C. Hansen, MCMC Algorithms for Computational UQ of 
+    Nonnegativity Constrained Linear Inverse Problems, 
+    SIAM Journal on Scientific Computing 42 (2020) A1269-A1288 
+    from "Hierarchical Gibbs Sampler" block after Eqn. (2.8)
+    """
+    def __init__(self, var, tau_prior, K0, P, V, r, t, Bend, lamb, V0):
+        # Set self.vars with the list of variables covered by this sampler
+        model = pm.modelcontext(None)
+        value_var = model.rvs_to_values[var]
+        self.vars = [value_var]
+        
+        self.tau_name = var.name
+
+        # data
+        self.V = V
+        self.t = t
+
+        # constants
+        self.a_tau = tau_prior[0]
+        self.b_tau = tau_prior[1]
+        self.K0dr = K0*(r[1]-r[0])
+
+        # random variables
+        self.P = P
+        self.Bend = Bend
+        self.lamb = lamb
+        self.V0 = V0
+
+    def step(self, point: dict):
+
+        # Get parameters
+        P = undo_transform(point, self.P)
+        Bend = undo_transform(point, self.Bend)
+        lamb = undo_transform(point, self.lamb)
+        V0 = undo_transform(point, self.V0)  
+
+        # Calculate kernel matrix
+        Vmodel = self.K0dr@P
+        Vmodel = (1-lamb) + lamb*Vmodel
+        k = -1/self.t[-1]*np.log(Bend)
+        B = bg_exp(self.t, k) 
+        Vmodel *= B
+        Vmodel *= V0
+
+        # Calculate distribution parameters
+        M = len(self.V)
+        a_ = self.a_tau + M/2
+        b_ = self.b_tau + (1/2)*np.linalg.norm((Vmodel-self.V))**2
+
+        # Draw new sample of tau
+        tau_draw = np.random.gamma(a_, 1/b_)
+
+        # Save new sample
+        point[self.tau_name] = tau_draw
+        stats = []
+        return point, stats
+
 def undo_transform(point, rv):
     '''
     Automatically transforms transformed random variables

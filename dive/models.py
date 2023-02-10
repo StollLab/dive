@@ -27,10 +27,8 @@ def model(t, Vexp, pars):
     if "r" not in pars:
         raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
     
-    if "rmax_opt" not in pars:
-        rmax_opt = "auto"
-    else:
-        rmax_opt = pars["rmax_opt"]
+    rmax_opt = pars["rmax_opt"] if "rmax_opt" in pars else "user"
+    bkgd_var = pars["bkgd_var"] if "bkgd_var" in pars else "Bend"
 
     if rmax_opt == "auto":
         r_ = pars["r"]
@@ -41,15 +39,10 @@ def model(t, Vexp, pars):
         r = np.linspace(min(r_),rmax,num)
 
     elif rmax_opt == "user":
-        r=pars["r"]
+        r = pars["r"]
 
     else:
         raise ValueError(f"Unknown rmax selection method '{rmax_opt}'.")
-        
-    if "bkgd_var" not in pars: 
-        bkgd_var = "k"
-    else:
-        bkgd_var = pars["bkgd_var"]
 
     if method == "gaussian":
         if "nGauss" not in pars:
@@ -146,15 +139,21 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
 
                 k = pm.Gamma('k', alpha=0.5, beta=2)
                 B = bg_exp(t,k)
-                Vmodel *= B
 
             elif bkgd_var == "tauB":
                 tauB = pm.Gamma('tauB', alpha=0.5, beta=0.01)
                 B = bg_exp_time(t,tauB)
-                Vmodel *= B
 
+            elif bkgd_var == "Bend":
+                #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
+                Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
+                #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
+                k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
+                B = bg_exp(t,k)
+                
             else:
                 raise ValueError(f"Unknown background method '{bkgd_var}'.")
+            Vmodel *= B
 
         # Add overall amplitude
         if includeAmplitude:
@@ -175,7 +174,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
 def regularizationmodel(t, Vdata, K0, r,
         delta_prior=None, tau_prior=None,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
-        tauGibbs=True, deltaGibbs=True, bkgd_var="tauB"
+        tauGibbs=True, deltaGibbs=True, bkgd_var="Bend"
     ):
     """
     Generates a PyMC model for a DEER signal over time vector t (in µs) given data in Vdata.
@@ -186,6 +185,7 @@ def regularizationmodel(t, Vdata, K0, r,
       lamb   modulation amplitude
       k      background decay rate constant (µs^-1)
       tauB   background decay time constant (µs)
+      Bend   background decay value at end of time interval
       V0     overall amplitude
     """
     
@@ -213,6 +213,12 @@ def regularizationmodel(t, Vdata, K0, r,
             elif bkgd_var == "tauB":
                 tauB = pm.Gamma('tauB', alpha=0.7, beta=0.05)
                 B = bg_exp_time(t, tauB)
+            elif bkgd_var == "Bend":
+                #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
+                Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
+                #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
+                k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
+                B = bg_exp(t,k)
             else: 
                 raise ValueError(f"Unknown background method '{bkgd_var}'.")
             Vmodel *= B

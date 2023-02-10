@@ -15,7 +15,12 @@ from .deer import *
 
 def _relevantVariables(trace):
     #desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
-    desiredVars = ["r0", "w", "a", "tauB", "lamb", "V0", "sigma", "lg_alpha"]
+    if "Bend" in trace.varnames:
+        desiredVars = ["r0", "w", "a", "Bend", "lamb", "V0", "sigma", "lg_alpha"]
+    elif "tauB" in trace.varnames:
+        desiredVars = ["r0", "w", "a", "tauB", "lamb", "V0", "sigma", "lg_alpha"]
+    else:
+        desiredVars = ["r0", "w", "a",    "k", "lamb", "V0", "sigma", "lg_alpha"]
     Vars = [Var for Var in desiredVars if Var in trace.varnames]
     return Vars
 
@@ -128,7 +133,7 @@ def summary(trace, model_dic):
     plotresult(trace, model_dic)
 
 
-def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None, chains=None):
+def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None, chains=None, colors=["#4A5899","#F38D68"]):
     """
     Plot the MCMC results in the time domain and in the distance domain, using an
     ensemble of P draws from the posterior, and the associated time-domain signals.
@@ -167,7 +172,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
     r = model_dic['pars']['r']
     
     Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
-    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave)
+    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave, colors)
 
     return fig, fig1
 
@@ -175,6 +180,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
 _table = {
     "k": "$k$",
     "tau": "$τ_B$",
+    "Bend": "$B_\mathrm{end}$",
     "lamb": "$λ$",
     "lamba": "$λ$",
     "sigma": "$σ$",
@@ -259,7 +265,10 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
 
     if 'k' in VarNames:
         k = trace['k'][idxSamples]
-    
+        
+    if 'Bend' in VarNames:
+        Bend = trace['Bend'][idxSamples]
+        
     if 'tauB' in VarNames:
         tauB = trace['tauB'][idxSamples]
 
@@ -278,14 +287,20 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
         if 'lamb' in VarNames:
             V_ = (1-lamb[iDraw]) + lamb[iDraw]*V_
 
-        if 'k' in VarNames:
+        if 'Bend' in VarNames:
+            k = -1/t[-1]*np.log(Bend[iDraw])
+            B = bg_exp(t,k)
+        elif 'tauB' in VarNames:
+            B = bg_exp_time(t,tauB[iDraw])
+        else:
             B = bg_exp(t,k[iDraw])
-            V_ *= B
-
-            Blamb = (1-lamb[iDraw])*B
-            if 'V0' in VarNames:
-                Blamb *= V0[iDraw]
-            Bs.append(Blamb)
+        
+        V_ *= B
+        Blamb = (1-lamb[iDraw])*B
+            
+        if 'V0' in VarNames:
+            Blamb *= V0[iDraw]
+        Bs.append(Blamb)
         
         if 'tauB' in VarNames:
             B = bg_exp_time(t,tauB[iDraw])
