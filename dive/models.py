@@ -7,6 +7,7 @@ import deerlab as dl
 
 from .utils import *
 from .deer import *
+from .samplers import *
 
 def model(t, Vexp, pars):
     """
@@ -28,7 +29,6 @@ def model(t, Vexp, pars):
         raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
     
     rmax_opt = pars["rmax_opt"] if "rmax_opt" in pars else "user"
-    bkgd_var = pars["bkgd_var"] if "bkgd_var" in pars else "Bend"
 
     if rmax_opt == "auto":
         r_ = pars["r"]
@@ -49,12 +49,12 @@ def model(t, Vexp, pars):
            raise KeyError(f"nGauss is a required key for ""method"" = ""{method}"".") 
         nGauss = pars["nGauss"]
 
-        K0 = dl.dipolarkernel(t,r,integralop=True)
-        model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss, bkgd_var)
+        K0 = dl.dipolarkernel(t, r, integralop=True)
+        model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss)
         
-        model_pars = {"K0": K0, "r": r, "ngaussians": nGauss, "bkgd_var": bkgd_var}
+        model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
 
-    elif method == "regularization" or method == "regularization2":
+    elif method == "regularization" or method == "regularizationP":
 
         K0 = dl.dipolarkernel(t, r,integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
@@ -66,9 +66,9 @@ def model(t, Vexp, pars):
         
         tauGibbs = method == "regularization"
         deltaGibbs = method == "regularization"
-        model_pymc = regularizationmodel(t, Vexp, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var)
+        model_pymc = regularizationmodel(t, Vexp, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs)
 
-        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior, "bkgd_var": bkgd_var}
+        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
     
     else:
         raise ValueError(f"Unknown method '{method}'.")
@@ -86,7 +86,7 @@ def model(t, Vexp, pars):
     
     return model
 
-def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
+def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
     ):
     """
@@ -133,26 +133,11 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
         # Add background
         if includeBackground:
 
-            if bkgd_var == "k":
-                # Old k prior
-                #k = pm.Gamma('k',alpha=1,beta=0.05)
-
-                k = pm.Gamma('k', alpha=0.5, beta=2)
-                B = bg_exp(t,k)
-
-            elif bkgd_var == "tauB":
-                tauB = pm.Gamma('tauB', alpha=0.5, beta=0.01)
-                B = bg_exp_time(t,tauB)
-
-            elif bkgd_var == "Bend":
-                #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
-                Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
-                #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
-                k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
-                B = bg_exp(t,k)
-                
-            else:
-                raise ValueError(f"Unknown background method '{bkgd_var}'.")
+            #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
+            Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
+            #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
+            k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
+            B = bg_exp(t,k)
             Vmodel *= B
 
         # Add overall amplitude
@@ -174,7 +159,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1, bkgd_var="k",
 def regularizationmodel(t, Vdata, K0, r,
         delta_prior=None, tau_prior=None,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
-        tauGibbs=True, deltaGibbs=True, bkgd_var="Bend"
+        tauGibbs=True, deltaGibbs=True
     ):
     """
     Generates a PyMC model for a DEER signal over time vector t (in µs) given data in Vdata.
@@ -184,7 +169,6 @@ def regularizationmodel(t, Vdata, K0, r,
       delta  smoothing hyperparameter (= alpha^2/sigma^2)
       lamb   modulation amplitude
       k      background decay rate constant (µs^-1)
-      tauB   background decay time constant (µs)
       Bend   background decay value at end of time interval
       V0     overall amplitude
     """
@@ -201,49 +185,137 @@ def regularizationmodel(t, Vdata, K0, r,
 
         # Add modulation depth
         if includeModDepth:
-            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
             Vmodel = (1-lamb) + lamb*Vmodel
         
         # Add background
         if includeBackground:
             
-            if bkgd_var == "k":
-                k = pm.Gamma('k', alpha=0.5, beta=2)
-                B = bg_exp(t, k)
-            elif bkgd_var == "tauB":
-                tauB = pm.Gamma('tauB', alpha=0.7, beta=0.05)
-                B = bg_exp_time(t, tauB)
-            elif bkgd_var == "Bend":
-                #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
-                Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
-                #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
-                k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
-                B = bg_exp(t,k)
-            else: 
-                raise ValueError(f"Unknown background method '{bkgd_var}'.")
+            #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
+            Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
+            #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
+            k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
+            B = bg_exp(t,k)
             Vmodel *= B
 
         # Add overall amplitude
         if includeAmplitude:
             V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
             Vmodel *= V0
-            #Vmodel = pm.math.dot(Vmodel,V0)
             
         # Noise parameter
         if tauGibbs: # no prior (it's included in the Gibbs sampler)
-            tau = pm.Flat('tau')
+            tau = pm.Flat('tau', initval=1.2)
         else:
-            tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1])
+            tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1], initval=1.3)
         sigma = pm.Deterministic('sigma', 1/np.sqrt(tau))  # for reporting
 
         # Regularization parameter
         if deltaGibbs: # no prior (it's included in the Gibbs sampler)
-            delta = pm.Flat('delta')
+            delta = pm.Flat('delta', initval=1.02)
         else:
-            delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1])
+            delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1], initval=1.02)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting
         
         # Add likelihood
         likelihood = pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
         
     return model
+
+
+def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
+    """
+    Use PyMC to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
+    """
+    
+    # Complain about missing required keywords
+    requiredKeys = ["draws", "tune", "chains"]
+    for key in requiredKeys:
+        if key not in MCMCparameters:
+            raise KeyError(f"The required MCMC parameter '{key}' is missing.")
+    
+    # Supplement defaults for optional keywords
+    defaults = {"cores": 2, "progressbar": True}
+    MCMCparameters = {**defaults, **MCMCparameters}
+    
+    model = model_dic['model']
+    model_pars = model_dic['pars']
+    method = model_pars['method']
+    
+    # Set stepping methods, depending on model
+    if method == "gaussian":
+        
+        removeVars  = ["r0_rel"]
+        
+        with model:
+            NUTS_varlist = [model['r0_rel'], model['w']]
+            if model_pars['ngaussians']>1:
+                NUTS_varlist.append(model['a'])
+            NUTS_varlist.append(model['sigma'])
+            NUTS_varlist.append(model['Bend'])
+            NUTS_varlist.append(model['V0'])
+            NUTS_varlist.append(model['lamb'])
+            if NUTSpars is None:
+                step_NUTS = pm.NUTS(NUTS_varlist)
+            else:
+                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
+    
+        step = [step_NUTS]
+        
+    elif method == "regularization":
+        
+        removeVars = None
+        
+        with model:
+                        
+            conjstep_tau = randTau_posterior(model_pars['tau_prior'], model_pars['K0'], model_dic['Vexp'],
+                               model_pars['r'], model_dic['t'])
+            conjstep_P = randPnorm_posterior(model_pars['K0'], model_pars['LtL'], model_dic['t'], model_dic['Vexp'],
+                               model_pars['r'])
+            conjstep_delta = randDelta_posterior(model_pars['delta_prior'], model_pars['L'])
+            
+            NUTS_varlist = [model['Bend'], model['V0'], model['lamb']]
+            if NUTSpars is None:
+                step_NUTS = pm.NUTS(NUTS_varlist)
+            else:
+                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
+            
+        step = [conjstep_P, conjstep_tau, conjstep_delta, step_NUTS]
+        if steporder is not None:
+            step = [step[i] for i in steporder]
+        
+        
+    elif method == "regularizationP":
+        
+        removeVars = None
+        
+        with model:
+                
+            conjstep_P = randPnorm_posterior(model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'])
+            
+            NUTS_varlist = [model['tau'], model['delta'], model['Bend'], model['V0'], model['lamb']]
+            if NUTSpars is None:
+                step_NUTS = pm.NUTS(NUTS_varlist)
+            else:
+                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
+        
+        step = [conjstep_P, step_NUTS]
+        if steporder is not None:
+            step = [step[i] for i in steporder]
+                
+    else:
+        
+        raise KeyError(f"Unknown method '{method}'.",method)
+
+    # Perform MCMC sampling
+
+    if seed is not None:
+        trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
+    else: 
+        trace = pm.sample(model=model, step=step,  **MCMCparameters)
+
+    # Remove undesired variables
+    if removeVars is not None:
+        [trace.remove_values(key) for key in removeVars if key in trace.varnames]
+
+    return trace
