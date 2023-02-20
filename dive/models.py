@@ -1,5 +1,3 @@
-from re import L
-
 import pymc as pm
 
 import numpy as np
@@ -32,7 +30,7 @@ def model(t, Vexp, pars):
 
     if rmax_opt == "auto":
         r_ = pars["r"]
-        tmax = max(t)-min(t)
+        tmax = max(abs(t))
         rmax= (108*tmax)**0.333333333333333
         dr = (max(r_)-min(r_))/len(r_)
         num = int((rmax-min(r_))/dr)
@@ -75,11 +73,15 @@ def model(t, Vexp, pars):
     
     model_pars['method'] = method
     model_pars['Vscale'] = Vscale
+    model_pars['Vexp'] = Vexp
+    model_pars['t'] = t
+    model_pars['dr'] = r[1]-r[0]
 
     model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp}
     
-    print(f"Time range:         {len(t):4d} points (dt={(max(t)-min(t))/len(t):g}) from {min(t):g} µs to {max(t):g} µs")
-    print(f"Distance range:     {len(r):4d} points (dr={(max(r)-min(r))/len(r):g}) from {min(r):g} nm to {max(r):g} nm")
+    print(f"Time range:         {len(t):4d} points from {min(t):g} µs to {max(t):g} µs  (step size {(max(t)-min(t))/len(t):g} µs)")
+    print(f"Distance range:     {len(r):4d} points from {min(r):g} nm to {max(r):g} nm  (step size {(max(r)-min(r))/len(r):g} nm)")
+    print(f"V scale:            {Vscale:g}")
     print(f"Model:              {method}")
     if method == "gaussian":
         print(f"Number of Gaussian: {nGauss}")
@@ -267,12 +269,10 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         removeVars = None
         
         with model:
-                        
-            conjstep_tau = randTau_posterior(model_pars['tau_prior'], model_pars['K0'], model_dic['Vexp'],
-                               model_pars['r'], model_dic['t'])
-            conjstep_P = randPnorm_posterior(model_pars['K0'], model_pars['LtL'], model_dic['t'], model_dic['Vexp'],
-                               model_pars['r'])
-            conjstep_delta = randDelta_posterior(model_pars['delta_prior'], model_pars['L'])
+            
+            conjstep_tau = randTau_posterior(model_pars)
+            conjstep_P = randPnorm_posterior(model_pars)
+            conjstep_delta = randDelta_posterior(model_pars)
             
             NUTS_varlist = [model['Bend'], model['V0'], model['lamb']]
             if NUTSpars is None:
@@ -284,14 +284,13 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         if steporder is not None:
             step = [step[i] for i in steporder]
         
-        
     elif method == "regularizationP":
         
         removeVars = None
         
         with model:
                 
-            conjstep_P = randPnorm_posterior(model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'])
+            conjstep_P = randPnorm_posterior(model_pars)
             
             NUTS_varlist = [model['tau'], model['delta'], model['Bend'], model['V0'], model['lamb']]
             if NUTSpars is None:
@@ -308,11 +307,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-
-    if seed is not None:
-        trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
-    else: 
-        trace = pm.sample(model=model, step=step,  **MCMCparameters)
+    trace = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters)
 
     # Remove undesired variables
     if removeVars is not None:

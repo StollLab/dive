@@ -28,18 +28,18 @@ class randPnorm_posterior(BlockedStep):
       V0      overall amplitude
     """
     
-    def __init__(self, K0, LtL, t, V, r):
+    def __init__(self, pars):
         # Set self.vars with the list of variables covered by this sampler
-        model = pm.modelcontext(None)
-        P_value_var = model.rvs_to_values[model['P']]
+        pymcmodel = pm.modelcontext(None)
+        P_value_var = pymcmodel.rvs_to_values[pymcmodel['P']]
         self.vars = [P_value_var]
 
-        # Store constants so that they are available from within the step() method
-        self.K0 = K0
-        self.LtL = LtL
-        self.V = V
-        self.t = t
-        self.dr = r[1]-r[0]
+        # Store data and constants
+        self.V = pars["Vexp"]
+        self.t = pars["t"]
+        self.K0 = pars["K0"]
+        self.LtL = pars["LtL"]
+        self.dr = pars["dr"]
 
     def step(self, point: dict):
         
@@ -78,16 +78,17 @@ class randPnorm_posterior(BlockedStep):
 
 class randDelta_posterior(BlockedStep):
     
-    def __init__(self, delta_prior, L):
+    def __init__(self, pars):
         # Set self.vars with the list of variables covered by this sampler
         model = pm.modelcontext(None)
         delta_value_var = model.rvs_to_values[model['delta']]
         self.vars = [delta_value_var]
         
         # Store constants
+        delta_prior = pars["delta_prior"]
         self.a_delta = delta_prior[0]
         self.b_delta = delta_prior[1]
-        self.L = L
+        self.L = pars["L"]
 
     def step(self, point: dict):
         
@@ -96,11 +97,11 @@ class randDelta_posterior(BlockedStep):
 
         # Calculate posterior distribution parameters
         n_p = sum(np.asarray(P)>0)
-        a_ = self.a_delta + n_p/2
-        b_ = self.b_delta + (1/2)*np.linalg.norm(self.L@P)**2
+        a_delta = self.a_delta + 0.5*n_p
+        b_delta = self.b_delta + 0.5*np.linalg.norm(self.L@P)**2
 
         # Draw new sample of delta
-        delta_draw = np.random.gamma(a_, 1/b_)
+        delta_draw = np.random.gamma(a_delta, 1/b_delta)
         
         # Save sample
         newpoint = point.copy()
@@ -117,20 +118,20 @@ class randTau_posterior(BlockedStep):
     SIAM Journal on Scientific Computing 42 (2020) A1269-A1288 
     from "Hierarchical Gibbs Sampler" block after Eqn. (2.8)
     """
-    def __init__(self, tau_prior, K0, V, r, t):
+    def __init__(self, pars):
         # Set self.vars with the list of variables covered by this sampler
         model = pm.modelcontext(None)
         tau_value_var = model.rvs_to_values[model['tau']]
         self.vars = [tau_value_var]
         
-        # data
-        self.V = V
-        self.t = t
-
-        # constants
+        # Store data and constants
+        self.V = pars["Vexp"]
+        self.t = pars["t"]
+        tau_prior = pars["tau_prior"]
+        dr = pars["dr"]
         self.a_tau = tau_prior[0]
         self.b_tau = tau_prior[1]
-        self.K0dr = K0*(r[1]-r[0])
+        self.K0dr = pars["K0"]*dr
 
     def step(self, point: dict):
 
@@ -140,9 +141,8 @@ class randTau_posterior(BlockedStep):
         lamb = 1/(1+np.exp(-point['lamb_logodds__']))
         V0 = np.exp(point['V0_interval__'])
 
-        # Calculate kernel matrix
-        Vmodel = self.K0dr@P
-        Vmodel = (1-lamb) + lamb*Vmodel
+        # Calculate V model signal (without noise)
+        Vmodel = (1-lamb) + lamb*(self.K0dr@P)
         k = -1/self.t[-1]*np.log(Bend)
         B = bg_exp(self.t, k) 
         Vmodel *= B
@@ -150,15 +150,16 @@ class randTau_posterior(BlockedStep):
 
         # Calculate distribution parameters
         M = len(self.V)
-        a_ = self.a_tau + M/2
-        b_ = self.b_tau + (1/2)*np.linalg.norm((Vmodel-self.V))**2
+        a_tau = self.a_tau + 0.5*M
+        b_tau = self.b_tau + 0.5*np.linalg.norm((Vmodel-self.V))**2
 
         # Draw new sample of tau
-        tau_draw = np.random.gamma(a_, 1/b_)
+        tau_draw = np.random.gamma(a_tau, 1/b_tau)
 
         # Save new sample
         newpoint = point.copy()
         newpoint['tau'] = tau_draw
+        
         stats = []
         return newpoint, stats
 
