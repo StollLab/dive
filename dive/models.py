@@ -17,7 +17,7 @@ def model(t, Vexp, pars):
     
     # Rescale data to max 1
     Vscale = np.amax(Vexp)
-    Vexp /= Vscale
+    Vexp_scaled = Vexp/Vscale
 
     if "method" not in pars:
         raise KeyError("'method' is a required field.")
@@ -48,7 +48,7 @@ def model(t, Vexp, pars):
         nGauss = pars["nGauss"]
 
         K0 = dl.dipolarkernel(t, r, integralop=True)
-        model_pymc = multigaussmodel(t, Vexp, K0, r, nGauss)
+        model_pymc = multigaussmodel(t, Vexp_scaled, K0, r, nGauss)
         
         model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
 
@@ -64,7 +64,7 @@ def model(t, Vexp, pars):
         
         tauGibbs = method == "regularization"
         deltaGibbs = method == "regularization"
-        model_pymc = regularizationmodel(t, Vexp, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs)
+        model_pymc = regularizationmodel(t, Vexp_scaled, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs)
 
         model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
     
@@ -73,18 +73,21 @@ def model(t, Vexp, pars):
     
     model_pars['method'] = method
     model_pars['Vscale'] = Vscale
-    model_pars['Vexp'] = Vexp
+    model_pars['Vexp'] = Vexp_scaled
     model_pars['t'] = t
     model_pars['dr'] = r[1]-r[0]
 
-    model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp}
+    model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp_scaled}
     
-    print(f"Time range:         {len(t):4d} points from {min(t):g} µs to {max(t):g} µs  (step size {(max(t)-min(t))/len(t):g} µs)")
-    print(f"Distance range:     {len(r):4d} points from {min(r):g} nm to {max(r):g} nm  (step size {(max(r)-min(r))/len(r):g} nm)")
-    print(f"V scale:            {Vscale:g}")
-    print(f"Model:              {method}")
+    # Print information about data and model
+    print(f"Time range:         {min(t):g} µs to {max(t):g} µs  ({len(t):d} points, step size {t[1]-t[0]:g} µs)")
+    print(f"Distance range:     {min(r):g} nm to {max(r):g} nm  ({len(r):d} points, step size {r[1]-r[0]:g} nm)")
+    print(f"Vexp max:           {Vscale:g}")
+    print(f"Background:         exponential")
     if method == "gaussian":
-        print(f"Number of Gaussian: {nGauss}")
+        print(f"P model:            {nGauss} Gaussians")
+    else:
+        print(f"P model:            {method}")
     
     return model
 
@@ -101,16 +104,14 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
     # Model definition
     with pm.Model() as model:
         
-        # Distribution parameters
+        # Distance distribution parameters
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
-        r0 = pm.Deterministic('r0', r0_rel.sort()*(max(r)-min(r)) + min(r))        
-        w = pm.Bound(pm.InverseGamma, lower=0.05, upper=3.0)('w', alpha=0.1, beta=0.2, shape=nGauss)
+        r0 = pm.Deterministic('r0', r0_rel.sort()*(max(r)-min(r)) + min(r))
+        w = pm.Truncated('w', pm.InverseGamma.dist(alpha=0.1, beta=0.2, shape=nGauss), lower=0.05, upper=3.0)
 
         # Old multigauss model definition for w
-        #w = pm.Bound(pm.InverseGamma,lower=0.02,upper=4.0)('w',alpha=0.1,beta=0.5,shape=nGauss)
         #BoundedInvGamma = pm.Bound(pm.InverseGamma, lower=0.02, upper=4.0)
         #w = BoundedInvGamma('w', alpha=0.1, beta=0.5,shape=nGauss)
-        
 
         if nGauss>1:
             a = pm.Dirichlet('a', a=np.ones(nGauss))
@@ -129,29 +130,27 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
 
         # Add modulation depth
         if includeModDepth:
-            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0)
+            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
             Vmodel = (1-lamb) + lamb*Vmodel
 
         # Add background
         if includeBackground:
 
-            #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
-            Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
+            #Bend = pm.Uniform('Bend', lower=0.0, upper=1.0)
+            Bend = pm.Beta("Bend", alpha=1.0, beta=1.5)
             #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
-            k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
+            k = pm.Deterministic('k', -1/t[-1]*np.log(Bend))
             B = bg_exp(t,k)
             Vmodel *= B
 
         # Add overall amplitude
         if includeAmplitude:
-            V0 = pm.Bound(pm.Normal, lower=0.0)('V0', mu=1, sigma=0.2)
+            V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
             Vmodel *= V0
         
         # Noise level
+        #sigma = pm.Gamma('sigma', alpha=1, beta=0.1)  # old prior
         sigma = pm.Gamma('sigma', alpha=0.7, beta=2)
-
-        # Old prior
-        #sigma = pm.Gamma('sigma', alpha=1, beta=0.1)
 
         # Likelihood
         pm.Normal('V', mu=Vmodel, sigma=sigma, observed=Vdata)
@@ -194,9 +193,9 @@ def regularizationmodel(t, Vdata, K0, r,
         if includeBackground:
             
             #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
-            Bend = pm.Beta("Bend",alpha=1.0,beta=1.5)
+            Bend = pm.Beta("Bend", alpha=1.0, beta=1.5)
             #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
-            k = pm.Deterministic('k',-1/t[-1]*np.log(Bend))
+            k = pm.Deterministic('k', -1/t[-1]*np.log(Bend))
             B = bg_exp(t,k)
             Vmodel *= B
 
@@ -220,7 +219,7 @@ def regularizationmodel(t, Vdata, K0, r,
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting
         
         # Add likelihood
-        likelihood = pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
+        pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
         
     return model
 
@@ -274,13 +273,13 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
             conjstep_P = randPnorm_posterior(model_pars)
             conjstep_delta = randDelta_posterior(model_pars)
             
-            NUTS_varlist = [model['Bend'], model['V0'], model['lamb']]
+            NUTS_varlist = [model['V0'], model['lamb'], model['Bend']]
             if NUTSpars is None:
                 step_NUTS = pm.NUTS(NUTS_varlist)
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
             
-        step = [conjstep_P, conjstep_tau, conjstep_delta, step_NUTS]
+        step = [step_NUTS, conjstep_P, conjstep_tau, conjstep_delta]
         if steporder is not None:
             step = [step[i] for i in steporder]
         
@@ -297,20 +296,20 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
                 step_NUTS = pm.NUTS(NUTS_varlist)
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
-        
+                
         step = [conjstep_P, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
-                
+            
     else:
         
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    trace = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters)
+    idata = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters)
 
     # Remove undesired variables
     if removeVars is not None:
-        [trace.remove_values(key) for key in removeVars if key in trace.varnames]
+        [idata.remove_values(key) for key in removeVars if key in idata.varnames]
 
-    return trace
+    return idata
