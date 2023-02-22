@@ -106,23 +106,20 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         
         # Distance distribution parameters
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
-        r0 = pm.Deterministic('r0', r0_rel.sort()*(max(r)-min(r)) + min(r))
+        r0 = pm.Deterministic('r0', r0_rel.sort()*(max(r)-min(r)) + min(r))  # for reporting
         w = pm.Truncated('w', pm.InverseGamma.dist(alpha=0.1, beta=0.2, shape=nGauss), lower=0.05, upper=3.0)
-
-        # Old multigauss model definition for w
-        #BoundedInvGamma = pm.Bound(pm.InverseGamma, lower=0.02, upper=4.0)
-        #w = BoundedInvGamma('w', alpha=0.1, beta=0.5,shape=nGauss)
+        #w = pm.Truncated('w', pm.InverseGamma.dist(alpha=0.1, beta=0.5, shape=nGauss), lower=0.02, upper=4.0)   # Old definition
 
         if nGauss>1:
             a = pm.Dirichlet('a', a=np.ones(nGauss))
         
         # Calculate distance distribution
         if nGauss==1:
-            P = gauss(r,r0,FWHM2sigma(w))
+            P = gauss(r, r0, FWHM2sigma(w))
         else:
             P = np.zeros(np.size(K0,1))
             for i in range(nGauss):
-                P += a[i]*gauss(r,r0[i],FWHM2sigma(w[i]))
+                P += a[i]*gauss(r, r0[i], FWHM2sigma(w[i]))
         pm.Deterministic('P', P)  # for reporting
         
         # Time-domain model signal
@@ -135,11 +132,8 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
 
         # Add background
         if includeBackground:
-
-            #Bend = pm.Uniform('Bend', lower=0.0, upper=1.0)
             Bend = pm.Beta("Bend", alpha=1.0, beta=1.5)
-            #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
-            k = pm.Deterministic('k', -1/t[-1]*np.log(Bend))
+            k = pm.Deterministic('k', -np.log(Bend)/t[-1])  # for reporting
             B = bg_exp(t,k)
             Vmodel *= B
 
@@ -191,11 +185,8 @@ def regularizationmodel(t, Vdata, K0, r,
         
         # Add background
         if includeBackground:
-            
-            #Bend = pm.Uniform('Bend',lower=0.0,upper=1.0)
             Bend = pm.Beta("Bend", alpha=1.0, beta=1.5)
-            #k = pm.Deterministic('k',(1/np.max(t))*np.log((1-lamb)/Bend))
-            k = pm.Deterministic('k', -1/t[-1]*np.log(Bend))
+            k = pm.Deterministic('k', -np.log(Bend)/t[-1])
             B = bg_exp(t,k)
             Vmodel *= B
 
