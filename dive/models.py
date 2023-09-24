@@ -301,6 +301,8 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
 
     # Remove undesired variables
     if removeVars is not None:
-        [idata.remove_values(key) for key in removeVars if key in idata.varnames]
+        for key in removeVars:
+            if key in idata.posterior:
+                del idata.posterior[key]
 
     return idata
