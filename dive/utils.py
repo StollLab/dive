@@ -88,7 +88,7 @@ def interpret(trace,model_dic):
     
     class FitResult:
         def __init__(self,trace, model):
-            d = {key: trace[key] for key in trace.posterior}
+            d = {key: trace.posterior[key] for key in trace.posterior}
             self.__dict__.update(d)
 
             self.r = model['pars']['r']
