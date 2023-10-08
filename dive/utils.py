@@ -98,32 +98,35 @@ def interpret(trace,model_dic):
             self.trace = trace
             self.K = dl.dipolarkernel(self.t, self.r)
             self.dr = self.r[1] - self.r[0]
+            self.chain = trace.posterior.dims["chain"]
+            self.draw = trace.posterior.dims["draw"]
 
             # self.plots = Plots(trace,model)
 
         def subsample_fits(self, n=100, seed=1):
             np.random.seed(seed)
-            idxs = np.random.choice(len(self.trace), n, replace=False)
-            Ps = [self.P[idx].copy() for idx in idxs]
+            idxs = np.random.choice(self.chain*self.draw, n, replace=False)
+            Ps = [self.P[idx//self.draw][idx%self.draw].values.copy() for idx in idxs]
             Bs, Vs = [], []
 
-
+            # as of PyMC v5, parameters are now given as a (# of chains) * (# of draws) array
+            # this code selects the proper chain (id divided by # of draws) and the proper draw (id mod # of draws)
             for idx in idxs:
-                V_ = self.K@self.P[idx]
+                V_ = self.K@self.P[idx//self.draw][idx%self.draw].values
 
                 if 'lamb' in self.varnames:
-                    V_ = (1-self.lamb[idx]) + self.lamb[idx]*V_
+                    V_ = (1-self.lamb[idx//self.draw][idx%self.draw].values) + self.lamb[idx//self.draw][idx%self.draw].values*V_
 
                 if 'k' in self.varnames:
-                    B = dl.bg_exp(self.t, self.k[idx])
+                    B = dl.bg_exp(self.t, self.k[idx//self.draw][idx%self.draw].values)
                     V_ *= B
                     
-                    Blamb = (1-self.lamb[idx])*B
+                    Blamb = (1-self.lamb[idx//self.draw][idx%self.draw].values)*B
                 
                 if 'V0' in self.varnames:
-                    Blamb *= self.V0[idx]
+                    Blamb *= self.V0[idx//self.draw][idx%self.draw].values
                     Bs.append(Blamb)
-                    V_ *= self.V0[idx]
+                    V_ *= self.V0[idx//self.draw][idx%self.draw].values
                 Vs.append(V_)
 
             return Vs, Bs, Ps
