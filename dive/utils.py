@@ -90,7 +90,7 @@ def interpret(trace,model_dic):
     class FitResult:
         def __init__(self,trace, model):
             # as of PyMC v5, parameters are now given as a (# of chains) * (# of draws) array
-            d = {key: [item for key in trace.posterior for row in trace.posterior[key] for item in row]}
+            d = {key: [draw for chain in trace.posterior[key] for item in chain] for key in trace.posterior}
             self.__dict__.update(d)
 
             self.r = model['pars']['r']
