@@ -59,7 +59,7 @@ def plotmarginals(trace, GroundTruth=None, nCols=6):
     
     # KDE of chain samples and plot them
     for i in range(nVars):
-        az.plot_kde(trace.posterior[Vars[i]], ax=axs[i])
+        az.plot_kde([draw.values for chain in trace.posterior[Vars[i]] for draw in chain], ax=axs[i])
         axs[i].set_xlabel(_betterLabels(Vars[i]), fontsize='large')
         axs[i].yaxis.set_ticks([])
         axs[i].grid(axis='x')
