@@ -1,6 +1,7 @@
 from dataclasses import replace
 import numpy as np
 import math as m
+from pandas.core import indexers
 from scipy.special import fresnel
 from datetime import date
 import os
@@ -88,7 +89,8 @@ def interpret(trace,model_dic):
     
     class FitResult:
         def __init__(self,trace, model):
-            d = {key: trace.posterior[key] for key in trace.posterior}
+            # as of PyMC v5, parameters are now given as a (# of chains) * (# of draws) array
+            d = {key: [item for key in trace.posterior for row in trace.posterior[key] for item in row]}
             self.__dict__.update(d)
 
             self.r = model['pars']['r']
@@ -106,27 +108,25 @@ def interpret(trace,model_dic):
         def subsample_fits(self, n=100, seed=1):
             np.random.seed(seed)
             idxs = np.random.choice(self.chain*self.draw, n, replace=False)
-            Ps = [self.P[idx//self.draw][idx%self.draw].values.copy() for idx in idxs]
+            Ps = [self.P[idx].copy() for idx in idxs]
             Bs, Vs = [], []
 
-            # as of PyMC v5, parameters are now given as a (# of chains) * (# of draws) array
-            # this code selects the proper chain (id divided by # of draws) and the proper draw (id mod # of draws)
             for idx in idxs:
-                V_ = self.K@self.P[idx//self.draw][idx%self.draw].values
+                V_ = self.K@self.P[idx]
 
                 if 'lamb' in self.varnames:
-                    V_ = (1-self.lamb[idx//self.draw][idx%self.draw].values) + self.lamb[idx//self.draw][idx%self.draw].values*V_
+                    V_ = (1-self.lamb[idx]) + self.lamb[idx]*V_
 
                 if 'k' in self.varnames:
-                    B = dl.bg_exp(self.t, self.k[idx//self.draw][idx%self.draw].values)
+                    B = dl.bg_exp(self.t, self.k[idx])
                     V_ *= B
                     
-                    Blamb = (1-self.lamb[idx//self.draw][idx%self.draw].values)*B
+                    Blamb = (1-self.lamb[idx])*B
                 
                 if 'V0' in self.varnames:
-                    Blamb *= self.V0[idx//self.draw][idx%self.draw].values
+                    Blamb *= self.V0[idx]
                     Bs.append(Blamb)
-                    V_ *= self.V0[idx//self.draw][idx%self.draw].values
+                    V_ *= self.V0[idx]
                 Vs.append(V_)
 
             return Vs, Bs, Ps
