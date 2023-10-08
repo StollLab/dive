@@ -90,11 +90,7 @@ def interpret(trace,model_dic):
     class FitResult:
         def __init__(self,trace, model):
             # as of PyMC v5, parameters are now given as a (# of chains) * (# of draws) array
-<<<<<<< HEAD
-            d = {key: [draw for chain in trace.posterior[key] for item in chain] for key in trace.posterior}
-=======
-            d = {key: [item for key in trace.posterior for row in trace.posterior[key] for item in row]}
->>>>>>> 4a3f5d20196ef9b0fd1ae11318958d511bd8cd28
+            d = {key: [draw.values for chain in trace.posterior[key] for draw in chain] for key in trace.posterior}
             self.__dict__.update(d)
 
             self.r = model['pars']['r']
@@ -112,11 +108,7 @@ def interpret(trace,model_dic):
         def subsample_fits(self, n=100, seed=1):
             np.random.seed(seed)
             idxs = np.random.choice(self.chain*self.draw, n, replace=False)
-<<<<<<< HEAD
             Ps = [self.P[idx].copy() for idx in idxs]
-=======
-            Ps = [self.P[idx]copy() for idx in idxs]
->>>>>>> 4a3f5d20196ef9b0fd1ae11318958d511bd8cd28
             Bs, Vs = [], []
 
             for idx in idxs:
