@@ -88,13 +88,13 @@ def interpret(trace,model_dic):
     
     class FitResult:
         def __init__(self,trace, model):
-            d = {key: trace[key] for key in trace.varnames}
+            d = {key: trace[key] for key in trace.posterior}
             self.__dict__.update(d)
 
             self.r = model['pars']['r']
             self.t = model['t']
             self.Vexp = model['Vexp']
-            self.varnames = trace.varnames
+            self.varnames = trace.posterior
             self.trace = trace
             self.K = dl.dipolarkernel(self.t, self.r)
             self.dr = self.r[1] - self.r[0]

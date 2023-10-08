@@ -15,13 +15,13 @@ from .deer import *
 
 def _relevantVariables(trace):
     #desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
-    if "Bend" in trace.varnames:
+    if "Bend" in trace.posterior:
         desiredVars = ["r0", "w", "a", "Bend", "lamb", "V0", "sigma", "lg_alpha"]
-    elif "tauB" in trace.varnames:
+    elif "tauB" in trace.posterior:
         desiredVars = ["r0", "w", "a", "tauB", "lamb", "V0", "sigma", "lg_alpha"]
     else:
         desiredVars = ["r0", "w", "a",    "k", "lamb", "V0", "sigma", "lg_alpha"]
-    Vars = [Var for Var in desiredVars if Var in trace.varnames]
+    Vars = [Var for Var in desiredVars if Var in trace.posterior]
     return Vars
 
 
