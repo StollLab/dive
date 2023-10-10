@@ -229,14 +229,15 @@ def _betterLabels(x):
 
 
 def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None):
-    VarNames = trace.varnames
+
+    varDict = {key: [draw.values for chain in trace.posterior[key] for draw in chain] for key in trace.posterior}
 
     # Determine if a Gaussian model was used and how many iterations were run -------
-    GaussianModel = "r0" in VarNames
+    GaussianModel = "r0" in varDict
     if GaussianModel:
-        nGaussians = trace['r0'].shape[1]
+        nGaussians = len(varDict['r0'][0])
 
-    nChainSamples = trace['P'].shape[0]
+    nChainSamples = len(varDict['P'])
 
     # Generate random indices for chain samples ------------------------------------
     idxSamples = random.sample(range(nChainSamples), nDraws)
@@ -245,36 +246,36 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     Ps = []
 
     if GaussianModel:
-        r0_vecs = trace['r0'][idxSamples]
-        w_vecs = trace['w'][idxSamples]
+        r0_vecs = [varDict["r0"][i] for i in idxSamples]
+        w_vecs = [varDict["w"][i] for i in idxSamples]
         if nGaussians == 1:
             a_vecs = np.ones_like(idxSamples)
         else:
-            a_vecs = trace['a'][idxSamples]
+            a_vecs = [varDict["a"][i] for i in idxSamples]
 
         for iDraw in range(nDraws):
             P = dd_gauss(r,r0_vecs[iDraw],w_vecs[iDraw],a_vecs[iDraw])
             Ps.append(P)
     else:
         for iDraw in range(nDraws):
-            P = trace['P'][idxSamples[iDraw]]
+            P = [varDict["P"][i] for i in idxSamples]
             Ps.append(P)
 
     # Draw corresponding time-domain parameters ---------------------------------
-    if 'V0' in VarNames:
-        V0 = trace['V0'][idxSamples]
+    if 'V0' in varDict:
+        V0 = [varDict["V0"][i] for i in idxSamples]
 
-    if 'k' in VarNames:
-        k = trace['k'][idxSamples]
+    if 'k' in varDict:
+        k = [varDict["k"][i] for i in idxSamples]
         
-    if 'Bend' in VarNames:
-        Bend = trace['Bend'][idxSamples]
+    if 'Bend' in varDict:
+        Bend = [varDict["Bend"][i] for i in idxSamples]
         
-    if 'tauB' in VarNames:
-        tauB = trace['tauB'][idxSamples]
+    if 'tauB' in varDict:
+        tauB = [varDict["tauB"][i] for i in idxSamples]
 
-    if 'lamb' in VarNames:
-        lamb = trace['lamb'][idxSamples]
+    if 'lamb' in varDict:
+        lamb = [varDict["lamb"][i] for i in idxSamples]
 
     # Generate V's and B's from P's and other parameters --------------------------------
     Vs = []
@@ -285,13 +286,13 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     for iDraw in range(nDraws):
         V_ = dr*K0@Ps[iDraw]
 
-        if 'lamb' in VarNames:
+        if 'lamb' in varDict:
             V_ = (1-lamb[iDraw]) + lamb[iDraw]*V_
 
-        if 'Bend' in VarNames:
+        if 'Bend' in varDict:
             k = -1/t[-1]*np.log(Bend[iDraw])
             B = bg_exp(t,k)
-        elif 'tauB' in VarNames:
+        elif 'tauB' in varDict:
             B = bg_exp_time(t,tauB[iDraw])
         else:
             B = bg_exp(t,k[iDraw])
@@ -299,20 +300,20 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
         V_ *= B
         Blamb = (1-lamb[iDraw])*B
             
-        if 'V0' in VarNames:
+        if 'V0' in varDict:
             Blamb *= V0[iDraw]
         Bs.append(Blamb)
         
-        if 'tauB' in VarNames:
+        if 'tauB' in varDict:
             B = bg_exp_time(t,tauB[iDraw])
             V_ *= B
 
             Blamb = (1-lamb[iDraw])*B
-            if 'V0' in VarNames:
+            if 'V0' in varDict:
                 Blamb *= V0[iDraw]
             Bs.append(Blamb)
 
-        if 'V0' in VarNames:
+        if 'V0' in varDict:
             V_ *= V0[iDraw]
 
         Vs.append(V_)
