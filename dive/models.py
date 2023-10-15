@@ -237,10 +237,10 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
     # Set stepping methods, depending on model
     if method == "gaussian":
         
-        removeVars  = ["r0_rel"]
+        removeVars  = ["r0_rel", "w_mu"]
         
         with model:
-            NUTS_varlist = [model['r0_rel'], model['w']]
+            NUTS_varlist = [model['r0_rel'], model['w'], model['w_mu']]
             if model_pars['ngaussians']>1:
                 NUTS_varlist.append(model['a'])
             NUTS_varlist.append(model['sigma'])
