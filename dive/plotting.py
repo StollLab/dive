@@ -258,7 +258,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
             Ps.append(P)
     else:
         for iDraw in range(nDraws):
-            P = [varDict["P"][i] for i in idxSamples]
+            P = varDict["P"][idxSamples[iDraw]]
             Ps.append(P)
 
     # Draw corresponding time-domain parameters ---------------------------------
@@ -321,7 +321,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     return Ps, Vs, Bs, t, r
 
 
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
+def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, colors=["#4A5899","#F38D68"]):
 
 
 
@@ -337,9 +337,9 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
     # Plot time-domain quantities
     for V, B in zip(Vs, Bs):
         residuals = V - Vdata
-        ax1.plot(t, V, color='#3F60AE', alpha=0.2)
-        ax1.plot(t, B, color='#FCC43F', alpha=0.2)
-        ax1.plot(t, residuals+residuals_offset, color='#3F60AE', alpha=0.2)
+        ax1.plot(t, V, color=colors[0], alpha=0.2)
+        ax1.plot(t, B, color=colors[1], alpha=0.2)
+        ax1.plot(t, residuals+residuals_offset, color=colors[0], alpha=0.2)
     Vavg = np.mean(Vs, 0)
     Bavg = np.mean(Bs, 0)
     Pavg = np.mean(Ps, 0)
@@ -362,7 +362,7 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
 
     # Plot distance distributions
     for P in Ps:
-        ax2.plot(r, P, color='#3F60AE', alpha=0.2)
+        ax2.plot(r, P, color=colors[0], alpha=0.2)
     Pmax = max([max(P) for P in Ps])
     ax2.set_xlabel('$r$ (nm)')
     ax2.set_ylabel('$P$ (nm$^{-1}$)')
@@ -377,9 +377,4 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None):
 
     plt.grid()
     
-    return fig
-
-  
-    
-
     return fig
