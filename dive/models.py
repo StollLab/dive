@@ -107,7 +107,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         # Distance distribution parameters
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
         r0 = pm.Deterministic('r0', r0_rel.sort()*(max(r)-min(r)) + min(r))  # for reporting
-        w = pm.Truncated('w', pm.InverseGamma.dist(alpha=0.1, beta=0.2, shape=nGauss), lower=0.05, upper=3.0)
+        w = pm.TruncatedNormal('w', pm.InverseGamma('w_mu', alpha=0.1, beta=0.2, shape=nGauss), lower=0.05, upper=3.0, shape=nGauss)
         #w = pm.Truncated('w', pm.InverseGamma.dist(alpha=0.1, beta=0.5, shape=nGauss), lower=0.02, upper=4.0)   # Old definition
 
         if nGauss>1:
