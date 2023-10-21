@@ -123,6 +123,7 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
         trace.sample_stats = Object()
         trace.sample_stats.diverging = trace.diverging
     # use arviz library to plot correlations
+    az.rcParams["plot.max_subplots"] = 200
     with model_dic["model"]:
         axs = az.plot_pair(trace, var_names=list(Vars.keys()), kind='kde', figsize=figsize, marginals=marginals, divergences=div)
 
