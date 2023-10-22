@@ -266,7 +266,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
             
             NUTS_varlist = [model['V0'], model['lamb'], model['Bend']]
             if NUTSpars is None:
-                step_NUTS = pm.NUTS(NUTS_varlist)
+                step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore")
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore", **NUTSpars)
             
