@@ -28,7 +28,10 @@ def _relevantVariables(trace):
     # checks if gaussian
     if "w_dim_0" in trace.posterior:
         # adds r0, w, and a to the dictionary with the number of variables
-        Vars.update({"r0": trace.posterior.dims["w_dim_0"], "w": trace.posterior.dims["w_dim_0"], "a": trace.posterior.dims["w_dim_0"]})
+        nGauss = trace.posterior.dims["w_dim_0"]
+        Vars.update({"r0": nGauss, "w": nGauss})
+        if nGauss > 1:
+            Vars.update({"a": nGauss})
 
     return Vars
 
