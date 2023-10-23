@@ -1,6 +1,7 @@
 ## Plotting 
 
 # Import modules
+from matplotlib.backend_bases import key_press_handler
 import matplotlib.pyplot as plt
 import numpy as np
 import random
@@ -14,14 +15,24 @@ from .deer import *
 
 
 def _relevantVariables(trace):
-    if "Bend" in trace.varnames:
-        #desiredVars = ["r0", "w", "a", "Bend", "lamb", "V0", "sigma", "lg_alpha"]
-        desiredVars = ["r0", "w", "a", "k", "Bend","lamb", "V0", "sigma", "lg_alpha"]
-    elif "tauB" in trace.varnames:
-        desiredVars = ["r0", "w", "a", "tauB", "lamb", "V0", "sigma", "lg_alpha"]
+    #desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
+    if "Bend" in trace.posterior:
+        desiredVars = {"Bend": 1, "lamb": 1, "V0": 1, "sigma": 1, "lg_alpha": 1}
+    elif "tauB" in trace.posterior:
+        desiredVars = {"tauB": 1, "lamb": 1, "V0": 1, "sigma": 1, "lg_alpha": 1}
     else:
-        desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
-    Vars = [Var for Var in desiredVars if Var in trace.varnames]
+        desiredVars = {   "k": 1, "lamb": 1, "V0": 1, "sigma": 1, "lg_alpha": 1}
+    # creates a dictionary with the variables and how many of them there are (None for single ones)
+    Vars = {key: desiredVars[key] for key in desiredVars if key in trace.posterior}
+
+    # checks if gaussian
+    if "w_dim_0" in trace.posterior:
+        # adds r0, w, and a to the dictionary with the number of variables
+        nGauss = trace.posterior.dims["w_dim_0"]
+        Vars.update({"r0": nGauss, "w": nGauss})
+        if nGauss > 1:
+            Vars.update({"a": nGauss})
+
     return Vars
 
 
@@ -32,7 +43,7 @@ def printsummary(trace, model_dic):
     """
     Vars = _relevantVariables(trace)
     with model_dic['model']:
-        summary = az.summary(trace, var_names=Vars)
+        summary = az.summary(trace, var_names=list(Vars.keys()))
     # replace the labels with their unicode characters before displaying
     summary.index = _betterLabels(summary.index.values)
     display(summary)
@@ -43,7 +54,7 @@ def plotmarginals(trace, GroundTruth=None, nCols=6):
     Plot marginalized posteriors
     """
     Vars = _relevantVariables(trace)
-    nVars = len(Vars)
+    nVars = sum(Vars.values())
 
     # figure out layout of plots and create figure
     nCols = min(nVars,nCols)
@@ -58,21 +69,38 @@ def plotmarginals(trace, GroundTruth=None, nCols=6):
     fig.set_figwidth(width)
     
     # KDE of chain samples and plot them
-    for i in range(nVars):
-        az.plot_kde(trace[Vars[i]], ax=axs[i])
-        axs[i].set_xlabel(_betterLabels(Vars[i]), fontsize='large')
-        axs[i].yaxis.set_ticks([])
-        axs[i].grid(axis='x')
+    ax_id=0
+    for key in Vars:
+        if Vars[key] == 1:
+            if key in trace.posterior:
+                az.plot_kde(np.array([np.ndarray.item(draw.values) for chain in trace.posterior[key] for draw in chain]), ax=axs[ax_id])
 
-        if GroundTruth:
-            if Vars[i] in GroundTruth.keys():
-                bottom, top = axs[i].get_ylim()
-                axs[i].vlines(GroundTruth[Vars[i]], bottom, top, color='black')
+            axs[ax_id].set_xlabel(_betterLabels(key), fontsize='large')
+            axs[ax_id].yaxis.set_ticks([])
+            axs[ax_id].grid(axis='x')
 
-    for i in range(nVars, len(axs)):
-        axs[i].axis('off')
+            if GroundTruth:
+                if key in GroundTruth.keys():
+                    bottom, top = axs[ax_id].get_ylim()
+                    axs[ax_id].vlines(GroundTruth[key], bottom, top, color='black')
+            ax_id += 1
+        else:
+            for i in range(Vars[key]):
+                if key in trace.posterior:
+                    az.plot_kde(np.array([np.ndarray.item(draw.values) for chain in trace.posterior[key][i] for draw in chain]), ax=axs[ax_id])
+                axs[ax_id].set_xlabel(_betterLabels(key+"[%s]"%i), fontsize='large')
+                axs[ax_id].yaxis.set_ticks([])
+                axs[ax_id].grid(axis='x')
+
+                if GroundTruth:
+                    if key in GroundTruth.keys():
+                        bottom, top = axs[ax_id].get_ylim()
+                        axs[ax_id].vlines(GroundTruth[key], bottom, top, color='black')
+                ax_id += 1
 
     # Clean up figure
+    for j in range(nVars, len(axs)):
+        axs[j].axis('off')
     fig.tight_layout()
     return fig
 
@@ -83,7 +111,7 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
     """
     # determine variables to include
     Vars = _relevantVariables(trace)
-    nVars = len(Vars)
+    nVars = sum(Vars.values())
     
     # Set default figure size
     if figsize is None:
@@ -98,8 +126,9 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
         trace.sample_stats = Object()
         trace.sample_stats.diverging = trace.diverging
     # use arviz library to plot correlations
+    az.rcParams["plot.max_subplots"] = 200
     with model_dic["model"]:
-        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=figsize, marginals=marginals, divergences=div)
+        axs = az.plot_pair(trace, var_names=list(Vars.keys()), kind='kde', figsize=figsize, marginals=marginals, divergences=div)
 
     # replace labels with the nicer unicode character versions
     if len(Vars) > 2:
@@ -149,6 +178,13 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
        fig1 =az.plot_trace(trace)
         
 
+
+    
+    fig1 = []
+    if chains is not None:
+       fig1 =az.plot_trace(trace)
+        
+
     # Get reference distribution if specified ------------------------------------
     if Pid is not None:
         refdata = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')
@@ -172,7 +208,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
     "k": "$k$",
-    "tauB": "$τ_B$",
+    "tau": "$τ_B$",
     "Bend": "$B_\mathrm{end}$",
     "lamb": "$λ$",
     "lamba": "$λ$",
@@ -221,14 +257,15 @@ def _betterLabels(x):
 
 
 def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None):
-    VarNames = trace.varnames
+
+    varDict = {key: [draw.values for chain in trace.posterior[key] for draw in chain] for key in trace.posterior}
 
     # Determine if a Gaussian model was used and how many iterations were run -------
-    GaussianModel = "r0" in VarNames
+    GaussianModel = "r0" in varDict
     if GaussianModel:
-        nGaussians = trace['r0'].shape[1]
+        nGaussians = len(varDict['r0'][0])
 
-    nChainSamples = trace['P'].shape[0]
+    nChainSamples = len(varDict['P'])
 
     # Generate random indices for chain samples ------------------------------------
     idxSamples = random.sample(range(nChainSamples), nDraws)
@@ -237,39 +274,36 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     Ps = []
 
     if GaussianModel:
-        r0_vecs = trace['r0'][idxSamples]
-        w_vecs = trace['w'][idxSamples]
+        r0_vecs = [varDict["r0"][i] for i in idxSamples]
+        w_vecs = [varDict["w"][i] for i in idxSamples]
         if nGaussians == 1:
             a_vecs = np.ones_like(idxSamples)
         else:
-            a_vecs = trace['a'][idxSamples]
+            a_vecs = [varDict["a"][i] for i in idxSamples]
 
         for iDraw in range(nDraws):
             P = dd_gauss(r,r0_vecs[iDraw],w_vecs[iDraw],a_vecs[iDraw])
             Ps.append(P)
     else:
         for iDraw in range(nDraws):
-            P = trace['P'][idxSamples[iDraw]]
+            P = varDict["P"][idxSamples[iDraw]]
             Ps.append(P)
 
     # Draw corresponding time-domain parameters ---------------------------------
-    if 'V0' in VarNames:
-        V0 = trace['V0'][idxSamples]
+    if 'V0' in varDict:
+        V0 = [varDict["V0"][i] for i in idxSamples]
 
-    if 'Bend' in VarNames:
-        Bend= trace['Bend'][idxSamples]
+    if 'k' in varDict:
+        k = [varDict["k"][i] for i in idxSamples]
+        
+    if 'Bend' in varDict:
+        Bend = [varDict["Bend"][i] for i in idxSamples]
+        
+    if 'tauB' in varDict:
+        tauB = [varDict["tauB"][i] for i in idxSamples]
 
-    elif 'tauB' in VarNames: 
-        tauB = trace['tauB'][idxSamples]
-
-    else:
-        k = trace['k'][idxSamples]
-    
-    if 'tauB' in VarNames:
-        tauB = trace['tauB'][idxSamples]
-
-    if 'lamb' in VarNames:
-        lamb = trace['lamb'][idxSamples]
+    if 'lamb' in varDict:
+        lamb = [varDict["lamb"][i] for i in idxSamples]
 
     # Generate V's and B's from P's and other parameters --------------------------------
     Vs = []
@@ -280,45 +314,34 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     for iDraw in range(nDraws):
         V_ = dr*K0@Ps[iDraw]
 
-        if 'lamb' in VarNames:
+        if 'lamb' in varDict:
             V_ = (1-lamb[iDraw]) + lamb[iDraw]*V_
 
-        if 'Bend' in VarNames:
+        if 'Bend' in varDict:
             k = -1/t[-1]*np.log(Bend[iDraw])
             B = bg_exp(t,k)
-            V_ *= B
-
-            Blamb = (1-lamb[iDraw])*B
-            if 'V0' in VarNames:
-                Blamb *= V0[iDraw]
-            Bs.append(Blamb)
-        elif 'tauB' in VarNames:
+        elif 'tauB' in varDict:
             B = bg_exp_time(t,tauB[iDraw])
-            V_ *= B
-
-            Blamb = (1-lamb[iDraw])*B
-            if 'V0' in VarNames:
-                Blamb *= V0[iDraw]
-            Bs.append(Blamb)
         else:
             B = bg_exp(t,k[iDraw])
-            V_ *= B
-
-            Blamb = (1-lamb[iDraw])*B
-            if 'V0' in VarNames:
-                Blamb *= V0[iDraw]
-            Bs.append(Blamb)
         
-        if 'tauB' in VarNames:
+        V_ *= B
+        Blamb = (1-lamb[iDraw])*B
+            
+        if 'V0' in varDict:
+            Blamb *= V0[iDraw]
+        Bs.append(Blamb)
+        
+        if 'tauB' in varDict:
             B = bg_exp_time(t,tauB[iDraw])
             V_ *= B
 
             Blamb = (1-lamb[iDraw])*B
-            if 'V0' in VarNames:
+            if 'V0' in varDict:
                 Blamb *= V0[iDraw]
             Bs.append(Blamb)
 
-        if 'V0' in VarNames:
+        if 'V0' in varDict:
             V_ *= V0[iDraw]
 
         Vs.append(V_)
@@ -326,7 +349,9 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
     return Ps, Vs, Bs, t, r
 
 
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False, colors=["#4A5899","#F38D68"]):
+def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, colors=["#4A5899","#F38D68"]):
+
+
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_figheight(5)
@@ -355,9 +380,13 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False, colo
     ax1.set_ylim(-0.1,1.1)
     ax1.set_title('time domain and residuals')
 
-    if show_avg:
-        ax1.plot(t, Vavg, color='yellow', label='Vexp average')
-        ax1.plot(t, Bavg, color='purple', label='background average')
+
+    if show_ave is not None:
+        ax1.plot(t,Vave,color='yellow',label= 'Vexp Average')
+        ax1.plot(t,Bave,color = 'purple',label = 'Background Average')
+    #ax1.plot(t,Vave-residuals,color = 'red')
+        
+
 
     # Plot distance distributions
     for P in Ps:
@@ -366,15 +395,14 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_avg=False, colo
     ax2.set_xlabel('$r$ (nm)')
     ax2.set_ylabel('$P$ (nm$^{-1}$)')
     ax2.set_xlim(min(r), max(r))
-    ax2.set_ylim(0, Pmax*1.1)
+    ax2.set_ylim(0,max(P)+0.2)
     ax2.set_title('distance domain')
 
-    # Plot reference and posterior mean distribution
     if Pref is not None:
         ax2.plot(rref, Pref, color='black')
-    if show_avg: 
-        ax2.plot(r, Pavg, color='black', label='average')
+    if show_ave is not None: 
+        ax2.plot(r,Pave,color = 'black',label = 'Average')
 
-    #plt.grid()
-
+    plt.grid()
+    
     return fig

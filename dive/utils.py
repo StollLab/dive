@@ -1,17 +1,14 @@
 from dataclasses import replace
-from random import seed
 import numpy as np
 import math as m
-import sys
+from pandas.core import indexers
 from scipy.special import fresnel
-import pymc3 as pm
 from datetime import date
-import os   
-import copy
-import random 
+import os
+
 from .constants import *
 from .deerload import *
-from .samplers import *
+
 import arviz as az
 from .plotting import *
 
@@ -88,164 +85,31 @@ def loadTrace(FileName):
     return t, Vdata
 
 
-def sample(model_dic, MCMCparameters, steporder=None, NUTSorder=None, NUTSpars=None):
-    """
-    Use PyMC3 to draw samples from the posterior for the model, according to the parameters provided with MCMCparameters.
-    """
-    
-    # Complain about missing required keywords
-    requiredKeys = ["draws", "tune", "chains"]
-    for key in requiredKeys:
-        if key not in MCMCparameters:
-            raise KeyError(f"The required MCMC parameter '{key}' is missing.")
-    
-    # Supplement defaults for optional keywords
-    defaults = {"cores": 2, "progressbar": True, "return_inferencedata": False}
-    MCMCparameters = {**defaults, **MCMCparameters}
-    
-    model = model_dic['model']
-    model_pars = model_dic['pars']
-    method = model_pars['method']
-    bkgd_var = model_pars['bkgd_var']
-    
-    # Set stepping methods, depending on model
-    if method == "gaussian":
-        
-        removeVars  = ["r0_rel"]
-        
-        with model:
-            if model_pars['ngaussians']==1:
-                if bkgd_var=="k":
-                    NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['k'], model['V0'], model['lamb']]
-                elif bkgd_var=="tauB":
-                    NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
-                elif bkgd_var=="Bend":
-                    NUTS_varlist = [model['r0_rel'], model['w'], model['sigma'], model['Bend'], model['V0'], model['lamb']]
-            else:
-                if bkgd_var=="k":
-                    NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['k'], model['V0'], model['lamb']]
-                elif bkgd_var=="tauB":
-                    NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['tauB'], model['V0'], model['lamb']]
-                elif bkgd_var=="Bend":
-                    NUTS_varlist = [model['r0_rel'], model['w'], model['a'], model['sigma'], model['Bend'], model['V0'], model['lamb']]
-            if NUTSorder is not None:
-                NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
-            if NUTSpars is None:
-                step_NUTS = pm.NUTS(NUTS_varlist)
-            else:
-                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
-    
-        step = [step_NUTS]
-        
-    elif method == "regularization":
-        
-        removeVars = None
-        
-        with model:
-            if bkgd_var=="k":
-                NUTS_varlist = [model['k'], model['V0'], model['lamb']]
-                step_tau = randTau_k_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['k'], model['lamb'], model['V0'])
-                step_P = randPnorm_k_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
-            elif bkgd_var=="tauB":
-                NUTS_varlist = [model['tauB'], model['V0'], model['lamb']]
-                step_tau = randTau_tauB_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['tauB'], model['lamb'], model['V0'])
-                step_P = randPnorm_tauB_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['tauB'], model['lamb'], model['V0'])
-            else:
-                NUTS_varlist = [model['Bend'], model['V0'], model['lamb']]
-                step_tau = randTau_Bend_posterior(model['tau'], model_pars['tau_prior'], model_pars['K0'], model['P'], model_dic['Vexp'], model_pars['r'], model_dic['t'], model['Bend'], model['lamb'], model['V0'])
-                step_P = randPnorm_Bend_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['Bend'], model['lamb'], model['V0'])
-            
-            if NUTSorder is not None:
-                NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
-            if NUTSpars is None:
-                step_NUTS = pm.NUTS(NUTS_varlist)
-            else:
-                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
-            
-            step_delta = randDelta_posterior(model['delta'], model_pars['delta_prior'], model_pars['L'], model['P'])
-
-        # Original order
-        #step = [step_P, step_tau, step_delta, step_NUTS]
-
-        # As written in manuscript 
-        step = [step_tau, step_delta, step_P, step_NUTS]
-        if steporder is not None:
-            step = [step[i] for i in steporder]
-                
-    elif method == "regularization2":
-        
-        removeVars = None
-        
-        with model:
-            if bkgd_var=="k":
-                NUTS_varlist = [model['tau'], model['delta'], model['k'], model['V0'], model['lamb']]
-                step_P = randPnorm_k_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['k'], model['lamb'], model['V0'])
-            elif bkgd_var=="tauB":
-                NUTS_varlist = [model['tau'], model['delta'], model['tauB'], model['V0'], model['lamb']]
-                step_P = randPnorm_tauB_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['tauB'], model['lamb'], model['V0'])
-            else:
-                NUTS_varlist = [model['tau'], model['delta'], model['Bend'], model['V0'], model['lamb']]
-                step_P = randPnorm_Bend_posterior(model['P'], model_pars['K0'] , model_pars['LtL'], model_dic['t'], model_dic['Vexp'], model_pars['r'], model['delta'], [], model['tau'], model['Bend'], model['lamb'], model['V0'])
-                
-            if NUTSorder is not None:
-                NUTS_varlist = [NUTS_varlist[i] for i in NUTSorder] 
-            if NUTSpars is None:
-                step_NUTS = pm.NUTS(NUTS_varlist)
-            else:
-                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
-        
-        step = [step_P, step_NUTS]
-        if steporder is not None:
-            step = [step[i] for i in steporder]
-                
-    else:
-        
-        raise KeyError(f"Unknown method '{method}'.",method)
-
-    # Perform MCMC sampling
-
-    #if seed is not None:
-    #    trace = pm.sample(model=model, step=step, random_seed=seed,  **MCMCparameters)
-    #else: 
-    trace = pm.sample(model=model, step=step,  **MCMCparameters)
-
-
-
-
-    # Remove undesired variables
-    if removeVars is not None:
-        [trace.remove_values(key) for key in removeVars if key in trace.varnames]
-
-    return trace
-
-
-
-
-        
 def interpret(trace,model_dic):
-    
     
     class FitResult:
         def __init__(self,trace, model):
-            d = {key: trace[key] for key in trace.varnames}
+            # as of PyMC v5, parameters are now given as a (# of chains) * (# of draws) array
+            d = {key: [draw.values for chain in trace.posterior[key] for draw in chain] for key in trace.posterior}
             self.__dict__.update(d)
 
             self.r = model['pars']['r']
             self.t = model['t']
             self.Vexp = model['Vexp']
-            self.varnames = trace.varnames
+            self.varnames = trace.posterior
             self.trace = trace
             self.K = dl.dipolarkernel(self.t, self.r)
             self.dr = self.r[1] - self.r[0]
+            self.chain = trace.posterior.dims["chain"]
+            self.draw = trace.posterior.dims["draw"]
 
             # self.plots = Plots(trace,model)
 
         def subsample_fits(self, n=100, seed=1):
             np.random.seed(seed)
-            idxs = np.random.choice(len(self.trace), n, replace=False)
+            idxs = np.random.choice(self.chain*self.draw, n, replace=False)
             Ps = [self.P[idx].copy() for idx in idxs]
             Bs, Vs = [], []
-
 
             for idx in idxs:
                 V_ = self.K@self.P[idx]
@@ -327,13 +191,9 @@ def interpret(trace,model_dic):
                 
                 #ax2.set_xlabel(r'time ($\rm\mus$)')
             
-            
-
-            
             ax2.set_xlabel('Distance(nm)')
             ax2.set_ylabel("Probability($1/nm$)")
             ax2.xaxis.set_major_locator(plt.MaxNLocator(16))
-
 
             ax1.set_ylabel('Signal (a.u.)')
             ax1.set_xlabel("Time(µs)")
@@ -348,46 +208,154 @@ def interpret(trace,model_dic):
         def summary(self):
             printsummary(self.trace,self.model)
             
-            
-            
+
     fit = FitResult(trace,model_dic)
 
     return fit
 
+
 def saveTrace(df, Parameters, SaveName='empty'):
-        """
-        Save a trace to a CSV file.
-        """
-        if SaveName == 'empty':
-            today = date.today()
-            datestring = today.strftime("%Y%m%d")
-            SaveName = "./traces/{}_traces.dat".format(datestring)
+    """
+    Save a trace to a CSV file.
+    """
+    if SaveName == 'empty':
+        today = date.today()
+        datestring = today.strftime("%Y%m%d")
+        SaveName = "./traces/{}_traces.dat".format(datestring)
+    
+    if not SaveName.endswith('.dat'):
+        SaveName = SaveName+'.dat'
+
+    shape = df.shape 
+    cols = df.columns.tolist()
+
+    os.makedirs(os.path.dirname(SaveName), exist_ok=True)
+
+    f = open(SaveName, 'a+')
+    f.write("# Traces from the MCMC simulations with PyMC\n")
+    f.write("# The following {} parameters were investigated:\n".format(shape[1]))
+    f.write("# {}\n".format(cols))
+    f.write("# nParameters nChains nIterations\n")
+    if Parameters['nGauss'] == 1:
+        f.write("{},{},{},0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
+    elif Parameters['nGauss'] == 2:
+        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
+    elif Parameters['nGauss'] == 3:
+        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
+    elif Parameters['nGauss'] == 4:
+        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
+
+    df.to_csv (f, index=False, header=False)
+
+    f.close()
+
+def fnnls(AtA, Atb, tol=[], maxiter=[], verbose=False):
+    r"""
+    FNNLS   Fast non-negative least-squares algorithm.
+    x = fnnls(AtA,Atb) solves the problem min ||b - Ax|| if
+        AtA = A'*A and Atb = A'*b.
+    A default tolerance of TOL = MAX(SIZE(AtA)) * NORM(AtA,1) * EPS
+    is used for deciding when elements of x are less than zero.
+    This can be overridden with x = fnnls(AtA,Atb,TOL).
+
+    [x,w] = fnnls(AtA,Atb) also returns dual vector w where
+        w(i) < 0 where x(i) = 0 and w(i) = 0 where x(i) > 0.
+    
+    For the FNNLS algorithm, see
+        R. Bro, S. De Jong
+        A Fast Non-Negativity-Constrained Least Squares Algorithm
+        Journal of Chemometrics 11 (1997) 393-401
+    The algorithm FNNLS is based on is from
+        Lawson and Hanson, "Solving Least Squares Problems", Prentice-Hall, 1974.
+    """
+
+    if np.iscomplex(AtA).any():
+        print('FNNLS called with complex-valued AtA.')
+    if np.iscomplex(Atb).any():
+        print('FNNLS called with complex-valued Atb.')
+
+    unsolvable = False
+    count = 0
+
+    # Use all-zero starting vector
+    N = np.shape(AtA)[1]
+
+    x = np.zeros(N)
+
+    # Calculate tolerance and maxiter if not given.
+    if np.size(np.atleast_1d(tol))==0:
+        eps = np.finfo(float).eps
+        tol = 10*eps*np.linalg.norm(AtA,1)*max(np.shape(AtA))
+    if np.size(np.atleast_1d(maxiter))==0:
+        maxiter = 5*N
+
+
+    passive = x>0       # initial positive/passive set (points where constraint is not active)
+    x[~passive] = 0
+    w = Atb - AtA @ x     # negative gradient of error functional 0.5*||A*x-y||^2
+    
+    # Outer loop: Add variables to positive set if w indicates that fit can be improved.
+    outIteration = 0
+    maxIterations = 5*N
+    while np.any(w>tol) and np.any(~passive):
+        outIteration += 1
         
-        if not SaveName.endswith('.dat'):
-            SaveName = SaveName+'.dat'
+        # Add the most promising variable (with largest w) to positive set.
+        t = np.argmax(w)
+        passive[t] = True
+        
+        # Solve unconstrained problem for new augmented positive set.
+        # This gives a candidate solution with potentially new negative variables.
+        x_ = np.zeros(N)
+        
+        if np.sum(passive)==1:
+            x_[passive] = Atb[passive]/AtA[passive,passive]
+        else:
+            x_[passive] = np.linalg.solve(AtA[np.ix_(passive,passive)], Atb[passive])
+        
+        # Inner loop: Iteratively eliminate negative variables from candidate solution.
+        iIteration = 0
+        while any((x_<=tol) & passive) and iIteration<maxIterations:
+            iIteration += 1
+            
+            # Calculate maximum feasible step size and do step.
+            negative = (x_<=tol) & passive
+            alpha = min(x[negative]/(x[negative]-x_[negative]))
+            x += alpha*(x_-x)
+            
+            # Remove all negative variables from positive set.
+            passive[x<tol] = False
+            
+            # Solve unconstrained problem for reduced positive set.
+            x_ = np.zeros(N)
+            if np.sum(passive)==1:
+                x_[passive] = Atb[passive]/AtA[passive,passive]
+            else:
+                x_[passive] = np.linalg.solve(AtA[np.ix_(passive,passive)],Atb[passive])
+            
+        # Accept non-negative candidate solution and calculate w.
+        if all(x == x_):
+            count += 1
+        else:
+            count = 0
+        if count > 5:
+            unsolvable = True
+            break
+        x = x_
+        
+        w = Atb - AtA@x
+        w[passive] = -m.inf
+        if verbose:
+            print(f"{outIteration:10.0f}{iIteration:15.0f}{max(w):20.4e}\n")
 
-        shape = df.shape 
-        cols = df.columns.tolist()
-
-        os.makedirs(os.path.dirname(SaveName), exist_ok=True)
-
-        f = open(SaveName, 'a+')
-        f.write("# Traces from the MCMC simulations with pymc3\n")
-        f.write("# The following {} parameters were investigated:\n".format(shape[1]))
-        f.write("# {}\n".format(cols))
-        f.write("# nParameters nChains nIterations\n")
-        if Parameters['nGauss'] == 1:
-            f.write("{},{},{},0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-        elif Parameters['nGauss'] == 2:
-            f.write("{},{},{},0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-        elif Parameters['nGauss'] == 3:
-            f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-        elif Parameters['nGauss'] == 4:
-            f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-
-        df.to_csv (f, index=False, header=False)
-
-        f.close()
-
-def test():
-    pass
+    if verbose:
+        if unsolvable:
+            print('Optimization stopped because the solution cannot be further changed. \n')
+        elif any(~passive):
+            print('Optimization stopped because the active set has been completely emptied. \n')
+        elif w>tol:
+            print('Optimization stopped because the gradient (w) is inferior than the tolerance value TolFun = #.6e. \n' %tol)
+        else:
+            print('Solution found. \n')
+    
+    return x
