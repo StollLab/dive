@@ -1,6 +1,7 @@
 from dataclasses import replace
 import numpy as np
 import math as m
+from pandas.core import indexers
 from scipy.special import fresnel
 from datetime import date
 import os
@@ -88,25 +89,27 @@ def interpret(trace,model_dic):
     
     class FitResult:
         def __init__(self,trace, model):
-            d = {key: trace[key] for key in trace.varnames}
+            # as of PyMC v5, parameters are now given as a (# of chains) * (# of draws) array
+            d = {key: [draw.values for chain in trace.posterior[key] for draw in chain] for key in trace.posterior}
             self.__dict__.update(d)
 
             self.r = model['pars']['r']
             self.t = model['t']
             self.Vexp = model['Vexp']
-            self.varnames = trace.varnames
+            self.varnames = trace.posterior
             self.trace = trace
             self.K = dl.dipolarkernel(self.t, self.r)
             self.dr = self.r[1] - self.r[0]
+            self.chain = trace.posterior.dims["chain"]
+            self.draw = trace.posterior.dims["draw"]
 
             # self.plots = Plots(trace,model)
 
         def subsample_fits(self, n=100, seed=1):
             np.random.seed(seed)
-            idxs = np.random.choice(len(self.trace), n, replace=False)
+            idxs = np.random.choice(self.chain*self.draw, n, replace=False)
             Ps = [self.P[idx].copy() for idx in idxs]
             Bs, Vs = [], []
-
 
             for idx in idxs:
                 V_ = self.K@self.P[idx]

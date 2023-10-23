@@ -107,7 +107,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         # Distance distribution parameters
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=nGauss)
         r0 = pm.Deterministic('r0', r0_rel.sort()*(max(r)-min(r)) + min(r))  # for reporting
-        w = pm.Truncated('w', pm.InverseGamma.dist(alpha=0.1, beta=0.2, shape=nGauss), lower=0.05, upper=3.0)
+        w = pm.TruncatedNormal('w', pm.InverseGamma('w_mu', alpha=0.1, beta=0.2, shape=nGauss), lower=0.05, upper=3.0, shape=nGauss)
         #w = pm.Truncated('w', pm.InverseGamma.dist(alpha=0.1, beta=0.5, shape=nGauss), lower=0.02, upper=4.0)   # Old definition
 
         if nGauss>1:
@@ -237,10 +237,10 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
     # Set stepping methods, depending on model
     if method == "gaussian":
         
-        removeVars  = ["r0_rel"]
+        removeVars  = ["r0_rel", "w_mu"]
         
         with model:
-            NUTS_varlist = [model['r0_rel'], model['w']]
+            NUTS_varlist = [model['r0_rel'], model['w'], model['w_mu']]
             if model_pars['ngaussians']>1:
                 NUTS_varlist.append(model['a'])
             NUTS_varlist.append(model['sigma'])
@@ -266,9 +266,9 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
             
             NUTS_varlist = [model['V0'], model['lamb'], model['Bend']]
             if NUTSpars is None:
-                step_NUTS = pm.NUTS(NUTS_varlist)
+                step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore")
             else:
-                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
+                step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore", **NUTSpars)
             
         step = [step_NUTS, conjstep_P, conjstep_tau, conjstep_delta]
         if steporder is not None:
@@ -301,6 +301,8 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
 
     # Remove undesired variables
     if removeVars is not None:
-        [idata.remove_values(key) for key in removeVars if key in idata.varnames]
+        for key in removeVars:
+            if key in idata.posterior:
+                del idata.posterior[key]
 
     return idata
