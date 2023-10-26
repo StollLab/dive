@@ -184,5 +184,4 @@ def _randP(tauKtX, invSigma):
     
     P = fnnls(invSigma, tauKtX+w)
     
-    return P`
-`
+    return P
