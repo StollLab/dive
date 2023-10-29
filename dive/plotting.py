@@ -187,7 +187,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
 
     # Get reference distribution if specified ------------------------------------
     if Pid is not None:
-        refdata = loadmat('..\..\data\edwards_testset\distributions_2LZM.mat')
+        refdata = loadmat('data/edwards_testset/distributions_2LZM.mat')
         P0s = refdata['P0']
         rref = np.squeeze(refdata['r0'])
         Pref = P0s[Pid-1,:]
