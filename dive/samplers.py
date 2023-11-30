@@ -46,13 +46,16 @@ class randPnorm_posterior(BlockedStep):
         # Get current parameter values and backtransform if necessary
         tau = point['tau'] if 'tau' in point else np.exp(point['tau_log__'])
         delta = point['delta'] if 'delta' in point else np.exp(point['delta_log__'])
-        Bend = 1/(1+np.exp(-point['Bend_logodds__']))
+        if "Bend_logodds__" in point:
+            Bend = 1/(1+np.exp(-point['Bend_logodds__'])) 
+            k = -1/self.t[-1]*np.log(Bend)
+        else:
+            k = np.exp(point["k_log__"])
         lamb = 1/(1+np.exp(-point['lamb_logodds__']))
         V0 = np.exp(point['V0_interval__'])
 
         # Calculate full kernel matrix
         K = (1-lamb) + lamb*self.K0
-        k = -1/self.t[-1]*np.log(Bend)
         B = bg_exp(self.t,k) 
         K *= B[:, np.newaxis]
         K *= V0*self.dr
@@ -137,13 +140,16 @@ class randTau_posterior(BlockedStep):
 
         # Get current parameter values and backtransform if necessary
         P = point['P']
-        Bend = 1/(1+np.exp(-point['Bend_logodds__']))
+        if "Bend_logodds__" in point:
+            Bend = 1/(1+np.exp(-point['Bend_logodds__'])) 
+            k = -1/self.t[-1]*np.log(Bend)
+        else:
+            k = np.exp(point["k_log__"])
         lamb = 1/(1+np.exp(-point['lamb_logodds__']))
         V0 = np.exp(point['V0_interval__'])
 
         # Calculate V model signal (without noise)
         Vmodel = (1-lamb) + lamb*(self.K0dr@P)
-        k = -1/self.t[-1]*np.log(Bend)
         B = bg_exp(self.t, k) 
         Vmodel *= B
         Vmodel *= V0
