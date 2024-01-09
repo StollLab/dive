@@ -54,7 +54,7 @@ def model(t, Vexp, pars):
         
         model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
 
-    elif method == "regularization" or method == "regularizationP":
+    elif method == "regularization" or method == "regularizationP" or method == "regularization_set_alpha":
 
         K0 = dl.dipolarkernel(t, r,integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
@@ -63,12 +63,14 @@ def model(t, Vexp, pars):
 
         delta_prior = [1, 1e-6]
         tau_prior = [1, 1e-4]
-        
-        tauGibbs = method == "regularization"
-        deltaGibbs = method == "regularization"
-        model_pymc = regularizationmodel(t, Vexp_scaled, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var)
 
-        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
+        alpha = pars["alpha"] if "alpha" in pars else None
+        
+        tauGibbs = (method == "regularization" or method == "regularization_set_alpha")
+        deltaGibbs = method == "regularization"
+        model_pymc = regularizationmodel(t, Vexp_scaled, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha)
+
+        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior, "alpha": alpha}
     
     else:
         raise ValueError(f"Unknown method '{method}'.")
@@ -161,7 +163,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
 def regularizationmodel(t, Vdata, K0, r,
         delta_prior=None, tau_prior=None,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
-        tauGibbs=True, deltaGibbs=True, bkgd_var="Bend"
+        tauGibbs=True, deltaGibbs=True, bkgd_var="Bend", alpha=None
     ):
     """
     Generates a PyMC model for a DEER signal over time vector t (in µs) given data in Vdata.
@@ -216,6 +218,8 @@ def regularizationmodel(t, Vdata, K0, r,
         # Regularization parameter
         if deltaGibbs: # no prior (it's included in the Gibbs sampler)
             delta = pm.Flat('delta', initval=1.02)
+        elif alpha is not None:
+            delta = pm.Deterministic('delta', alpha**2 * tau)
         else:
             delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1], initval=1.02)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting
@@ -301,6 +305,25 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
                 
         step = [conjstep_P, step_NUTS]
+        if steporder is not None:
+            step = [step[i] for i in steporder]
+
+    elif method == "regularization_set_alpha":
+        
+        removeVars = None
+        
+        with model:
+            
+            conjstep_tau = randTau_posterior(model_pars)
+            conjstep_P = randPnorm_posterior(model_pars)
+            
+            NUTS_varlist = [model['V0'], model['lamb'], model[bkgd_var]]
+            if NUTSpars is None:
+                step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore")
+            else:
+                step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore", **NUTSpars)
+            
+        step = [step_NUTS, conjstep_P, conjstep_tau]
         if steporder is not None:
             step = [step[i] for i in steporder]
             
