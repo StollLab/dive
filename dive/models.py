@@ -310,7 +310,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
 
     elif method == "regularization_set_alpha":
         
-        removeVars = None
+        removeVars = ["lg_alpha"]
         
         with model:
             

@@ -17,11 +17,13 @@ from .deer import *
 def _relevantVariables(trace):
     #desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
     if "Bend" in trace.posterior:
-        desiredVars = {"Bend": 1, "lamb": 1, "V0": 1, "sigma": 1, "lg_alpha": 1}
+        desiredVars = {"Bend": 1, "lamb": 1, "V0": 1, "sigma": 1}
     elif "tauB" in trace.posterior:
-        desiredVars = {"tauB": 1, "lamb": 1, "V0": 1, "sigma": 1, "lg_alpha": 1}
+        desiredVars = {"tauB": 1, "lamb": 1, "V0": 1, "sigma": 1}
     else:
-        desiredVars = {   "k": 1, "lamb": 1, "V0": 1, "sigma": 1, "lg_alpha": 1}
+        desiredVars = {   "k": 1, "lamb": 1, "V0": 1, "sigma": 1}
+    if "lg_alpha" in trace.posterior:
+        desiredVars.update({"lg_alpha": 1})
     # creates a dictionary with the variables and how many of them there are (None for single ones)
     Vars = {key: desiredVars[key] for key in desiredVars if key in trace.posterior}
 
