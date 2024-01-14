@@ -286,7 +286,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore", **NUTSpars)
             
-        step = [step_NUTS, conjstep_P, conjstep_tau, conjstep_delta]
+        step = [conjstep_tau, conjstep_delta, conjstep_P, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
         
@@ -323,7 +323,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore", **NUTSpars)
             
-        step = [step_NUTS, conjstep_P, conjstep_tau]
+        step = [conjstep_tau, conjstep_P, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
             
