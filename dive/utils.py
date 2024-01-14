@@ -272,7 +272,7 @@ def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, 
         else:
             exit = True
 
-    to_return = (chain_nums if return_chain_nums else trace.sel(chain=chain_nums)) if exit else drop_bad_chains(trace, max_remove, max_spread, max_allowed_rhat, min_change_to_remove, spread_precedence, return_chain_nums, depth, chain_nums)
+    to_return = (chain_nums if return_chain_nums else trace.sel(chain=chain_nums)) if exit else prune_chains(trace, max_remove, max_spread, max_allowed_rhat, min_change_to_remove, spread_precedence, return_chain_nums, depth, chain_nums)
     return to_return
 
 def saveTrace(df, Parameters, SaveName='empty'):
