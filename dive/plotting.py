@@ -406,18 +406,33 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, col
         ax2.plot(r,Pave,color = 'black',label = 'Average')
 
     plt.grid()
+        
+    return fig
 
-def pairplot_chain(trace, var1, var2, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha_points=0.1, alpha_inits=1):
+def pairplot_chain(trace, var1, var2, plot_inits=True, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha=0.2, alpha_inits=1):
     for chain in range(trace.posterior.dims["chain"]):
         v1 = np.array([draw.values for draw in trace.posterior[var1][chain]]).flatten()
         v2 = np.array([draw.values for draw in trace.posterior[var2][chain]]).flatten()
         if not ax:
             _, ax = plt.subplots(1, 1, figsize=(5,5))
         color = colors if isinstance(colors, str) else (colors[chain] if chain < len(colors) else colors[chain%len(colors)])
-        ax.plot(v1, v2, ".", color=color, alpha=alpha_points)
+        ax.plot(v1, v2, ".", color=color, alpha=alpha)
         ax.set_xlabel(_betterLabels(var1))
+        if plot_inits:
+            ax.plot(v1[0], v2[0], "o", color=color, alpha=alpha_inits)
         ax.set_ylabel(_betterLabels(var2))
-        ax.plot(v1[0], v2[0], "o", color=color, alpha=alpha_inits)
+        ax.set_title("scatter plot between %s and %s" % (_betterLabels(var1), _betterLabels(var2)))
     return ax
-    
-    return fig
+
+def pairplot_divergence(trace, var1, var2, ax=None, color="C2", divergence_color="C3", alpha=0.2, divergence_alpha=0.4):
+    v1 = np.array([draw.values for chain in trace.posterior[var1] for draw in chain]).flatten()
+    v2 = np.array([draw.values for chain in trace.posterior[var2] for draw in chain]).flatten()
+    if not ax:
+        _, ax = plt.subplots(1, 1, figsize=(5, 5))
+    ax.plot(v1, v2, ".", color=color, alpha=alpha)
+    divergent = np.array([draw.values for chain in trace.sample_stats.diverging for draw in chain]).flatten()
+    ax.plot(v1[divergent], v2[divergent], "o", color=divergence_color, alpha=divergence_alpha)
+    ax.set_xlabel(_betterLabels(var1))
+    ax.set_ylabel(_betterLabels(var2))
+    ax.set_title("scatter plot with divergences between %s and %s" % (_betterLabels(var1), _betterLabels(var2)))
+    return ax
