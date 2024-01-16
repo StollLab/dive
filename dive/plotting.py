@@ -436,3 +436,19 @@ def pairplot_divergence(trace, var1, var2, ax=None, color="C2", divergence_color
     ax.set_ylabel(_betterLabels(var2))
     ax.set_title("scatter plot with divergences between %s and %s" % (_betterLabels(var1), _betterLabels(var2)))
     return ax
+
+def pairplot_condition(trace, var1, var2, ax=None, criterion=None, threshold=None, color_greater="dodgerblue", color_lesser="hotpink", alpha_greater=0.2, alpha_lesser=0.2):
+    if not ax:
+        _, ax = plt.subplots(1, 1, figsize=(5, 5))
+    for i in range(trace.posterior.dims["chain"]):
+        v1 = np.array([draw.values for draw in trace.posterior[var1][i]]).flatten()
+        v2 = np.array([draw.values for draw in trace.posterior[var2][i]]).flatten()
+        for j in range(len(v1)):
+            if trace.sample_stats[criterion][i][j] > threshold:
+                ax.plot(v1[j], v2[j], ".", color=color_greater, alpha=alpha_greater)
+            else:
+                ax.plot(v1[j], v2[j], ".", color=color_lesser, alpha=alpha_lesser)
+    ax.set_xlabel(_betterLabels(var1))
+    ax.set_ylabel(_betterLabels(var2))
+    ax.set_title("scatter plot between %s and %s split at %s = %s" % (_betterLabels(var1), _betterLabels(var2), criterion, threshold))
+    return ax
