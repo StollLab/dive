@@ -452,3 +452,12 @@ def pairplot_condition(trace, var1, var2, ax=None, criterion=None, threshold=Non
     ax.set_ylabel(_betterLabels(var2))
     ax.set_title("scatter plot between %s and %s split at %s = %s" % (_betterLabels(var1), _betterLabels(var2), criterion, threshold))
     return ax
+
+def plot_hist(trace, var, ax=None, bins=10, color="k", alpha=0.5):
+    if not ax:
+        _, ax = plt.subplots(1, 1, figsize=(5, 5))
+    v = np.array([trace.posterior[var][i].values for i in range(trace.posterior.dims["chain"])]).flatten()
+    ax.set_xlabel(_betterLabels(var))
+    ax.set_ylabel("number of draws")
+    ax.set_title("histogram of %s" % _betterLabels(var))
+    ax.hist(v, bins=bins, alpha=alpha, color=color)
