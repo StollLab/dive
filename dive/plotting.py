@@ -406,5 +406,18 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, col
         ax2.plot(r,Pave,color = 'black',label = 'Average')
 
     plt.grid()
+
+def pairplot_chain(trace, var1, var2, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha_points=0.1, alpha_inits=1):
+    for chain in range(trace.posterior.dims["chain"]):
+        v1 = np.array([draw.values for draw in trace.posterior[var1][chain]]).flatten()
+        v2 = np.array([draw.values for draw in trace.posterior[var2][chain]]).flatten()
+        if not ax:
+            _, ax = plt.subplots(1, 1, figsize=(5,5))
+        color = colors if isinstance(colors, str) else (colors[chain] if chain < len(colors) else colors[chain%len(colors)])
+        ax.plot(v1, v2, ".", color=color, alpha=alpha_points)
+        ax.set_xlabel(_betterLabels(var1))
+        ax.set_ylabel(_betterLabels(var2))
+        ax.plot(v1[0], v2[0], "o", color=color, alpha=alpha_inits)
+    return ax
     
     return fig
