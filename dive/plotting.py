@@ -164,7 +164,7 @@ def summary(trace, model_dic):
     plotresult(trace, model_dic)
 
 
-def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, show_ave=None, chains=None, colors=["#4A5899","#F38D68"]):
+def plotresult(trace, model_dic, nDraws=100, rng=0, Pid=None, Pref=None, rref=None, show_ave=None, chains=None, colors=["#4A5899","#F38D68"]):
     """
     Plot the MCMC results in the time domain and in the distance domain, using an
     ensemble of P draws from the posterior, and the associated time-domain signals.
@@ -202,7 +202,7 @@ def plotresult(trace, model_dic, nDraws=100, Pid=None, Pref=None, rref=None, sho
     t = model_dic['t']
     r = model_dic['pars']['r']
     
-    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t)
+    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t, rng)
     fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave, colors)
 
     return fig, fig1
@@ -258,54 +258,42 @@ def _betterLabels(x):
         return [_table.get(x_,x_) for x_ in x]
 
 
-def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None):
-
-    varDict = {key: [draw.values for chain in trace.posterior[key] for draw in chain] for key in trace.posterior}
-
-    # Determine if a Gaussian model was used and how many iterations were run -------
-    GaussianModel = "r0" in varDict
-    if GaussianModel:
-        nGaussians = len(varDict['r0'][0])
-
-    nChainSamples = len(varDict['P'])
-
-    # Generate random indices for chain samples ------------------------------------
-    idxSamples = random.sample(range(nChainSamples), nDraws)
+def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None, rng=0):
+    # Extracts (nDraws) random samples from the trace and reshapes it to work nicely
+    varDict = az.extract(trace, num_samples=nDraws, rng=rng).transpose("sample", ...)
 
     # Draw P's -------------------------------------------------------------------
     Ps = []
-
+    # Determine if a Gaussian model was used
+    GaussianModel = "r0" in varDict
     if GaussianModel:
-        r0_vecs = [varDict["r0"][i] for i in idxSamples]
-        w_vecs = [varDict["w"][i] for i in idxSamples]
-        if nGaussians == 1:
-            a_vecs = np.ones_like(idxSamples)
+        # if gaussian, build P from r0 (mean), w (width), and a (amplitude)
+        r0_vecs = varDict["r0"].values
+        w_vecs = varDict["w"].values
+        if "a" in varDict:
+            a_vecs = varDict["a"].values
         else:
-            a_vecs = [varDict["a"][i] for i in idxSamples]
-
+            a_vecs = np.ones(nDraws)
         for iDraw in range(nDraws):
             P = dd_gauss(r,r0_vecs[iDraw],w_vecs[iDraw],a_vecs[iDraw])
             Ps.append(P)
     else:
+        # if regularization, simply take P from model
         for iDraw in range(nDraws):
-            P = varDict["P"][idxSamples[iDraw]]
+            P = varDict["P"][iDraw]
             Ps.append(P)
 
-    # Draw corresponding time-domain parameters ---------------------------------
+    # Rename time-domain parameters to make code below cleaner -------------------------
     if 'V0' in varDict:
-        V0 = [varDict["V0"][i] for i in idxSamples]
-
+        V0 = varDict["V0"].values
     if 'k' in varDict:
-        k = [varDict["k"][i] for i in idxSamples]
-        
+        k = varDict["k"].values
     if 'Bend' in varDict:
-        Bend = [varDict["Bend"][i] for i in idxSamples]
-        
+        Bend = varDict["Bend"].values   
     if 'tauB' in varDict:
-        tauB = [varDict["tauB"][i] for i in idxSamples]
-
+        tauB = varDict["tauB"].values
     if 'lamb' in varDict:
-        lamb = [varDict["lamb"][i] for i in idxSamples]
+        lamb = varDict["lamb"].values
 
     # Generate V's and B's from P's and other parameters --------------------------------
     Vs = []
