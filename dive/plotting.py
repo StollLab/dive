@@ -397,72 +397,108 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, col
         
     return fig
 
-def pairplot_chain(trace, var1, var2, plot_inits=False, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha=0.2, alpha_inits=1):
+def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=0, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha_points=0.1, alpha_inits=1):
     """Plots two parameters against each other for each chain."""
+    if not ax:
+        # creates ax object if not provided
+        _, ax = plt.subplots(1, 1, figsize=(5,5))
+    xlabel = var1
+    ylabel = var2
     for chain in range(trace.posterior.dims["chain"]):
-        v1 = np.array([draw.values for draw in trace.posterior[var1][chain]]).flatten()
-        v2 = np.array([draw.values for draw in trace.posterior[var2][chain]]).flatten()
-        if not ax:
-            # creates ax object if not provided
-            _, ax = plt.subplots(1, 1, figsize=(5,5))
-        # if "color" is a string, it uses that color
-        # if it is a list, it uses those colors, reusing as necessary
+        v1 = az.extract(trace, var_names=[var1], combined=False)[chain].transpose()
+        v2 = az.extract(trace, var_names=[var2], combined=False)[chain].transpose()
+        # for parameters w/ multiple values (a, w, and r0)
+        # will plot the values corresponding to gauss_id
+        if len(v1.dims) > 1:
+                v1 = v1[gauss_id]
+                xlabel = var1 + "[%s]" % gauss_id
+        if len(v2.dims) > 1:
+                v2 = v2[gauss_id]
+                ylabel = var2 + "[%s]" % gauss_id
+        # if color is a string, it uses that color; if it is a list, it uses them in order
         color = colors if isinstance(colors, str) else colors[chain%len(colors)]
-        # plots the two variables
-        ax.plot(v1, v2, ".", color=color, alpha=alpha)
-        # plots the initial point of each chain as a large dot if desired
+        # plots the two parameters
+        ax.plot(v1, v2, ".", color=color, alpha=alpha_points)
         if plot_inits:
+            # if plot_inits is True, it plots the initial points as a larger dot
             ax.plot(v1[0], v2[0], "o", color=color, alpha=alpha_inits)
-        ax.set_xlabel(_betterLabels(var1))
-        ax.set_ylabel(_betterLabels(var2))
-        ax.set_title("scatter plot between %s and %s" % (_betterLabels(var1), _betterLabels(var2)))
+    # labels axes and title
+    ax.set_xlabel(_betterLabels(xlabel))
+    ax.set_ylabel(_betterLabels(ylabel))
+    ax.set_title("scatter plot between %s and %s" % (_betterLabels(xlabel), _betterLabels(ylabel)))
     return ax
 
-def pairplot_divergence(trace, var1, var2, ax=None, color="C2", divergence_color="C3", alpha=0.2, divergence_alpha=0.4):
+def pairplot_divergence(trace, var1, var2, gauss_id=0, ax=None, color="C2", divergence_color="C3", alpha=0.2, divergence_alpha=0.4):
     """Plots two parameters against each other and highlights divergences."""
-    v1 = np.array([draw.values for chain in trace.posterior[var1] for draw in chain]).flatten()
-    v2 = np.array([draw.values for chain in trace.posterior[var2] for draw in chain]).flatten()
+    v1 = az.extract(trace, var_names=[var1])
+    v2 = az.extract(trace, var_names=[var2])
+    xlabel = var1
+    ylabel = var2
+    # for parameters w/ multiple values (a, w, and r0)
+    # will plot the values corresponding to gauss_id
+    if len(v1.dims) > 1:
+        v1 = v1[gauss_id]
+        xlabel = var1 + "[%s]" % gauss_id
+    if len(v2.dims) > 1:
+        v2 = v2[gauss_id]
+        ylabel = var2 + "[%s]" % gauss_id
     if not ax:
         # creates an ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5, 5))
     # plots all the points first
     ax.plot(v1, v2, ".", color=color, alpha=alpha)
     # then, plots the divergent points in divergence_color & larger
-    divergent = np.array([draw.values for chain in trace.sample_stats.diverging for draw in chain]).flatten()
+    divergent = az.extract(trace, group="sample_stats", var_names=["diverging"])
     ax.plot(v1[divergent], v2[divergent], "o", color=divergence_color, alpha=divergence_alpha)
-    ax.set_xlabel(_betterLabels(var1))
-    ax.set_ylabel(_betterLabels(var2))
-    ax.set_title("scatter plot with divergences between %s and %s" % (_betterLabels(var1), _betterLabels(var2)))
+    ax.set_xlabel(_betterLabels(xlabel))
+    ax.set_ylabel(_betterLabels(ylabel))
+    ax.set_title("scatter plot with divergences between %s and %s" % (_betterLabels(xlabel), _betterLabels(ylabel)))
     return ax
 
-def pairplot_condition(trace, var1, var2, ax=None, criterion=None, threshold=None, color_greater="dodgerblue", color_lesser="hotpink", alpha_greater=0.2, alpha_lesser=0.2):
+def pairplot_condition(trace, var1, var2, gauss_id=0, ax=None, criterion=None, threshold=None, color_greater="dodgerblue", color_lesser="hotpink", alpha_greater=0.2, alpha_lesser=0.2):
     """Plots two parameters against each other and divides points greater and less than a threshold in a certain criterion."""
     # the criterion should be in sample_stats, e.g. tree_depth
     # points above and below the threshold in this criterion will be plotted in different colors
+    v1 = az.extract(trace, var_names=[var1])
+    v2 = az.extract(trace, var_names=[var2])
+    stats = az.extract(trace, group="sample_stats", var_names=[criterion])
+    xlabel = var1
+    ylabel = var2
+    # for parameters w/ multiple values (a, w, and r0)
+    # will plot the values corresponding to gauss_id
+    if len(v1.dims) > 1:
+        v1 = v1[gauss_id]
+        xlabel = var1 + "[%s]" % gauss_id
+    if len(v2.dims) > 1:
+        v2 = v2[gauss_id]
+        ylabel = var2 + "[%s]" % gauss_id
     if not ax:
         # creates an ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5, 5))
-    for i in range(trace.posterior.dims["chain"]):
-        v1 = np.array([draw.values for draw in trace.posterior[var1][i]]).flatten()
-        v2 = np.array([draw.values for draw in trace.posterior[var2][i]]).flatten()
-        for j in range(len(v1)):
-            # for each point, checks whether above or below the threshold
-            if trace.sample_stats[criterion][i][j] > threshold:
-                ax.plot(v1[j], v2[j], ".", color=color_greater, alpha=alpha_greater)
-            else:
-                ax.plot(v1[j], v2[j], ".", color=color_lesser, alpha=alpha_lesser)
-    ax.set_xlabel(_betterLabels(var1))
-    ax.set_ylabel(_betterLabels(var2))
-    ax.set_title("scatter plot between %s and %s split at %s = %s" % (_betterLabels(var1), _betterLabels(var2), criterion, threshold))
+    for i in range(len(v1)):
+        if stats[i] > threshold:
+            ax.plot(v1[i], v2[i], ".", color=color_greater, alpha=alpha_greater)
+        else:
+            ax.plot(v1[i], v2[i], ".", color=color_lesser, alpha=alpha_lesser)
+    ax.set_xlabel(_betterLabels(xlabel))
+    ax.set_ylabel(_betterLabels(ylabel))
+    ax.set_title("scatter plot between %s and %s split at %s = %s" % (_betterLabels(xlabel), _betterLabels(ylabel), criterion, threshold))
     return ax
 
-def plot_hist(trace, var, ax=None, bins=10, color="k", alpha=1):
+def plot_hist(trace, var, combine_multi=False, gauss_id=0, ax=None, bins=10, color="k", alpha=1):
     """Plots a histogram of a parameter"""
     if not ax:
         # creates an ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5, 5))
-    v = np.array([trace.posterior[var][i].values for i in range(trace.posterior.dims["chain"])]).flatten()
-    ax.set_xlabel(_betterLabels(var))
+    xlabel = var
+    v = az.extract(trace, var_names=[var])
+    if len(v.dims) > 1:
+        if combine_multi: # for multi-value parameters a, w, and r0, will combine into one histogram
+            v = v.unstack().stack(stacked=["draw",...]) # combines into one list
+        else:
+            v = v[gauss_id] # selects the gaussian chosen in gauss_id
+            xlabel = var + "[%s]" % gauss_id
+    ax.set_xlabel(_betterLabels(xlabel))
     ax.set_ylabel("number of draws")
-    ax.set_title("histogram of %s" % _betterLabels(var))
+    ax.set_title("histogram of %s" % _betterLabels(xlabel))
     ax.hist(v, bins=bins, alpha=alpha, color=color)
