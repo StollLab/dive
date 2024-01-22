@@ -397,11 +397,12 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, col
         
     return fig
 
-def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=0, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha_points=0.1, alpha_inits=1):
+def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=1, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha_points=0.1, alpha_inits=1):
     """Plots two parameters against each other for each chain."""
     if not ax:
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
+    gauss_id -= 1 # to fix off-by-one error
     xlabel = var1
     ylabel = var2
     for chain in range(trace.posterior.dims["chain"]):
@@ -428,8 +429,9 @@ def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=0, ax=None, col
     ax.set_title("scatter plot between %s and %s" % (_betterLabels(xlabel), _betterLabels(ylabel)))
     return ax
 
-def pairplot_divergence(trace, var1, var2, gauss_id=0, ax=None, color="C2", divergence_color="C3", alpha=0.2, divergence_alpha=0.4):
+def pairplot_divergence(trace, var1, var2, gauss_id=1, ax=None, color="C2", divergence_color="C3", alpha=0.2, divergence_alpha=0.4):
     """Plots two parameters against each other and highlights divergences."""
+    gauss_id -= 1 # to fix off-by-one error
     v1 = az.extract(trace, var_names=[var1])
     v2 = az.extract(trace, var_names=[var2])
     xlabel = var1
@@ -455,10 +457,11 @@ def pairplot_divergence(trace, var1, var2, gauss_id=0, ax=None, color="C2", dive
     ax.set_title("scatter plot with divergences between %s and %s" % (_betterLabels(xlabel), _betterLabels(ylabel)))
     return ax
 
-def pairplot_condition(trace, var1, var2, gauss_id=0, ax=None, criterion=None, threshold=None, color_greater="dodgerblue", color_lesser="hotpink", alpha_greater=0.2, alpha_lesser=0.2):
+def pairplot_condition(trace, var1, var2, gauss_id=1, ax=None, criterion=None, threshold=None, color_greater="dodgerblue", color_lesser="hotpink", alpha_greater=0.2, alpha_lesser=0.2):
     """Plots two parameters against each other and divides points greater and less than a threshold in a certain criterion."""
     # the criterion should be in sample_stats, e.g. tree_depth
     # points above and below the threshold in this criterion will be plotted in different colors
+    gauss_id -= 1 # to fix off-by-one error
     v1 = az.extract(trace, var_names=[var1])
     v2 = az.extract(trace, var_names=[var2])
     stats = az.extract(trace, group="sample_stats", var_names=[criterion])
@@ -485,11 +488,12 @@ def pairplot_condition(trace, var1, var2, gauss_id=0, ax=None, criterion=None, t
     ax.set_title("scatter plot between %s and %s split at %s = %s" % (_betterLabels(xlabel), _betterLabels(ylabel), criterion, threshold))
     return ax
 
-def plot_hist(trace, var, combine_multi=False, gauss_id=0, ax=None, bins=10, color="k", alpha=1):
+def plot_hist(trace, var, combine_multi=False, gauss_id=1, ax=None, bins=10, color="k", alpha=1):
     """Plots a histogram of a parameter"""
     if not ax:
         # creates an ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5, 5))
+    gauss_id -= 1 # to fix off-by-one error
     xlabel = var
     v = az.extract(trace, var_names=[var])
     if len(v.dims) > 1:
