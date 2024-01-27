@@ -16,26 +16,25 @@ from .deer import *
 
 def _relevantVariables(trace):
     #desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
+    desiredVars = ["lamb","V0","sigma"]
     if "Bend" in trace.posterior:
-        desiredVars = {"Bend": 1, "lamb": 1, "V0": 1, "sigma": 1}
+        desiredVars.append("Bend")
     elif "tauB" in trace.posterior:
-        desiredVars = {"tauB": 1, "lamb": 1, "V0": 1, "sigma": 1}
+        desiredVars.append("tauB")
     else:
-        desiredVars = {   "k": 1, "lamb": 1, "V0": 1, "sigma": 1}
+        desiredVars.append("k")
     if "lg_alpha" in trace.posterior:
-        desiredVars.update({"lg_alpha": 1})
-    # creates a dictionary with the variables and how many of them there are (None for single ones)
-    Vars = {key: desiredVars[key] for key in desiredVars if key in trace.posterior}
+        desiredVars.append("lg_alpha")
 
     # checks if gaussian
     if "w_dim_0" in trace.posterior:
         # adds r0, w, and a to the dictionary with the number of variables
         nGauss = trace.posterior.dims["w_dim_0"]
-        Vars.update({"r0": nGauss, "w": nGauss})
+        desiredVars.extend(["r0","w"])
         if nGauss > 1:
-            Vars.update({"a": nGauss})
+            desiredVars.append("a")
 
-    return Vars
+    return desiredVars
 
 
 def printsummary(trace, model_dic):
@@ -45,115 +44,30 @@ def printsummary(trace, model_dic):
     """
     Vars = _relevantVariables(trace)
     with model_dic['model']:
-        summary = az.summary(trace, var_names=list(Vars.keys()))
+        summary = az.summary(trace, var_names=Vars)
     # replace the labels with their unicode characters before displaying
     summary.index = _betterLabels(summary.index.values)
     display(summary)
 
 
-def plotmarginals(trace, GroundTruth=None, nCols=6):
+def plotmarginals(trace, GroundTruth=None, plot_args={"hdi_prob":"hide"}):
     """
     Plot marginalized posteriors
     """
     Vars = _relevantVariables(trace)
-    nVars = sum(Vars.values())
+    plot = az.plot_posterior(trace, var_names=Vars, **plot_args)
+    for ax in plot.flatten():
+        title = ax.get_title()
+        # plots vertical bar @ ground truth if given
+        if GroundTruth:
+            if title in GroundTruth:
+                bottom, top = ax.get_ylim()
+                ax.vlines(GroundTruth[title], bottom, top, color='black')
+        # replaces title with better title if available
+        ax.set_title(_betterLabels(title))
 
-    # figure out layout of plots and create figure
-    nCols = min(nVars,nCols)
-    nRows = int(np.ceil(nVars/nCols))
-    fig, axs = plt.subplots(nRows, nCols)
-    axs = axs.flatten()
-    width = min(3*nVars,12)
-    height = nRows*3.5
+    return plot
 
-    # set figure size
-    fig.set_figheight(height)
-    fig.set_figwidth(width)
-    
-    # KDE of chain samples and plot them
-    ax_id=0
-    for key in Vars:
-        if Vars[key] == 1:
-            if key in trace.posterior:
-                az.plot_kde(np.array([np.ndarray.item(draw.values) for chain in trace.posterior[key] for draw in chain]), ax=axs[ax_id])
-
-            axs[ax_id].set_xlabel(_betterLabels(key), fontsize='large')
-            axs[ax_id].yaxis.set_ticks([])
-            axs[ax_id].grid(axis='x')
-
-            if GroundTruth:
-                if key in GroundTruth.keys():
-                    bottom, top = axs[ax_id].get_ylim()
-                    axs[ax_id].vlines(GroundTruth[key], bottom, top, color='black')
-            ax_id += 1
-        else:
-            for i in range(Vars[key]):
-                if key in trace.posterior:
-                    az.plot_kde(np.array([np.ndarray.item(draw.values) for chain in trace.posterior[key][i] for draw in chain]), ax=axs[ax_id])
-                axs[ax_id].set_xlabel(_betterLabels(key+"[%s]"%i), fontsize='large')
-                axs[ax_id].yaxis.set_ticks([])
-                axs[ax_id].grid(axis='x')
-
-                if GroundTruth:
-                    if key in GroundTruth.keys():
-                        bottom, top = axs[ax_id].get_ylim()
-                        axs[ax_id].vlines(GroundTruth[key], bottom, top, color='black')
-                ax_id += 1
-
-    # Clean up figure
-    for j in range(nVars, len(axs)):
-        axs[j].axis('off')
-    fig.tight_layout()
-    return fig
-
-
-def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
-    """
-    Matrix of pairwise correlation plots between model parameters.
-    """
-    # determine variables to include
-    Vars = _relevantVariables(trace)
-    nVars = sum(Vars.values())
-    
-    # Set default figure size
-    if figsize is None:
-        if nVars < 3:
-            figsize = (7, 7)
-        else:
-            figsize = (10, 10)
-    if div == True:
-        class Object(object):
-            pass
-
-        trace.sample_stats = Object()
-        trace.sample_stats.diverging = trace.diverging
-    # use arviz library to plot correlations
-    az.rcParams["plot.max_subplots"] = 200
-    with model_dic["model"]:
-        axs = az.plot_pair(trace, var_names=list(Vars.keys()), kind='kde', figsize=figsize, marginals=marginals, divergences=div)
-
-    # replace labels with the nicer unicode character versions
-    if len(Vars) > 2:
-        # reshape axes so that we can loop through them
-        axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
-
-        for ax in axs:
-            xlabel = ax.get_xlabel()
-            ylabel = ax.get_ylabel()
-            if xlabel:
-                ax.set_xlabel(_betterLabels(xlabel))
-            if ylabel:
-                ax.set_ylabel(_betterLabels(ylabel))
-    else:
-        xlabel = axs.get_xlabel()
-        ylabel = axs.get_ylabel()
-        axs.set_xlabel(_betterLabels(xlabel))
-        axs.set_ylabel(_betterLabels(ylabel))
-
-    fig = plt.gcf()
-   
-
-    return fig
 
 
 def summary(trace, model_dic):
