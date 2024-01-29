@@ -239,7 +239,6 @@ def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, 
     rhats = get_rhats(trace.sel(chain=chain_nums))
     rhat_max, rhat_min = rhats.max(), rhats.min()
     rhat_spread = rhat_max - rhat_min
-    print(rhats)
 
     # break if break criterion met
     exit = False
@@ -255,7 +254,6 @@ def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, 
         # then drops each chain one by one and see which one minimizes rhat in that variable
         to_drop = None
         idx_of_rhat_max = rhats.idxmax()
-        print(idx_of_rhat_max)
         lowest_rhat_max = rhats[idx_of_rhat_max]
         for i in chain_nums:
             chain_nums_copy = chain_nums.copy()
@@ -266,7 +264,6 @@ def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, 
                 to_drop = i
         # update chain_nums with the chain to drop and recurse the function
         if to_drop is not None:
-            print(to_drop)
             chain_nums.remove(to_drop)
             depth += 1
         else:
