@@ -68,7 +68,53 @@ def plotmarginals(trace, GroundTruth=None, plot_args={"hdi_prob":"hide"}):
 
     return plot
 
+def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
+    """
+    Matrix of pairwise correlation plots between model parameters.
+    """
+    # determine variables to include
+    Vars = _relevantVariables(trace)
+    nVars = len(Vars)
+    
+    # Set default figure size
+    if figsize is None:
+        if nVars < 3:
+            figsize = (7, 7)
+        else:
+            figsize = (10, 10)
+    if div == True:
+        class Object(object):
+            pass
 
+        trace.sample_stats = Object()
+        trace.sample_stats.diverging = trace.diverging
+    # use arviz library to plot correlations
+    az.rcParams["plot.max_subplots"] = 200
+    with model_dic["model"]:
+        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=figsize, marginals=marginals, divergences=div)
+
+    # replace labels with the nicer unicode character versions
+    if len(Vars) > 2:
+        # reshape axes so that we can loop through them
+        axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
+
+        for ax in axs:
+            xlabel = ax.get_xlabel()
+            ylabel = ax.get_ylabel()
+            if xlabel:
+                ax.set_xlabel(_betterLabels(xlabel))
+            if ylabel:
+                ax.set_ylabel(_betterLabels(ylabel))
+    else:
+        xlabel = axs.get_xlabel()
+        ylabel = axs.get_ylabel()
+        axs.set_xlabel(_betterLabels(xlabel))
+        axs.set_ylabel(_betterLabels(ylabel))
+
+    fig = plt.gcf()
+   
+
+    return fig
 
 def summary(trace, model_dic):
     
