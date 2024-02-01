@@ -213,6 +213,64 @@ def interpret(trace,model_dic):
 
     return fit
 
+def get_rhats(trace):
+    rhats = az.summary(trace, var_names=["~P"], filter_vars="like")["r_hat"]
+    return rhats
+
+def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, min_change_to_remove=0, spread_precedence=False, return_chain_nums=False, depth=0, chain_nums=None):
+    """
+    tries dropping chains one by one to see effect on rhat.
+    will remove until the max rhat is below max_allowed_rhat.
+    if spread_precedence is true, then chains are removed until the spread is below max_spread.
+    only removes up to max_remove of the chains.
+    only removes chains if the difference in rhat is greater than min_change_to_remove.
+    returns cleaned trace by default unless return_chain_nums (good chains) is set to True.
+    """
+
+    # get chain numbers
+    if chain_nums is None:
+        chain_nums = [j for j in range(trace.posterior.dims["chain"])]
+
+    # by default only removes up to half the chains
+    if max_remove is None:
+        max_remove = int(trace.posterior.dims["chain"]/2)
+
+    # get rhats
+    rhats = get_rhats(trace.sel(chain=chain_nums))
+    rhat_max, rhat_min = rhats.max(), rhats.min()
+    rhat_spread = rhat_max - rhat_min
+
+    # break if break criterion met
+    exit = False
+    if rhat_max < max_allowed_rhat and not spread_precedence:
+        exit = True
+    if rhat_spread < max_spread and spread_precedence:
+        exit = True
+    if depth >= max_remove:
+        exit = True
+
+    if not exit:
+        # finds the variable with the highest rhat
+        # then drops each chain one by one and see which one minimizes rhat in that variable
+        to_drop = None
+        idx_of_rhat_max = rhats.idxmax()
+        lowest_rhat_max = rhats[idx_of_rhat_max]
+        for i in chain_nums:
+            chain_nums_copy = chain_nums.copy()
+            chain_nums_copy.remove(i)
+            dropped_rhats = get_rhats(trace.sel(chain=chain_nums_copy))
+            if dropped_rhats[idx_of_rhat_max] < lowest_rhat_max-min_change_to_remove:
+                lowest_rhat_max = dropped_rhats[idx_of_rhat_max]
+                to_drop = i
+        # update chain_nums with the chain to drop and recurse the function
+        if to_drop is not None:
+            chain_nums.remove(to_drop)
+            depth += 1
+        else:
+            exit = True
+
+    to_return = (chain_nums if return_chain_nums else trace.sel(chain=chain_nums)) if exit else prune_chains(trace, max_remove, max_spread, max_allowed_rhat, min_change_to_remove, spread_precedence, return_chain_nums, depth, chain_nums)
+    return to_return
 
 def saveTrace(df, Parameters, SaveName='empty'):
     """
