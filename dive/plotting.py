@@ -332,8 +332,8 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, col
 
 
     if show_ave is not None:
-        ax1.plot(t,Vave,color='yellow',label= 'Vexp Average')
-        ax1.plot(t,Bave,color = 'purple',label = 'Background Average')
+        ax1.plot(t,Vavg,color='yellow',label= 'Vexp Average')
+        ax1.plot(t,Bavg,color = 'purple',label = 'Background Average')
     #ax1.plot(t,Vave-residuals,color = 'red')
         
 
@@ -351,7 +351,7 @@ def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, col
     if Pref is not None:
         ax2.plot(rref, Pref, color='black')
     if show_ave is not None: 
-        ax2.plot(r,Pave,color = 'black',label = 'Average')
+        ax2.plot(r,Pavg,color = 'black',label = 'Average')
 
     plt.grid()
         
