@@ -70,7 +70,9 @@ def model(t, Vexp, pars):
         deltaGibbs = method == "regularization"
         model_pymc = regularizationmodel(t, Vexp_scaled, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha)
 
-        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior, "alpha": alpha}
+        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
+        if alpha is not None:
+            model_pars.extend({"alpha": alpha})
     
     else:
         raise ValueError(f"Unknown method '{method}'.")
