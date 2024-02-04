@@ -27,6 +27,8 @@ def saveTrace(trace, model_dic, SaveName=None):
 
     # saves the trace as a netCDF file
     trace.to_netcdf(SaveName)
+    
+    return
 
 def loadTrace(path):
     """
@@ -47,5 +49,3 @@ def loadTrace(path):
     model_dic = model(t, Vexp, pars)
 
     return trace, model_dic
-
-loaded_trace, loaded_dic = loadTrace("data/test_trace7.nc")
