@@ -3,8 +3,6 @@ import numpy as np
 import math as m
 from pandas.core import indexers
 from scipy.special import fresnel
-from datetime import date
-import os
 
 from .constants import *
 from .deerload import *
@@ -67,23 +65,6 @@ def dipolarkernel(t,r):
         K *= dr
     
     return K
-
-
-def loadTrace(FileName):
-    """
-    Load a DEER trace, can be a Bruker or comma separated file.
-    """
-    if FileName.endswith('.dat') or FileName.endswith('.txt') or FileName.endswith('.csv'):
-        data = np.genfromtxt(FileName, delimiter=',', skip_header=1)
-        t = data[:,0]
-        Vdata = data[:,1]
-    elif FileName.endswith('.DTA') or FileName.endswith('.DSC'):
-        t, Vdata, Parameters = deerload(FileName)
-    else:
-        raise ValueError('The file format is not recognized.')
-
-    return t, Vdata
-
 
 def interpret(trace,model_dic):
     
@@ -212,42 +193,6 @@ def interpret(trace,model_dic):
     fit = FitResult(trace,model_dic)
 
     return fit
-
-
-def saveTrace(df, Parameters, SaveName='empty'):
-    """
-    Save a trace to a CSV file.
-    """
-    if SaveName == 'empty':
-        today = date.today()
-        datestring = today.strftime("%Y%m%d")
-        SaveName = "./traces/{}_traces.dat".format(datestring)
-    
-    if not SaveName.endswith('.dat'):
-        SaveName = SaveName+'.dat'
-
-    shape = df.shape 
-    cols = df.columns.tolist()
-
-    os.makedirs(os.path.dirname(SaveName), exist_ok=True)
-
-    f = open(SaveName, 'a+')
-    f.write("# Traces from the MCMC simulations with PyMC\n")
-    f.write("# The following {} parameters were investigated:\n".format(shape[1]))
-    f.write("# {}\n".format(cols))
-    f.write("# nParameters nChains nIterations\n")
-    if Parameters['nGauss'] == 1:
-        f.write("{},{},{},0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 2:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 3:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-    elif Parameters['nGauss'] == 4:
-        f.write("{},{},{},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0\n".format(shape[1],Parameters['chains'],Parameters['draws']))
-
-    df.to_csv (f, index=False, header=False)
-
-    f.close()
 
 def fnnls(AtA, Atb, tol=[], maxiter=[], verbose=False):
     r"""
