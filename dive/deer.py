@@ -25,6 +25,10 @@ def dd_gauss(r,r0,fwhm,a=1):
         for k in range(nGauss):
             P += a[k]*gauss(r,r0[k],sig[k])
 
+    # normalize P
+    scale = P.sum() * (r[1]-r[0])
+    P /= scale
+
     return P
 
 
