@@ -52,7 +52,7 @@ def model(t, Vexp, pars):
         K0 = dl.dipolarkernel(t, r, integralop=True)
         model_pymc = multigaussmodel(t, Vexp_scaled, K0, r, nGauss, bkgd_var=bkgd_var)
         
-        model_pars = {"K0": K0, "r": r, "ngaussians": nGauss}
+        model_pars = {"K0": K0, "r": r, "nGauss": nGauss}
 
     elif method == "regularization" or method == "regularizationP" or method == "regularization_set_alpha":
 
@@ -70,7 +70,9 @@ def model(t, Vexp, pars):
         deltaGibbs = method == "regularization"
         model_pymc = regularizationmodel(t, Vexp_scaled, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha)
 
-        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior, "alpha": alpha}
+        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
+        if alpha is not None:
+            model_pars.extend({"alpha": alpha})
     
     else:
         raise ValueError(f"Unknown method '{method}'.")
@@ -257,7 +259,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         
         with model:
             NUTS_varlist = [model['r0_rel'], model['w'], model['w_mu']]
-            if model_pars['ngaussians']>1:
+            if model_pars['nGauss']>1:
                 NUTS_varlist.append(model['a'])
             NUTS_varlist.append(model['sigma'])
             NUTS_varlist.append(model[bkgd_var])

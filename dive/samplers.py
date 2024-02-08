@@ -40,7 +40,6 @@ class randPnorm_posterior(BlockedStep):
         self.K0 = pars["K0"]
         self.LtL = pars["LtL"]
         self.dr = pars["dr"]
-        self.alpha = pars["alpha"]
 
     def step(self, point: dict):
         
