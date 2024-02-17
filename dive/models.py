@@ -54,7 +54,7 @@ def model(t, Vexp, pars):
         
         model_pars = {"K0": K0, "r": r, "nGauss": nGauss}
 
-    elif method == "regularization" or method == "regularizationP" or method == "regularization_set_alpha":
+    elif method == "regularization" or method == "regularizationP" or method == "regularization_set_alpha" or method == "regularization_NUTS":
 
         K0 = dl.dipolarkernel(t, r,integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
@@ -68,7 +68,7 @@ def model(t, Vexp, pars):
         
         tauGibbs = (method == "regularization" or method == "regularization_set_alpha")
         deltaGibbs = method == "regularization"
-        model_pymc = regularizationmodel(t, Vexp_scaled, K0, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha)
+        model_pymc = regularizationmodel(t, Vexp_scaled, K0, LtL, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha, allNUTS=(method=="regularization_NUTS"))
 
         model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
         if alpha is not None:
@@ -162,10 +162,10 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         
     return model
 
-def regularizationmodel(t, Vdata, K0, r,
+def regularizationmodel(t, Vdata, K0, LtL, r,
         delta_prior=None, tau_prior=None,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
-        tauGibbs=True, deltaGibbs=True, bkgd_var="Bend", alpha=None
+        tauGibbs=True, deltaGibbs=True, bkgd_var="Bend", alpha=None, allNUTS=False
     ):
     """
     Generates a PyMC model for a DEER signal over time vector t (in µs) given data in Vdata.
@@ -184,15 +184,26 @@ def regularizationmodel(t, Vdata, K0, r,
     # Model definition
     with pm.Model() as model:
         # Distance distribution - no prior (it's included in the Gibbs sampler)
-        P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), cov=np.identity(len(r)))
+        if allNUTS:
+            P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), tau=LtL)
+        else:
+            P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), cov=np.identity(len(r)))
         
         # Time-domain model signal
         Vmodel = pm.math.dot(K0*dr,P)
 
         # Add modulation depth
         if includeModDepth:
-            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
-            Vmodel = (1-lamb) + lamb*Vmodel
+            if allNUTS:
+                b = pm.Beta('b', alpha=7.5, beta=1.65)
+                c = pm.Beta('c', alpha=1.3, beta=2.0)
+                Vmodel = b + c*Vmodel
+                # deterministic lamb and V0 for reporting
+                #lamb = pm.Deterministic('lamb', c/(pm.math.sum(P)*(r[1]-r[0])))
+                #V0 = pm.Deterministic('V0', b/(1-lamb)) 
+            else:
+                lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
+                Vmodel = (1-lamb) + lamb*Vmodel
 
         # Add background
         if includeBackground:
@@ -206,7 +217,7 @@ def regularizationmodel(t, Vdata, K0, r,
             Vmodel *= B
 
         # Add overall amplitude
-        if includeAmplitude:
+        if includeAmplitude and not allNUTS:
             V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
             Vmodel *= V0
             
@@ -307,6 +318,22 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
                 step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
                 
         step = [conjstep_P, step_NUTS]
+        if steporder is not None:
+            step = [step[i] for i in steporder]
+
+    elif method == "regularization_NUTS":
+        
+        removeVars = None
+        
+        with model:
+
+            NUTS_varlist = [model['tau'], model['delta'], model[bkgd_var], model['b'], model['c']]
+            if NUTSpars is None:
+                step_NUTS = pm.NUTS(NUTS_varlist)
+            else:
+                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
+                
+        step = [step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
 
