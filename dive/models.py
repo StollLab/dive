@@ -199,8 +199,8 @@ def regularizationmodel(t, Vdata, K0, LtL, r,
                 c = pm.Beta('c', alpha=1.3, beta=2.0)
                 Vmodel = b + c*Vmodel
                 # deterministic lamb and V0 for reporting
-                #lamb = pm.Deterministic('lamb', c/(pm.math.sum(P)*(r[1]-r[0])))
-                #V0 = pm.Deterministic('V0', b/(1-lamb)) 
+                lamb = pm.Deterministic('lamb', c*(pm.math.sum(P)*(r[1]-r[0])))
+                V0 = pm.Deterministic('V0', b/(1-lamb)) 
             else:
                 lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
                 Vmodel = (1-lamb) + lamb*Vmodel
