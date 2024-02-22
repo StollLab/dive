@@ -182,10 +182,26 @@ def regularizationmodel(t, Vdata, K0, LtL, r,
     dr = r[1]-r[0]
     
     # Model definition
-    with pm.Model() as model:
+    with pm.Model() as model:               
+        # Noise parameter
+        if tauGibbs: # no prior (it's included in the Gibbs sampler)
+            tau = pm.Flat('tau', initval=1.2)
+        else:
+            tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1], initval=1.3)
+        sigma = pm.Deterministic('sigma', 1/np.sqrt(tau))  # for reporting
+
+        # Regularization parameter
+        if deltaGibbs: # no prior (it's included in the Gibbs sampler)
+            delta = pm.Flat('delta', initval=1.02)
+        elif alpha is not None:
+            delta = pm.Deterministic('delta', alpha**2 * tau)
+        else:
+            delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1], initval=1.02)
+        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)))  # for reporting
+
         # Distance distribution - no prior (it's included in the Gibbs sampler)
         if allNUTS:
-            P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r)), tau=LtL)
+            P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=delta*LtL)
             constraint = P >= 0
             potential = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
         else:
@@ -197,12 +213,12 @@ def regularizationmodel(t, Vdata, K0, LtL, r,
         # Add modulation depth
         if includeModDepth:
             if allNUTS:
-                b = pm.Beta('b', alpha=7.5, beta=1.65)
-                c = pm.Beta('c', alpha=1.3, beta=2.0)
+                b = pm.Beta('b', alpha=7.5, beta=1.65) # b = V0(1-lamb)
+                c = pm.Beta('c', alpha=7.75, beta=2.6) # c = V0*lamb
                 Vmodel = b + c*Vmodel
                 # deterministic lamb and V0 for reporting
-                lamb = pm.Deterministic('lamb', c*(pm.math.sum(P)*(r[1]-r[0])))
-                V0 = pm.Deterministic('V0', b/(1-lamb)) 
+                V0 = pm.Deterministic('V0', b+c*(pm.math.sum(P)*(r[1]-r[0]))) # V0 = b+c after normalization
+                lamb = pm.Deterministic('lamb', c*(pm.math.sum(P)*(r[1]-r[0]))/V0) # lamb = c/(b+c) after norm.
             else:
                 lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
                 Vmodel = (1-lamb) + lamb*Vmodel
@@ -222,22 +238,6 @@ def regularizationmodel(t, Vdata, K0, LtL, r,
         if includeAmplitude and not allNUTS:
             V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
             Vmodel *= V0
-            
-        # Noise parameter
-        if tauGibbs: # no prior (it's included in the Gibbs sampler)
-            tau = pm.Flat('tau', initval=1.2)
-        else:
-            tau = pm.Gamma('tau', alpha=tau_prior[0], beta=tau_prior[1], initval=1.3)
-        sigma = pm.Deterministic('sigma', 1/np.sqrt(tau))  # for reporting
-
-        # Regularization parameter
-        if deltaGibbs: # no prior (it's included in the Gibbs sampler)
-            delta = pm.Flat('delta', initval=1.02)
-        elif alpha is not None:
-            delta = pm.Deterministic('delta', alpha**2 * tau)
-        else:
-            delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1], initval=1.02)
-        lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)) )  # for reporting
         
         # Add likelihood
         pm.Normal('V', mu=Vmodel, tau=tau, observed=Vdata)
