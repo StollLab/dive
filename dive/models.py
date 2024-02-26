@@ -201,8 +201,9 @@ def regularizationmodel(t, Vdata, K0, LtL, r,
 
         # Distance distribution - no prior (it's included in the Gibbs sampler)
         if allNUTS:
-            P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=delta*LtL)
-            constraint = P >= 0
+            #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=delta*LtL)
+            P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL)
+            constraint = (P >= 0).all()
             potential = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
         else:
             P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), cov=np.identity(len(r)))
