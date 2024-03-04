@@ -327,19 +327,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
 
     elif method == "regularization_NUTS":
         
-        removeVars = None
-        
-        with model:
-
-            NUTS_varlist = [model['tau'], model['delta'], model[bkgd_var], model['b'], model['c']]
-            if NUTSpars is None:
-                step_NUTS = pm.NUTS(NUTS_varlist)
-            else:
-                step_NUTS = pm.NUTS(NUTS_varlist, **NUTSpars)
-                
-        step = [step_NUTS]
-        if steporder is not None:
-            step = [step[i] for i in steporder]
+        step = None
 
     elif method == "regularization_set_alpha":
         
@@ -365,7 +353,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    idata = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters)
+    idata = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters, **NUTSpars)
 
     # Remove undesired variables
     if removeVars is not None:
