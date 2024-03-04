@@ -69,7 +69,7 @@ def model(t, Vexp, pars):
         
         tauGibbs = (method == "regularization" or method == "regularization_set_alpha")
         deltaGibbs = method == "regularization"
-        model_pymc = regularizationmodel(t, Vexp_scaled, K0, LtL, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha, allNUTS=(method=="regularization_NUTS"))
+        model_pymc = regularizationmodel(t, Vexp_scaled, K0, L, LtL, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha, allNUTS=(method=="regularization_NUTS"))
 
         model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
         if alpha is not None:
@@ -163,7 +163,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
         
     return model
 
-def regularizationmodel(t, Vdata, K0, LtL, r,
+def regularizationmodel(t, Vdata, K0, L, LtL, r,
         delta_prior=None, tau_prior=None,
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
         tauGibbs=True, deltaGibbs=True, bkgd_var="Bend", alpha=None, allNUTS=False
@@ -202,10 +202,12 @@ def regularizationmodel(t, Vdata, K0, LtL, r,
 
         # Distance distribution - no prior (it's included in the Gibbs sampler)
         if allNUTS:
-            P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL, initval=dd_gauss(r,(r[0]+r[-1])/2,(r[-1]-r[0])/2))
+            #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL, initval=dd_gauss(r,(r[0]+r[-1])/2,(r[-1]-r[0])/2))
             #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL)
+            P = pm.Dirichlet('P', shape=len(r), a=np.ones(len(r)))
             constraint = (P >= 0).all()
             potential = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
+            smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@(P/dr))**2)
         else:
             P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), cov=np.identity(len(r)))
         
@@ -327,6 +329,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
 
     elif method == "regularization_NUTS":
         
+        removeVars = None
         step = None
 
     elif method == "regularization_set_alpha":
