@@ -356,7 +356,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    idata = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters, **NUTSpars)
+    idata = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters)
 
     # Remove undesired variables
     if removeVars is not None:
