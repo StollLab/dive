@@ -2,6 +2,7 @@ import pymc as pm
 
 import numpy as np
 import deerlab as dl
+import pytensor as pt
 
 from .utils import *
 from .deer import *
@@ -201,8 +202,8 @@ def regularizationmodel(t, Vdata, K0, LtL, r,
 
         # Distance distribution - no prior (it's included in the Gibbs sampler)
         if allNUTS:
-            #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=delta*LtL)
-            P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL)
+            P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL, initval=dd_gauss(r,(r[0]+r[-1])/2,(r[-1]-r[0])/2))
+            #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL)
             constraint = (P >= 0).all()
             potential = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
         else:
@@ -218,8 +219,8 @@ def regularizationmodel(t, Vdata, K0, LtL, r,
                 c = pm.Beta('c', alpha=7.75, beta=2.6) # c = V0*lamb
                 Vmodel = b + c*Vmodel
                 # deterministic lamb and V0 for reporting
-                V0 = pm.Deterministic('V0', b+c*(pm.math.sum(P)*(r[1]-r[0]))) # V0 = b+c after normalization
-                lamb = pm.Deterministic('lamb', c*(pm.math.sum(P)*(r[1]-r[0]))/V0) # lamb = c/(b+c) after norm.
+                V0 = pm.Deterministic('V0', b+c*pm.math.sum(P)*dr) # V0 = b+c after normalization
+                lamb = pm.Deterministic('lamb', 1/(1+b/(c*pm.math.sum(P)*dr))) # lamb = 1/(1+b/c) after norm.
             else:
                 lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
                 Vmodel = (1-lamb) + lamb*Vmodel
