@@ -73,7 +73,7 @@ def model(t, Vexp, pars):
 
         model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
         if alpha is not None:
-            model_pars.extend({"alpha": alpha})
+            model_pars.update({"alpha": alpha})
     
     else:
         raise ValueError(f"Unknown method '{method}'.")
@@ -207,7 +207,7 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
             P = pm.Dirichlet('P', shape=len(r), a=np.ones(len(r)))
             constraint = (P >= 0).all()
             potential = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
-            smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@(P/dr))**2)
+            smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@P)**2/dr**4)
         else:
             P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), cov=np.identity(len(r)))
         
