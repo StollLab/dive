@@ -205,8 +205,8 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
             #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL, initval=dd_gauss(r,(r[0]+r[-1])/2,(r[-1]-r[0])/2))
             P = pm.Dirichlet('P', shape=len(r), a=np.ones(len(r)))
             smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@P)**2/dr**4)
-            constraint = (P >= 0).all()
-            potential = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
+            #constraint = (P >= 0).all()
+            #nonnegativity = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
         else:
             P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), cov=np.identity(len(r)))
         
@@ -216,8 +216,8 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
         # Add modulation depth
         if includeModDepth:
             if allNUTS:
-                b = pm.Beta('b', alpha=7.5, beta=1.65) # b = V0(1-lamb)
-                c = pm.Beta('c', alpha=7.75, beta=2.6) # c = V0*lamb
+                b = pm.Gamma('b', alpha=3.2, beta=4) # b = V0(1-lamb)
+                c = pm.Gamma('c', alpha=1.8, beta=3.3) # c = V0*lamb
                 Vmodel = b + c*Vmodel
                 # deterministic lamb and V0 for reporting
                 V0 = pm.Deterministic('V0', b+c*pm.math.sum(P)*dr) # V0 = b+c after normalization
