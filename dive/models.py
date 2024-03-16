@@ -217,7 +217,7 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
         if includeModDepth:
             if allNUTS:
                 b = pm.Gamma('b', alpha=3.2, beta=4) # b = V0(1-lamb)
-                c = pm.Gamma('c', alpha=1.8, beta=3.3) # c = V0*lamb
+                c = pm.Gamma('c', alpha=1.8, beta=3.3*dr) # c = V0*lamb/|P|
                 Vmodel = b + c*Vmodel
                 # deterministic lamb and V0 for reporting
                 V0 = pm.Deterministic('V0', b+c*pm.math.sum(P)*dr) # V0 = b+c after normalization
