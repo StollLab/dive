@@ -203,8 +203,9 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
         # Distance distribution - no prior (it's included in the Gibbs sampler)
         if allNUTS:
             #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL, initval=dd_gauss(r,(r[0]+r[-1])/2,(r[-1]-r[0])/2))
-            P = pm.Dirichlet('P', shape=len(r), a=np.ones(len(r)))
-            smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@P)**2/dr**4)
+            P_Dirichlet = pm.Dirichlet('P_Dirichlet', shape=len(r), a=np.ones(len(r)))
+            P = pm.Deterministic('P', P_Dirichlet/dr)
+            smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@P)**2/dr**3)
             #constraint = (P >= 0).all()
             #nonnegativity = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
         else:
