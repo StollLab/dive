@@ -197,7 +197,8 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
         elif alpha is not None:
             delta = pm.Deterministic('delta', alpha**2 * tau)
         else:
-            delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1], initval=1.02)
+            delta_inv = pm.Gamma('delta_inv', alpha=2, beta=1)
+            delta = pm.Gamma('delta', 1/delta_inv)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)))  # for reporting
 
         # Distance distribution - no prior (it's included in the Gibbs sampler)
