@@ -200,6 +200,7 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
             delta_inv = pm.Gamma('delta_inv', alpha=2, beta=1)
             delta = pm.Deterministic('delta', 1/delta_inv)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)))  # for reporting
+        lg_delta = pm.Deterministic('lg_delta', np.log10(delta))
 
         # Distance distribution - no prior (it's included in the Gibbs sampler)
         if allNUTS:
