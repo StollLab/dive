@@ -218,16 +218,15 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
 
         # Add modulation depth
         if includeModDepth:
-            if allNUTS:
-                b = pm.Gamma('b', alpha=3.2, beta=4) # b = V0(1-lamb)
-                c = pm.Gamma('c', alpha=1.8, beta=3.3*dr) # c = V0*lamb/|P|
-                Vmodel = b + c*Vmodel
+            #if allNUTS:
+                #b = pm.Gamma('b', alpha=3.2, beta=4) # b = V0(1-lamb)
+                #c = pm.Gamma('c', alpha=1.8, beta=3.3*dr) # c = V0*lamb/|P|
+                #Vmodel = b + c*Vmodel
                 # deterministic lamb and V0 for reporting
-                V0 = pm.Deterministic('V0', b+c*pm.math.sum(P)*dr) # V0 = b+c after normalization
-                lamb = pm.Deterministic('lamb', 1/(1+b/(c*pm.math.sum(P)*dr))) # lamb = 1/(1+b/c) after norm.
-            else:
-                lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
-                Vmodel = (1-lamb) + lamb*Vmodel
+                #V0 = pm.Deterministic('V0', b+c*pm.math.sum(P)*dr) # V0 = b+c after normalization
+                #lamb = pm.Deterministic('lamb', 1/(1+b/(c*pm.math.sum(P)*dr))) # lamb = 1/(1+b/c) after norm.
+            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
+            Vmodel = (1-lamb) + lamb*Vmodel
 
         # Add background
         if includeBackground:
@@ -241,7 +240,7 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
             Vmodel *= B
 
         # Add overall amplitude
-        if includeAmplitude and not allNUTS:
+        if includeAmplitude:
             V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
             Vmodel *= V0
         
