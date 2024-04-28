@@ -197,7 +197,9 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
         elif alpha is not None:
             delta = pm.Deterministic('delta', alpha**2 * tau)
         else:
-            delta_inv = pm.Gamma('delta_inv', alpha=1, beta=0.01)
+            delta_log_inv = pm.Exponential('delta_log_inv', lam=np.log(10**5))
+            delta_inv = pm.Deterministic('delta_inv',10**(delta_log_inv-3))
+            #delta_inv = pm.Gamma('delta_inv', alpha=1, beta=2)
             delta = pm.Deterministic('delta', 1/delta_inv)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)))  # for reporting
         lg_delta = pm.Deterministic('lg_delta', np.log10(delta))
@@ -207,7 +209,8 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
             #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL, initval=dd_gauss(r,(r[0]+r[-1])/2,(r[-1]-r[0])/2))
             P_Dirichlet = pm.Dirichlet('P_Dirichlet', shape=len(r), a=np.ones(len(r)))
             P = pm.Deterministic('P', P_Dirichlet/dr)
-            n_p = len(r) - len(np.where(P==0)[0])
+            #n_p = len(r) - len(np.where(P==0)[0])
+            #smoothness = pm.Potential("P_smoothness", np.log(np.abs(delta**(n_p/2))+0.0000000001)-0.5*delta*np.linalg.norm(L@P)**2)
             smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@P)**2/dr**3)
             #constraint = (P >= 0).all()
             #nonnegativity = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
