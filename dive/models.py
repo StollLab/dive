@@ -210,7 +210,7 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
             P_Dirichlet = pm.Dirichlet('P_Dirichlet', shape=len(r), a=np.ones(len(r)))
             P = pm.Deterministic('P', P_Dirichlet/dr)
             n_p = len(np.nonzero(np.asarray(P))[0])
-            smoothness = pm.Potential("P_smoothness", np.log(delta**(n_p/2))-0.5*delta*np.linalg.norm(L@P)**2)
+            smoothness = pm.Potential("P_smoothness", 0.5*n_p*np.log(delta)-0.5*delta*np.linalg.norm(L@P)**2)
             #smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@P)**2)
             #constraint = (P >= 0).all()
             #nonnegativity = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
