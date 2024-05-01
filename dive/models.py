@@ -199,7 +199,7 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
         else:
             #delta_log_inv = pm.Exponential('delta_log_inv', lam=np.log(10**5))
             #delta_inv = pm.Deterministic('delta_inv',10**(delta_log_inv-3))
-            delta_inv = pm.Gamma('delta_inv', alpha=1, beta=10)
+            delta_inv = pm.Gamma('delta_inv', alpha=1, beta=1)
             delta = pm.Deterministic('delta', 1/delta_inv)
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)))  # for reporting
         lg_delta = pm.Deterministic('lg_delta', np.log10(delta))
