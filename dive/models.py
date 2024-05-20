@@ -164,7 +164,7 @@ def multigaussmodel(t, Vdata, K0, r, nGauss=1,
     return model
 
 def regularizationmodel(t, Vdata, K0, L, LtL, r,
-        delta_prior=None, tau_prior=None,
+        delta_prior=[1, 1e-6], tau_prior=[1, 1e-4],
         includeBackground=True, includeModDepth=True, includeAmplitude=True,
         tauGibbs=True, deltaGibbs=True, bkgd_var="Bend", alpha=None, allNUTS=False
     ):
@@ -199,8 +199,9 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
         else:
             #delta_log_inv = pm.Exponential('delta_log_inv', lam=np.log(10**5))
             #delta_inv = pm.Deterministic('delta_inv',10**(delta_log_inv-3))
-            delta_inv = pm.Gamma('delta_inv', alpha=1, beta=1)
-            delta = pm.Deterministic('delta', 1/delta_inv)
+            #delta_inv = pm.Gamma('delta_inv', alpha=1, beta=1)
+            #delta = pm.Deterministic('delta', 1/delta_inv)
+            delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1])
         lg_alpha = pm.Deterministic('lg_alpha', np.log10(np.sqrt(delta/tau)))  # for reporting
         lg_delta = pm.Deterministic('lg_delta', np.log10(delta))
 
