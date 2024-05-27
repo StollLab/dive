@@ -55,7 +55,7 @@ def model(t, Vexp, pars):
         
         model_pars = {"K0": K0, "r": r, "nGauss": nGauss}
 
-    elif method == "regularization" or method == "regularizationP" or method == "regularization_set_alpha" or method == "regularization_NUTS":
+    elif method == "regularization" or method == "regularizationP" or method == "regularization_NUTS":
 
         K0 = dl.dipolarkernel(t, r,integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
@@ -67,8 +67,8 @@ def model(t, Vexp, pars):
 
         alpha = pars["alpha"] if "alpha" in pars else None
         
-        tauGibbs = (method == "regularization" or method == "regularization_set_alpha")
-        deltaGibbs = method == "regularization"
+        tauGibbs = method == "regularization"
+        deltaGibbs = (method == "regularization" and "alpha" not in pars)
         model_pymc = regularizationmodel(t, Vexp_scaled, K0, L, LtL, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha, allNUTS=(method=="regularization_NUTS"))
 
         model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
@@ -197,8 +197,7 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
         elif alpha is not None:
             delta = pm.Deterministic('delta', alpha**2 * tau)
         else:
-            #delta_log_inv = pm.Exponential('delta_log_inv', lam=np.log(10**5))
-            #delta_inv = pm.Deterministic('delta_inv',10**(delta_log_inv-3))
+            # for a gamma prior on 1/delta instead of delta:
             #delta_inv = pm.Gamma('delta_inv', alpha=1, beta=1)
             #delta = pm.Deterministic('delta', 1/delta_inv)
             delta = pm.Gamma('delta', alpha=delta_prior[0], beta=delta_prior[1])
@@ -207,14 +206,15 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
 
         # Distance distribution - no prior (it's included in the Gibbs sampler)
         if allNUTS:
+            # for a MvNormal P with nonnegativity constraints (does not work well):
             #P = pm.MvNormal('P', shape=len(r), mu=np.ones(len(r))/(dr*len(r)), tau=LtL, initval=dd_gauss(r,(r[0]+r[-1])/2,(r[-1]-r[0])/2))
-            P_Dirichlet = pm.Dirichlet('P_Dirichlet', shape=len(r), a=np.ones(len(r)))
-            P = pm.Deterministic('P', P_Dirichlet/dr)
-            n_p = len(np.nonzero(np.asarray(P))[0])
-            smoothness = pm.Potential("P_smoothness", 0.5*n_p*np.log(delta)-0.5*delta*np.linalg.norm(L@P)**2)
-            #smoothness = pm.Potential("P_smoothness", -0.5*delta*np.linalg.norm(L@P)**2)
             #constraint = (P >= 0).all()
             #nonnegativity = pm.Potential("P_nonnegative", pm.math.log(pm.math.switch(constraint, 1, 0)))
+
+            P_Dirichlet = pm.Dirichlet('P_Dirichlet', shape=len(r), a=np.ones(len(r))) # sums to 1
+            P = pm.Deterministic('P', P_Dirichlet/dr) # integrates to 1
+            n_p = len(np.nonzero(np.asarray(P))[0]) # nonzero points in P
+            smoothness = pm.Potential("P_smoothness", 0.5*n_p*np.log(delta)-0.5*delta*np.linalg.norm(L@P)**2)
         else:
             P = pm.MvNormal('P', shape=len(r), mu=np.zeros(len(r)), cov=np.identity(len(r)))
         
@@ -223,6 +223,7 @@ def regularizationmodel(t, Vdata, K0, L, LtL, r,
 
         # Add modulation depth
         if includeModDepth:
+            # b and c parameterization (does not work as well)
             #if allNUTS:
                 #b = pm.Gamma('b', alpha=3.2, beta=4) # b = V0(1-lamb)
                 #c = pm.Gamma('c', alpha=1.8, beta=3.3*dr) # c = V0*lamb/|P|
@@ -297,13 +298,14 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         
     elif method == "regularization":
         
-        removeVars = None
+        removeVars = ["lg_alpha"] if "alpha" in model_pars else None
         
         with model:
             
             conjstep_tau = randTau_posterior(model_pars)
             conjstep_P = randPnorm_posterior(model_pars)
-            conjstep_delta = randDelta_posterior(model_pars)
+            if "alpha" not in model_pars:
+                conjstep_delta = randDelta_posterior(model_pars)
             
             NUTS_varlist = [model['V0'], model['lamb'], model[bkgd_var]]
             if NUTSpars is None:
@@ -311,7 +313,7 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
             else:
                 step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore", **NUTSpars)
             
-        step = [conjstep_tau, conjstep_delta, conjstep_P, step_NUTS]
+        step = [conjstep_tau, conjstep_delta, conjstep_P, step_NUTS] if "alpha" not in model_pars else [conjstep_tau, conjstep_P, step_NUTS]
         if steporder is not None:
             step = [step[i] for i in steporder]
         
@@ -337,25 +339,6 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         
         removeVars = None
         step = None
-
-    elif method == "regularization_set_alpha":
-        
-        removeVars = ["lg_alpha"]
-        
-        with model:
-            
-            conjstep_tau = randTau_posterior(model_pars)
-            conjstep_P = randPnorm_posterior(model_pars)
-            
-            NUTS_varlist = [model['V0'], model['lamb'], model[bkgd_var]]
-            if NUTSpars is None:
-                step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore")
-            else:
-                step_NUTS = pm.NUTS(NUTS_varlist, on_unused_input="ignore", **NUTSpars)
-            
-        step = [conjstep_tau, conjstep_P, step_NUTS]
-        if steporder is not None:
-            step = [step[i] for i in steporder]
             
     else:
         
