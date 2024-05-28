@@ -241,6 +241,8 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
         # if regularization, simply take P from model
         for iDraw in range(nDraws):
             P = varDict["P"][iDraw]
+            # normalize P
+            P /= (r[1]-r[0])*P.sum()
             Ps.append(P.values)
 
     # Rename time-domain parameters to make code below cleaner -------------------------
