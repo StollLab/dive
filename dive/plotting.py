@@ -218,9 +218,12 @@ def _betterLabels(x):
         return [_table.get(x_,x_) for x_ in x]
 
 
-def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None, rng=0):
+def drawPosteriorSamples(trace, nDraws=100, rng=0):
     # Extracts (nDraws) random samples from the trace and reshapes it to work nicely
     varDict = az.extract(trace, num_samples=nDraws, rng=rng).transpose("sample", ...)
+    # Extract t and r from trace object
+    t = trace.observed_data.coords["V_dim_0"].values
+    r = trace.posterior.coords["P_dim_0"].values
 
     # Draw P's -------------------------------------------------------------------
     Ps = []
@@ -241,7 +244,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
         # if regularization, simply take P from model
         for iDraw in range(nDraws):
             P = varDict["P"][iDraw]
-            # normalize P
+        # normalize P in case it isn't
             P /= (r[1]-r[0])*P.sum()
             Ps.append(P.values)
 
@@ -298,7 +301,7 @@ def drawPosteriorSamples(trace, nDraws=100, r=np.linspace(2, 8, num=200), t=None
 
         Vs.append(V_)
 
-    return Ps, Vs, Bs, t, r
+    return Ps, Vs, Bs
 
 
 def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, colors=["#4A5899","#F38D68"]):

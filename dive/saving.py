@@ -3,7 +3,7 @@ import arviz as az
 from datetime import date
 from .models import *
 
-def saveTrace(trace, model_dic, SaveName=None):
+def saveTrace(trace, SaveName=None):
     """
     Saves a trace to a netCDF file.
     """
