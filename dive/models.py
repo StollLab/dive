@@ -345,12 +345,22 @@ def sample(model_dic, MCMCparameters, steporder=None, NUTSpars=None, seed=None):
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    idata = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters)
+    trace = pm.sample(model=model, step=step, random_seed=seed, **MCMCparameters)
 
     # Remove undesired variables
     if removeVars is not None:
         for key in removeVars:
-            if key in idata.posterior:
-                del idata.posterior[key]
+            if key in trace.posterior:
+                del trace.posterior[key]
+                
+    # Postprocessing to add in data form the model
+    trace.observed_data.coords["V_dim_0"] = model_dic["t"]
+    trace.posterior.coords["P_dim_0"] = model_pars["r"]
+    trace.posterior.attrs["method"] = method
+    trace.posterior.attrs["background"] = bkgd_var
+    if "nGauss" in model_pars:
+        trace.posterior.attrs["nGauss"] = model_pars["nGauss"]
+    if "alpha" in model_pars:
+        trace.posterior.attrs["alpha"] = model_pars["alpha"]
 
-    return idata
+    return trace

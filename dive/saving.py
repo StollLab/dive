@@ -7,16 +7,6 @@ def saveTrace(trace, model_dic, SaveName=None):
     """
     Saves a trace to a netCDF file.
     """
-    # adds important supplemental info to the xarray object
-    trace.observed_data.coords["V_dim_0"] = model_dic["t"]
-    trace.posterior.coords["P_dim_0"] = model_dic["pars"]["r"]
-    trace.posterior.attrs["method"] = model_dic["pars"]["method"]
-    trace.posterior.attrs["background"] = model_dic["pars"]["background"]
-    if "nGauss" in model_dic["pars"]:
-        trace.posterior.attrs["nGauss"] = model_dic["pars"]["nGauss"]
-    if "alpha" in model_dic["pars"]:
-        trace.posterior.attrs["alpha"] = model_dic["pars"]["alpha"]
-
     # creates the proper name for the file
     if not SaveName:
         today = date.today()
