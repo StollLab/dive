@@ -37,44 +37,45 @@ def _relevantVariables(trace):
     return desiredVars
 
 
-def printsummary(trace, model_dic):
+def printsummary(trace,var_names=None):
     """
     Print table of all parameters, including their means, standard deviations,
     effective sample sizes, Monte Carlo standard errors, and R-hat diagnostics.
     """
-    Vars = _relevantVariables(trace)
-    with model_dic['model']:
-        summary = az.summary(trace, var_names=Vars)
+    if var_names is None:
+        var_names = _relevantVariables(trace)
+    summary = az.summary(trace, var_names=var_names)
     # replace the labels with their unicode characters before displaying
     summary.index = _betterLabels(summary.index.values)
     display(summary)
 
-
-def plotmarginals(trace, GroundTruth=None, plot_args={"hdi_prob":"hide"}):
+def plotmarginals(trace, axs=None, var_names=None, GroundTruth=None, point_estimate=None, hdi_prob="hide", **kwargs):
     """
     Plot marginalized posteriors
     """
-    Vars = _relevantVariables(trace)
-    plot = az.plot_posterior(trace, var_names=Vars, **plot_args)
-    for ax in plot.flatten():
-        title = ax.get_title()
+    if var_names is None:
+        var_names = _relevantVariables(trace)
+    if axs is None:
+        fig, axs = plt.subplots(1,len(var_names),figsize=(2.5*len(var_names),2.5))
+    for i,ax in enumerate(axs):
+        az.plot_posterior(trace, ax=ax, var_names=var_names[i], point_estimate=point_estimate, hdi_prob=hdi_prob, **kwargs)
+        ax.patch.set_linewidth(1)
+        ax.patch.set_edgecolor("black")
+        ax.set_title(_betterLabels(var_names[i]))
         # plots vertical bar @ ground truth if given
         if GroundTruth:
-            if title in GroundTruth:
-                bottom, top = ax.get_ylim()
-                ax.vlines(GroundTruth[title], bottom, top, color='black')
-        # replaces title with better title if available
-        ax.set_title(_betterLabels(title))
+            if var_names[i] in GroundTruth:
+                ax.axvline(GroundTruth[var_names[i]], color='black') 
+    return axs
 
-    return plot
-
-def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
+def plotcorrelations(trace, var_names=None, figsize=None, marginals=True, div=False, **kwargs):
     """
     Matrix of pairwise correlation plots between model parameters.
     """
     # determine variables to include
-    Vars = _relevantVariables(trace)
-    nVars = len(Vars)
+    if var_names is None:
+        var_names = _relevantVariables(trace)
+    nVars = len(var_names)
     
     # Set default figure size
     if figsize is None:
@@ -90,11 +91,10 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
         trace.sample_stats.diverging = trace.diverging
     # use arviz library to plot correlations
     az.rcParams["plot.max_subplots"] = 200
-    with model_dic["model"]:
-        axs = az.plot_pair(trace, var_names=Vars, kind='kde', figsize=figsize, marginals=marginals, divergences=div)
+    axs = az.plot_pair(trace, var_names=var_names, kind='kde', figsize=figsize, marginals=marginals, divergences=div, **kwargs)
 
     # replace labels with the nicer unicode character versions
-    if len(Vars) > 2:
+    if len(var_names) > 2:
         # reshape axes so that we can loop through them
         axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
 
@@ -111,61 +111,63 @@ def plotcorrelations(trace, model_dic, figsize=None, marginals=True, div=False):
         axs.set_xlabel(_betterLabels(xlabel))
         axs.set_ylabel(_betterLabels(ylabel))
 
-    fig = plt.gcf()
-   
+    return axs
 
-    return fig
+def plotV(trace, ax=None, nDraws=100, rng=0, residuals_offset=0, colors=["#4A5899","#F38D68","#4A5899"], alphas=[0.2,0.2,0.2], Vkwargs={}, Bkwargs={}, reskwargs={}, **kwargs):
+    if not ax:
+        # creates ax object if not provided
+        _, ax = plt.subplots(1, 1, figsize=(5,5))
+    # get Ps, Vs, and Bs from trace
+    Ps, Vs, Bs = drawPosteriorSamples(trace, nDraws, rng)
+    # get t and Vexp from trace
+    t = trace.observed_data.coords["V_dim_0"].values
+    Vexp = trace.observed_data["V"].values
+    # Plot time-domain quantities
+    for V, B in zip(Vs, Bs):
+        residuals = V - Vexp
+        ax.plot(t, V, color=colors[0], alpha=alphas[0], **Vkwargs, **kwargs)
+        ax.plot(t, B, color=colors[1], alpha=alphas[1], **Bkwargs, **kwargs)
+        ax.plot(t, residuals+residuals_offset, color=colors[2], alpha=alphas[2], **reskwargs, **kwargs)
+    # axis configurations
+    ax.scatter(t, Vexp, marker=".", color='#BFBFBF', s=5)
+    ax.axhline(residuals_offset, color="black")
+    ax.set_xlabel('$t$ (µs)')
+    ax.set_ylabel('$V(t)$ (arb. u.)')
+    ax.set_xlim((min(t), max(t)))
+    ax.set_ylim(-0.1+residuals_offset,1.1)
+    ax.set_title('time domain and residuals')
 
-def summary(trace, model_dic):
+def plotP(trace, ax=None, nDraws=100, rng=0, Pref=None, rref=None, alpha=0.2, color="#4A5899", **kwargs):
+    if not ax:
+        # creates ax object if not provided
+        _, ax = plt.subplots(1, 1, figsize=(5,5))
+    # get Ps and r from trace
+    Ps = drawPosteriorSamples(trace, nDraws, rng)[0]
+    r = trace.posterior.coords["P_dim_0"]
+    # Plot distance distributions
+    Pmax = 0
+    for P in Ps:
+        ax.plot(r, P, alpha=alpha, color=color, **kwargs)
+        if max(P) > Pmax:
+            Pmax = max(P)
+    ax.set_xlabel('$r$ (nm)')
+    ax.set_ylabel('$P(r)$ (nm$^{-1}$)')
+    ax.set_xlim(min(r), max(r))
+    ax.set_ylim(0,Pmax*1.1)
+    ax.set_title('distance domain')
+    if Pref is not None:
+        ax.plot(rref, Pref, color='black')
+    plt.grid()
+    return ax
+
+def summary(trace, var_names=None, nDraws=100, rng=0):
     
-    printsummary(trace, model_dic)
-    plotmarginals(trace)
-    plotcorrelations(trace, model_dic)
-    plotresult(trace, model_dic)
-
-
-def plotresult(trace, model_dic, nDraws=100, rng=0, Pid=None, Pref=None, rref=None, show_ave=None, chains=None, colors=["#4A5899","#F38D68"]):
-    """
-    Plot the MCMC results in the time domain and in the distance domain, using an
-    ensemble of P draws from the posterior, and the associated time-domain signals.
-    Also shown in the time domain: the ensemble of residual vectors, and the ensemble
-    of backgrounds.
-    """
-#displaying posterior average data:
-    if show_ave is not None:
-        print('Showing posterior average')
-    
-    fig1 = []
-    if chains is not None:
-       fig1 =az.plot_trace(trace)
-        
-
-
-    
-    fig1 = []
-    if chains is not None:
-       fig1 =az.plot_trace(trace)
-        
-
-    # Get reference distribution if specified ------------------------------------
-    if Pid is not None:
-        refdata = loadmat('data/edwards_testset/distributions_2LZM.mat')
-        P0s = refdata['P0']
-        rref = np.squeeze(refdata['r0'])
-        Pref = P0s[Pid-1,:]
-    
-    elif Pref is not None:
-        if rref is None:
-            raise KeyError("If 'Pref' is provided, 'rref' must be provided as well.")
-
-    Vexp = model_dic['Vexp']
-    t = model_dic['t']
-    r = model_dic['pars']['r']
-    
-    Ps, Vs, Bs, _, _ = drawPosteriorSamples(trace, nDraws, r, t, rng)
-    fig = plotMCMC(Ps, Vs, Bs, Vexp, t, r, Pref, rref, show_ave, colors)
-
-    return fig, fig1
+    printsummary(trace, var_names)
+    plotmarginals(trace, var_names)
+    plotcorrelations(trace, var_names)
+    fig, axs = plt.subplots(1,2,figsize=(8,4),layout="constrained")
+    plotV(trace, ax=axs[0], nDraws=nDraws, rng=rng)
+    plotP(trace, ax=axs[1], nDraws=nDraws, rng=rng)
 
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
@@ -302,65 +304,6 @@ def drawPosteriorSamples(trace, nDraws=100, rng=0):
         Vs.append(V_)
 
     return Ps, Vs, Bs
-
-
-def plotMCMC(Ps, Vs, Bs, Vdata, t, r, Pref=None, rref=None, show_ave = None, colors=["#4A5899","#F38D68"]):
-
-
-
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    fig.set_figheight(5)
-    fig.set_figwidth(11)
-
-    if min(Vs[0])<0.2:
-        residuals_offset = -max(Vs[0])/3
-    else:
-        residuals_offset = 0
-
-    # Plot time-domain quantities
-    for V, B in zip(Vs, Bs):
-        residuals = V - Vdata
-        ax1.plot(t, V, color=colors[0], alpha=0.2)
-        ax1.plot(t, B, color=colors[1], alpha=0.2)
-        ax1.plot(t, residuals+residuals_offset, color=colors[0], alpha=0.2)
-    Vavg = np.mean(Vs, 0)
-    Bavg = np.mean(Bs, 0)
-    Pavg = np.mean(Ps, 0)
-
-    ax1.scatter(t, Vdata, color='#BFBFBF', s=5)
-    ax1.hlines(residuals_offset, min(t), max(t), color='black')
-    ax1.set_xlabel('$t$ (µs)')
-    ax1.set_ylabel('$V$ (arb.u.)')
-    ax1.set_xlim((min(t), max(t)))
-    ax1.set_ylim(-0.1,1.1)
-    ax1.set_title('time domain and residuals')
-
-
-    if show_ave is not None:
-        ax1.plot(t,Vavg,color='yellow',label= 'Vexp Average')
-        ax1.plot(t,Bavg,color = 'purple',label = 'Background Average')
-    #ax1.plot(t,Vave-residuals,color = 'red')
-        
-
-
-    # Plot distance distributions
-    for P in Ps:
-        ax2.plot(r, P, color=colors[0], alpha=0.2)
-    Pmax = max([max(P) for P in Ps])
-    ax2.set_xlabel('$r$ (nm)')
-    ax2.set_ylabel('$P$ (nm$^{-1}$)')
-    ax2.set_xlim(min(r), max(r))
-    ax2.set_ylim(0,max(P)+0.2)
-    ax2.set_title('distance domain')
-
-    if Pref is not None:
-        ax2.plot(rref, Pref, color='black')
-    if show_ave is not None: 
-        ax2.plot(r,Pavg,color = 'black',label = 'Average')
-
-    plt.grid()
-        
-    return fig
 
 def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=1, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha_points=0.1, alpha_inits=1):
     """Plots two parameters against each other for each chain."""
