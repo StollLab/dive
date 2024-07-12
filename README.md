@@ -1,19 +1,28 @@
 # dive
 
 ### About
-`dive` is a Python package for Bayesian analysis of dipolar EPR (electron paramagnetic resonance) spectroscopy data.
+`dive` is a Python package for Bayesian analysis of dipolar EPR (electron paramagnetic resonance) spectroscopy data through Markov chain Monte Carlo (MCMC) sampling with the Python package [PyMC](https://www.pymc.io).
 
 ### Requirements
 
-`dive` is available for Windows, Mac and Linux systems and requires **Python 3.8** or later and **PyMC 4.0** or later.
+`dive` is available for Windows, Mac and Linux systems and requires **Python 3.8** or later and **PyMC 5.0** or later.
  
+### Features
+
+`dive`'s features include:
+- An output InferenceData object containing many random posterior samples for each parameter
+- Full uncertainty quantification for all model parameters, including the distance distribution
+- Visualizations for ensembles of fitted signals and residuals
+- Visualizations for ensembles of fitted distance distributions
+- Histograms for margnialized posteriors of other parameters such as modulation depth and background decay rate
+
 ### Setup
 
 As long as `dive` is in a development state, use the following installation procedure:
 
 If using `conda`, install the following packages to the environment of your choice:
 
-    conda install mkl-service libpython m2w64-toolchain scipy matplotlib pandas
+    conda install mkl-service scipy matplotlib pandas h5netcdf
 
 In order to get the newest version of `pymc`, it is necessary to run
 
@@ -25,10 +34,6 @@ After successful installation of `pymc`, navigate to the directory that contains
 
     python setup.py develop
 
-For drawing graphs of the models, you will need `python-graphviz`, which can be installed with
-
-    conda install -c conda-forge python-graphviz
-
 <!-- A pre-built distribution can be installed using `pip`.
 
 First, ensure that `pip` is up-to-date. From a terminal (preferably with admin privileges) use the following command:
@@ -38,6 +43,10 @@ First, ensure that `pip` is up-to-date. From a terminal (preferably with admin p
 Next, install dive with
 
     python -m pip install dive -->
+
+### How-to Guide
+
+For a detailed guide on how to use `dive`, see `howtoguide.ipynb`.
 
 ### Citation
 
