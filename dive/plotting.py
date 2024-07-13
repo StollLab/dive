@@ -113,7 +113,7 @@ def plotcorrelations(trace, var_names=None, figsize=None, marginals=True, div=Fa
 
     return axs
 
-def plotV(trace, ax=None, nDraws=100, rng=0, residuals_offset=0, colors=["#4A5899","#F38D68","#4A5899"], alphas=[0.2,0.2,0.2], Vkwargs={}, Bkwargs={}, reskwargs={}, **kwargs):
+def plotV(trace, ax=None, nDraws=100, show_avg=False, rng=0, residuals_offset=0, colors=["#4A5899","#F38D68","#4A5899"], alphas=[0.2,0.2,0.2], Vkwargs={}, Bkwargs={}, reskwargs={}, **kwargs):
     if not ax:
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
@@ -128,6 +128,12 @@ def plotV(trace, ax=None, nDraws=100, rng=0, residuals_offset=0, colors=["#4A589
         ax.plot(t, V, color=colors[0], alpha=alphas[0], **Vkwargs, **kwargs)
         ax.plot(t, B, color=colors[1], alpha=alphas[1], **Bkwargs, **kwargs)
         ax.plot(t, residuals+residuals_offset, color=colors[2], alpha=alphas[2], **reskwargs, **kwargs)
+    # plot average values
+    if show_avg:
+        Vavg = np.mean(Vs,0)
+        ax.plot(t,Vavg,color="black",alpha=0.7,lw=2)
+        Bavg = np.mean(Bs,0)
+        ax.plot(t,Bavg,color="black",alpha=0.7,lw=2)
     # axis configurations
     ax.scatter(t, Vexp, marker=".", color='#BFBFBF', s=5)
     ax.axhline(residuals_offset, color="black")
@@ -137,7 +143,7 @@ def plotV(trace, ax=None, nDraws=100, rng=0, residuals_offset=0, colors=["#4A589
     ax.set_ylim(-0.1+residuals_offset,1.1)
     ax.set_title('time domain and residuals')
 
-def plotP(trace, ax=None, nDraws=100, rng=0, Pref=None, rref=None, alpha=0.2, color="#4A5899", **kwargs):
+def plotP(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, Pref=None, rref=None, alpha=0.2, color="#4A5899", **kwargs):
     if not ax:
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
@@ -146,10 +152,20 @@ def plotP(trace, ax=None, nDraws=100, rng=0, Pref=None, rref=None, alpha=0.2, co
     r = trace.posterior.coords["P_dim_0"]
     # Plot distance distributions
     Pmax = 0
-    for P in Ps:
-        ax.plot(r, P, alpha=alpha, color=color, **kwargs)
-        if max(P) > Pmax:
-            Pmax = max(P)
+    if ci is None:
+        for P in Ps:
+            ax.plot(r, P, alpha=alpha, color=color, **kwargs)
+            if max(P) > Pmax:
+                Pmax = max(P)
+    else:
+        Pci = az.hdi(trace,var_names=["P"],hdi_prob=ci).P.transpose()
+        plt.fill_between(r,Pci[0],Pci[1],alpha=0.5,color=color,lw=0,**kwargs)
+        Pmax = max(Pci[1])
+    # Plot average
+    if show_avg:
+        Pavg = np.mean(Ps,0)
+        ax.plot(r, Pavg, color="black", alpha=0.7, lw=2)
+    # axis configurations
     ax.set_xlabel('$r$ (nm)')
     ax.set_ylabel('$P(r)$ (nm$^{-1}$)')
     ax.set_xlim(min(r), max(r))
