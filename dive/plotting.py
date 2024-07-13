@@ -113,21 +113,28 @@ def plotcorrelations(trace, var_names=None, figsize=None, marginals=True, div=Fa
 
     return axs
 
-def plotV(trace, ax=None, nDraws=100, show_avg=False, rng=0, residuals_offset=0, colors=["#4A5899","#F38D68","#4A5899"], alphas=[0.2,0.2,0.2], Vkwargs={}, Bkwargs={}, reskwargs={}, **kwargs):
+def plotV(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, residuals_offset=0, colors=["#4A5899","#F38D68","#4A5899"], alphas=[0.2,0.2,0.2], Vkwargs={}, Bkwargs={}, reskwargs={}, **kwargs):
     if not ax:
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
     # get Ps, Vs, and Bs from trace
-    Ps, Vs, Bs = drawPosteriorSamples(trace, nDraws, rng)
+    totalDraws = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
+    Ps, Vs, Bs = drawPosteriorSamples(trace, nDraws=(nDraws if ci is None else totalDraws), rng=rng)
     # get t and Vexp from trace
     t = trace.observed_data.coords["V_dim_0"].values
     Vexp = trace.observed_data["V"].values
     # Plot time-domain quantities
-    for V, B in zip(Vs, Bs):
-        residuals = V - Vexp
-        ax.plot(t, V, color=colors[0], alpha=alphas[0], **Vkwargs, **kwargs)
-        ax.plot(t, B, color=colors[1], alpha=alphas[1], **Bkwargs, **kwargs)
-        ax.plot(t, residuals+residuals_offset, color=colors[2], alpha=alphas[2], **reskwargs, **kwargs)
+    if ci is None:
+        for V, B in zip(Vs, Bs):
+            residuals = V - Vexp
+            ax.plot(t, V, color=colors[0], alpha=alphas[0], **Vkwargs, **kwargs)
+            ax.plot(t, B, color=colors[1], alpha=alphas[1], **Bkwargs, **kwargs)
+            ax.plot(t, residuals+residuals_offset, color=colors[2], alpha=alphas[2], **reskwargs, **kwargs)
+    else:
+        Vci = az.hdi(np.asarray(Vs),hdi_prob=0.95).transpose()
+        Bci = az.hdi(np.asarray(Bs),hdi_prob=0.95).transpose()
+        ax.fill_between(t, Vci[0], Vci[1], color=colors[0], alpha=alphas[0], lw=0)
+        ax.fill_between(t, Bci[0], Bci[1], color=colors[1], alpha=alphas[1], lw=0)
     # plot average values
     if show_avg:
         Vavg = np.mean(Vs,0)
@@ -148,7 +155,8 @@ def plotP(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, Pref=None,
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
     # get Ps and r from trace
-    Ps = drawPosteriorSamples(trace, nDraws, rng)[0]
+    totalDraws = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
+    Ps = drawPosteriorSamples(trace, nDraws=(nDraws if ci is None else totalDraws), rng=rng)[0]
     r = trace.posterior.coords["P_dim_0"]
     # Plot distance distributions
     Pmax = 0
@@ -158,8 +166,8 @@ def plotP(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, Pref=None,
             if max(P) > Pmax:
                 Pmax = max(P)
     else:
-        Pci = az.hdi(trace,var_names=["P"],hdi_prob=ci).P.transpose()
-        plt.fill_between(r,Pci[0],Pci[1],alpha=0.5,color=color,lw=0,**kwargs)
+        Pci = az.hdi(np.asarray(Ps),hdi_prob=ci).transpose()
+        plt.fill_between(r,Pci[0],Pci[1],alpha=alpha,color=color,lw=0,**kwargs)
         Pmax = max(Pci[1])
     # Plot average
     if show_avg:
