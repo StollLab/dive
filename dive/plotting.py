@@ -113,10 +113,20 @@ def plotcorrelations(trace, var_names=None, figsize=None, marginals=True, div=Fa
 
     return axs
 
-def plotV(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, residuals_offset=0, colors=["#4A5899","#F38D68","#4A5899"], alphas=[0.2,0.2,0.2], Vkwargs={}, Bkwargs={}, reskwargs={}, **kwargs):
+def plotV(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, residuals_offset=0, Vkwargs={}, Bkwargs={}, reskwargs={}, **kwargs):
     if not ax:
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
+    # setup default colors and alphas
+    default_colors = ["#4A5899","#F38D68","#4A5899"]
+    for i,kwarglist in enumerate([Vkwargs,Bkwargs,reskwargs]):
+        if "color" not in kwarglist and "color" not in kwargs:
+            kwarglist.update({"color":default_colors[i]})
+        if "alpha" not in kwarglist and "alpha" not in kwargs:
+            if ci is None:
+                kwarglist.update({"alpha":0.2})
+            else:
+                kwarglist.update({"alpha":0.7})
     # get Ps, Vs, and Bs from trace
     totalDraws = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
     Ps, Vs, Bs = drawPosteriorSamples(trace, nDraws=(nDraws if ci is None else totalDraws), rng=rng)
@@ -127,14 +137,15 @@ def plotV(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, residuals_
     if ci is None:
         for V, B in zip(Vs, Bs):
             residuals = V - Vexp
-            ax.plot(t, V, color=colors[0], alpha=alphas[0], **Vkwargs, **kwargs)
-            ax.plot(t, B, color=colors[1], alpha=alphas[1], **Bkwargs, **kwargs)
-            ax.plot(t, residuals+residuals_offset, color=colors[2], alpha=alphas[2], **reskwargs, **kwargs)
+            ax.plot(t, V, **Vkwargs, **kwargs)
+            ax.plot(t, B, **Bkwargs, **kwargs)
+            ax.plot(t, residuals+residuals_offset, **reskwargs, **kwargs)
     else:
+        # this code may not work in the future
         Vci = az.hdi(np.asarray(Vs),hdi_prob=0.95).transpose()
         Bci = az.hdi(np.asarray(Bs),hdi_prob=0.95).transpose()
-        ax.fill_between(t, Vci[0], Vci[1], color=colors[0], alpha=alphas[0], lw=0)
-        ax.fill_between(t, Bci[0], Bci[1], color=colors[1], alpha=alphas[1], lw=0)
+        ax.fill_between(t, Vci[0], Vci[1], lw=0, **Vkwargs, **kwargs)
+        ax.fill_between(t, Bci[0], Bci[1], lw=0, **Bkwargs, **kwargs)
     # plot average values
     if show_avg:
         Vavg = np.mean(Vs,0)
@@ -143,7 +154,8 @@ def plotV(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, residuals_
         ax.plot(t,Bavg,color="black",alpha=0.7,lw=2)
     # axis configurations
     ax.scatter(t, Vexp, marker=".", color='#BFBFBF', s=5)
-    ax.axhline(residuals_offset, color="black")
+    if ci is None:
+        ax.axhline(residuals_offset, color="black")
     ax.set_xlabel('$t$ (µs)')
     ax.set_ylabel('$V(t)$ (arb. u.)')
     ax.set_xlim((min(t), max(t)))
@@ -166,6 +178,7 @@ def plotP(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, Pref=None,
             if max(P) > Pmax:
                 Pmax = max(P)
     else:
+        # this may break in the future
         Pci = az.hdi(np.asarray(Ps),hdi_prob=ci).transpose()
         plt.fill_between(r,Pci[0],Pci[1],alpha=alpha,color=color,lw=0,**kwargs)
         Pmax = max(Pci[1])
