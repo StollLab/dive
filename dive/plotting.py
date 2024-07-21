@@ -68,30 +68,27 @@ def plotmarginals(trace, axs=None, var_names=None, GroundTruth=None, point_estim
                 ax.axvline(GroundTruth[var_names[i]], color='black') 
     return axs
 
-def plotcorrelations(trace, var_names=None, figsize=None, marginals=True, div=False, **kwargs):
+def plotcorrelations(trace, axs=None, var_names=None, marginals=True, **kwargs):
     """
     Matrix of pairwise correlation plots between model parameters.
     """
     # determine variables to include
     if var_names is None:
         var_names = _relevantVariables(trace)
-    nVars = len(var_names)
+    nVars = len(var_names) - 1 + marginals
     
-    # Set default figure size
-    if figsize is None:
+    # configure axes
+    if axs is None:
         if nVars < 3:
             figsize = (7, 7)
         else:
             figsize = (10, 10)
-    if div == True:
-        class Object(object):
-            pass
+        fig, axs = plt.subplots(nVars,nVars,figsize=figsize,layout="constrained")
 
-        trace.sample_stats = Object()
-        trace.sample_stats.diverging = trace.diverging
     # use arviz library to plot correlations
     az.rcParams["plot.max_subplots"] = 200
-    axs = az.plot_pair(trace, var_names=var_names, kind='kde', figsize=figsize, marginals=marginals, divergences=div, **kwargs)
+
+    az.plot_pair(trace, ax=axs, var_names=var_names, kind='kde', figsize=figsize, marginals=marginals, **kwargs)
 
     # replace labels with the nicer unicode character versions
     if len(var_names) > 2:
