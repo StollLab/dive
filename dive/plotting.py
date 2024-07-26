@@ -124,33 +124,34 @@ def plotV(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, residuals_
                 kwarglist.update({"alpha":0.2})
             else:
                 kwarglist.update({"alpha":0.7})
-    # get Ps, Vs, and Bs from trace
+    # get Vs and Bs from trace
     totalDraws = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
-    Ps, Vs, Bs = drawPosteriorSamples(trace, nDraws=(nDraws if ci is None else totalDraws), rng=rng)
+    Vs, Bs = drawPosteriorSamples(trace, nDraws=(nDraws if ci is None else totalDraws), rng=rng)
     # get t and Vexp from trace
     t = trace.observed_data.coords["V_dim_0"].values
     Vexp = trace.observed_data["V"].values
     # Plot time-domain quantities
     if ci is None:
-        for V, B in zip(Vs, Bs):
-            residuals = V - Vexp
-            ax.plot(t, V, **Vkwargs, **kwargs)
+        for B in Bs:
             ax.plot(t, B, **Bkwargs, **kwargs)
+        for V in Vs:
+            ax.plot(t, V, **Vkwargs, **kwargs)
+            residuals = V - Vexp
             ax.plot(t, residuals+residuals_offset, **reskwargs, **kwargs)
     else:
         # this code may not work in the future
-        Vci = az.hdi(np.asarray(Vs),hdi_prob=0.95).transpose()
         Bci = az.hdi(np.asarray(Bs),hdi_prob=0.95).transpose()
-        ax.fill_between(t, Vci[0], Vci[1], lw=0, **Vkwargs, **kwargs)
         ax.fill_between(t, Bci[0], Bci[1], lw=0, **Bkwargs, **kwargs)
+        Vci = az.hdi(np.asarray(Vs),hdi_prob=0.95).transpose()
+        ax.fill_between(t, Vci[0], Vci[1], lw=0, **Vkwargs, **kwargs)
     # plot average values
     if show_avg:
-        Vavg = np.mean(Vs,0)
-        ax.plot(t,Vavg,color="black",alpha=0.7,lw=2)
         Bavg = np.mean(Bs,0)
         ax.plot(t,Bavg,color="black",alpha=0.7,lw=2)
+        Vavg = np.mean(Vs,0)
+        ax.plot(t,Vavg,color="black",alpha=0.7,lw=2)
     # axis configurations
-    ax.scatter(t, Vexp, marker=".", color='#BFBFBF', s=5)
+    ax.plot(t, Vexp, marker=".", color='k', ms=3, alpha=0.6, mew=0, lw=0)
     if ci is None:
         ax.axhline(residuals_offset, color="black")
     ax.set_xlabel('$t$ (µs)')
@@ -165,7 +166,7 @@ def plotP(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, Pref=None,
         _, ax = plt.subplots(1, 1, figsize=(5,5))
     # get Ps and r from trace
     totalDraws = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
-    Ps = drawPosteriorSamples(trace, nDraws=(nDraws if ci is None else totalDraws), rng=rng)[0]
+    Ps = az.extract(trace, var_names=["P"], num_samples=nDraws, rng=rng).transpose("sample", ...)
     r = trace.posterior.coords["P_dim_0"]
     # Plot distance distributions
     Pmax = 0
@@ -261,30 +262,9 @@ def drawPosteriorSamples(trace, nDraws=100, rng=0):
     t = trace.observed_data.coords["V_dim_0"].values
     r = trace.posterior.coords["P_dim_0"].values
 
-    # Draw P's -------------------------------------------------------------------
-    Ps = []
-    # Determine if a Gaussian model was used
-    GaussianModel = "r0" in varDict
-    if GaussianModel:
-        # if gaussian, build P from r0 (mean), w (width), and a (amplitude)
-        r0_vecs = varDict["r0"].values
-        w_vecs = varDict["w"].values
-        if "a" in varDict:
-            a_vecs = varDict["a"].values
-        else:
-            a_vecs = np.ones(nDraws)
-        for iDraw in range(nDraws):
-            P = dd_gauss(r,r0_vecs[iDraw],w_vecs[iDraw],a_vecs[iDraw])
-            Ps.append(P)
-    else:
-        # if regularization, simply take P from model
-        for iDraw in range(nDraws):
-            P = varDict["P"][iDraw]
-        # normalize P in case it isn't
-            P /= (r[1]-r[0])*P.sum()
-            Ps.append(P.values)
-
     # Rename time-domain parameters to make code below cleaner -------------------------
+    if 'P' in varDict:
+        Ps = varDict["P"].values
     if 'V0' in varDict:
         V0 = varDict["V0"].values
     if 'k' in varDict:
@@ -337,7 +317,7 @@ def drawPosteriorSamples(trace, nDraws=100, rng=0):
 
         Vs.append(V_)
 
-    return Ps, Vs, Bs
+    return Vs, Bs
 
 def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=1, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha_points=0.1, alpha_inits=1):
     """Plots two parameters against each other for each chain."""
