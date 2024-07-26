@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dive-TBD"
+version = "0.1.0"
+authors = [
+  {name = "Sarah Sweger"},
+  {name = "Julian Cheung", email = "julianc2477@gmail.com"},
+  {name = "Lukas Zha"},
+  {name = "Stephan Pribitzer, email = "stephapr@uw.edu"},
+  {name = "Stefan Stoll", email = "stst@uw.edu"},
+]
+description = "dive-TBD is a Python package for Bayesian analysis of dipolar EPR (electron paramagnetic resonance) spectroscopy data through Markov chain Monte Carlo (MCMC) sampling with the Python package PyMC."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Homepage = "https://github.com/StollLab/dive"
