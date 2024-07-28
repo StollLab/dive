@@ -22,15 +22,11 @@ As long as `dive` is in a development state, use the following installation proc
 
 If using `conda`, install the following packages to the environment of your choice:
 
-    conda install mkl-service scipy matplotlib pandas h5netcdf
+    conda install pymc deerlab scipy matplotlib pandas mkl-service h5netcdf pytest
 
-In order to get the newest version of `pymc`, it is necessary to run
+You can also use `pip`.
 
-    pip install pymc 
-
-Unfortunately, the `conda-forge` version is usually deprecated.
-
-After successful installation of `pymc`, navigate to the directory that contains the `dive` source code and run
+After successful installation of dependencies, navigate to the directory that contains the `dive` source code and run
 
     python setup.py develop
 
@@ -62,4 +58,4 @@ Sarah R. Sweger, Stephan Pribitzer, and Stefan Stoll <br>
 
 `dive` is licensed under the [MIT License](LICENSE).
 
-Copyright © 2021: Stephan Pribitzer, Sarah Sweger, Stefan Stoll
+Copyright © 2024:  Sarah Sweger, Julian Cheung, Lukas Zha, Stephan Pribitzer, Stefan Stoll
