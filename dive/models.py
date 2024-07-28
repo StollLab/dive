@@ -8,76 +8,114 @@ from .utils import *
 from .deer import *
 from .samplers import *
 
-def model(t, Vexp, pars):
-    """
-    Returns a dictionary m that contains the DEER data in m['t'] and m['Vexp']
-    and the PyMC model in m['model']. Additional (constant) model parameters
-    are in m['pars'].
-    The data are rescaled internally to max(Vexp)==1.
+from numpy.typing import ArrayLike
+
+def model(
+    t: ArrayLike, Vexp: ArrayLike, method: str = "regularization", 
+    r: ArrayLike = None, bkgd_var: str = "Bend", nGauss: int = 1, 
+    alpha: float = None, delta_prior: tuple[float, float] = (1, 1e-6), 
+    tau_prior: tuple[float, float] = (1, 1e-4),
+    includeBackground: bool = True, includeModDepth: bool = True,
+    includeAmplitude: bool = True) -> dict:
+    """Creates a model for sampling.
+    
+    DEER data is stored in model['t'] and m['Vexp'] and the PyMC model 
+    in model['model']. Additional (constant) model parameters are in 
+    model['pars']. The data are rescaled internally to max(Vexp)==1.
+
+    Parameters
+    ----------
+    t : ArrayLike
+        The time-domain axis of the DEER data.
+    Vexp : ArrayLike
+        The experimental signal of the DEER data.
+    method : str, default="regularization"
+        The method (regularization or gaussian) to use.
+    r : ArrayLike, optional
+        The distance axis of the DEER data. If none given, a distance
+        axis will be automatically generated.
+    bkgd_var : str, default="Bend"
+        The background parameterization to use. Options are "Bend", "k",
+        and "tauB".
+    nGauss : int, default=1
+        The number of gaussians to use. Ignored if the method is a
+        regularization method.
+    alpha : float, optional
+        The fixed value for the regularization parameter. If not set,
+        alpha will be allowed to vary.
+    delta_prior : tuple of float, default=(1, 1e-6)
+        The alpha and beta parameters of the gamma distribution of the
+        prior for delta.
+    tau_prior : tuple of float, default=(1, 1e-4)
+        The alpha and beta parameters of the gamma distribution of the
+        prior for tau.
+    includeBackground : bool, default=True
+        Whether or not to include the background as part of the model.
+    includeModDepth : bool, default=True
+        Whether or not to include the modulation depth as part of the
+        model.
+    includeAmplitude : bool, default=True
+        Whether or not to include the signal amplitude as part of the
+        model.
+    
+    Returns
+    -------
+    model : dict
+        Returns a dictionary with four components. model['t'] and
+        model['Vexp'] contain the DEER data. model['model'] contains
+        the PyMC model. model['pars'] contains extra parameters.
     """
     
     # Rescale data to max 1
     Vscale = np.amax(Vexp)
     Vexp_scaled = Vexp/Vscale
 
-    if "method" not in pars:
-        raise KeyError("'method' is a required field.")
-    method = pars["method"]
-
-    if "r" not in pars:
-        raise KeyError(f"r is a required key for ""method"" = ""{method}"".")
-    
-    # Supplement defaults
-    rmax_opt = pars["rmax_opt"] if "rmax_opt" in pars else "user"
-    bkgd_var = pars["bkgd_var"] if "bkgd_var" in pars else "Bend"
-
-    if rmax_opt == "auto":
-        r_ = pars["r"]
+    # Generates distance axis if not provided
+    if r is None:
+        r_ = r
         tmax = max(abs(t))
-        rmax= (108*tmax)**0.333333333333333
+        rmax = (108*tmax)**0.333333333333333
         dr = (max(r_)-min(r_))/len(r_)
         num = int((rmax-min(r_))/dr)
         r = np.linspace(min(r_),rmax,num)
 
-    elif rmax_opt == "user":
-        r = pars["r"]
-
-    else:
-        raise ValueError(f"Unknown rmax selection method '{rmax_opt}'.")
-
+    # Sets up model based on method
     if method == "gaussian":
-        if "nGauss" not in pars:
-           raise KeyError(f"nGauss is a required key for ""method"" = ""{method}"".") 
-        nGauss = pars["nGauss"]
-
         K0 = dl.dipolarkernel(t, r, integralop=True)
-        model_pymc = multigaussmodel(t, Vexp_scaled, K0, r, nGauss, bkgd_var=bkgd_var)
-        
-        model_pars = {"K0": K0, "r": r, "nGauss": nGauss}
+        model_pymc = multigaussmodel(t, Vexp_scaled, K0, r, nGauss, 
+                                     includeBackground, includeModDepth, 
+                                     includeAmplitude, bkgd_var)
+        model_pars = {"K0": K0, "r": r, "nGauss": nGauss,
+                      "includeBackground": includeBackground,
+                      "includeModDepth": includeModDepth,
+                      "includeAmplitude": includeAmplitude}
 
-    elif method == "regularization" or method == "regularizationP" or method == "regularization_NUTS":
-
-        K0 = dl.dipolarkernel(t, r,integralop=False)
+    elif (method == "regularization" or method == "regularizationP" or 
+          method == "regularization_NUTS"):
+        K0 = dl.dipolarkernel(t, r, integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
         LtL = L.T@L
         K0tK0 = K0.T@K0
-
-        delta_prior = [1, 1e-6]
-        tau_prior = [1, 1e-4]
-
-        alpha = pars["alpha"] if "alpha" in pars else None
-        
+ 
         tauGibbs = method == "regularization"
-        deltaGibbs = (method == "regularization" and "alpha" not in pars)
-        model_pymc = regularizationmodel(t, Vexp_scaled, K0, L, LtL, r, delta_prior=delta_prior, tau_prior=tau_prior, tauGibbs=tauGibbs, deltaGibbs=deltaGibbs, bkgd_var=bkgd_var, alpha=alpha, allNUTS=(method=="regularization_NUTS"))
+        deltaGibbs = (method == "regularization" and "alpha" is not None)
+        allNUTS = method == "regularization_NUTS"
 
-        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, "tau_prior": tau_prior}
-        if alpha is not None:
-            model_pars.update({"alpha": alpha})
+        model_pymc = regularizationmodel(t, Vexp_scaled, K0, L, LtL, r, 
+                                         delta_prior, tau_prior, 
+                                         includeBackground, includeModDepth, 
+                                         includeAmplitude, tauGibbs, deltaGibbs, 
+                                         bkgd_var, alpha, allNUTS)
+        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, 
+                      "delta_prior": delta_prior, "tau_prior": tau_prior, 
+                      "includeBackground": includeBackground,
+                      "includeModDepth": includeModDepth, 
+                      "includeAmplitude": includeAmplitude, "alpha": alpha}
     
     else:
         raise ValueError(f"Unknown method '{method}'.")
     
+    # Update model_pars dictionary
     model_pars['method'] = method
     model_pars['Vscale'] = Vscale
     model_pars['Vexp'] = Vexp_scaled
@@ -85,7 +123,8 @@ def model(t, Vexp, pars):
     model_pars['dr'] = r[1]-r[0]
     model_pars['background'] = bkgd_var
 
-    model = {'model': model_pymc, 'pars': model_pars, 't': t, 'Vexp': Vexp_scaled}
+    model = {'model': model_pymc, 'pars': model_pars, 't': t, 
+             'Vexp': Vexp_scaled}
     
     # Print information about data and model
     print(f"Time range:         {min(t):g} µs to {max(t):g} µs  ({len(t):d} points, step size {t[1]-t[0]:g} µs)")

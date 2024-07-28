@@ -16,7 +16,7 @@ authors = [
 description = "Python package for Bayesian analysis of dipolar EPR spectroscopy data through Markov chain Monte Carlo sampling with PyMC."
 readme = "README.md"
 keywords = ["EPR", "DEER", "Bayesian", "MCMC"]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "pymc>5.10.4",
     "deerlab>1.1.2",
@@ -28,7 +28,7 @@ dependencies = [
     "pytest>7.4.4",
 ]
 classifiers = [
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.10",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
