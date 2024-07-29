@@ -19,9 +19,8 @@ def model(
     include_amplitude: bool = True) -> dict:
     """Creates a model for sampling.
     
-    DEER data is stored in model['t'] and m['Vexp'] and the PyMC model 
-    in model['model']. Additional (constant) model parameters are in 
-    model['pars']. The data are rescaled internally to max(Vexp)==1.
+    The PyMC model, the DEER data, and additional parameters are all
+    stored in a dictionary.
 
     Parameters
     ----------
@@ -61,9 +60,8 @@ def model(
     Returns
     -------
     model : dict
-        Returns a dictionary with four components. model['t'] and
-        model['Vexp'] contain the DEER data. model['model'] contains
-        the PyMC model. model['pars'] contains extra parameters.
+        Returns a dictionary containing the PyMC model, the DEER data,
+        and additional parameters.
     """
     # Rescale data to max 1
     Vscale = np.amax(Vexp)
@@ -81,12 +79,11 @@ def model(
     # Sets up model based on method
     if method == "gaussian":
         K0 = dl.dipolarkernel(t, r, integralop=True)
-        model_pars = {"r": r, "K0": K0, "n_gauss": n_gauss,
-                      "include_background": include_background,
-                      "include_mod_depth": include_mod_depth,
-                      "include_amplitude": include_amplitude, 
-                      "bkgd_var": bkgd_var}
-        model_pymc = multigaussmodel(t, Vexp_scaled, **model_pars)
+        model = {"t":t, "Vexp": Vexp_scaled, "r": r, "K0": K0, 
+                 "n_gauss": n_gauss, "include_background": include_background,
+                 "include_mod_depth": include_mod_depth,
+                 "include_amplitude": include_amplitude, "bkgd_var": bkgd_var}
+        model_pymc = multigaussmodel(**model)
 
     elif (method == "regularization" or method == "regularizationP" or 
           method == "regularization_NUTS"):
@@ -99,26 +96,25 @@ def model(
         delta_gibbs = (method == "regularization" and "alpha" is not None)
         all_NUTS = method == "regularization_NUTS"
 
-        model_pars = {"r": r, "K0": K0, "L": L, "LtL": LtL, "K0tK0": K0tK0, 
-                      "delta_prior": delta_prior, "tau_prior": tau_prior, 
-                      "include_background": include_background,
-                      "include_mod_depth": include_mod_depth, 
-                      "include_amplitude": include_amplitude, "alpha": alpha,
-                      "bkgd_var": bkgd_var}
-        model_pymc = regularizationmodel(t, Vexp_scaled, tau_gibbs=tau_gibbs,
+        model = {"t":t, "Vexp":Vexp_scaled, "r": r, "K0": K0, "L": L, 
+                 "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, 
+                 "tau_prior": tau_prior, 
+                 "include_background": include_background,
+                 "include_mod_depth": include_mod_depth, 
+                 "include_amplitude": include_amplitude, "alpha": alpha,
+                 "bkgd_var": bkgd_var}
+        model_pymc = regularizationmodel(tau_gibbs=tau_gibbs,
                                          delta_gibbs=delta_gibbs,
-                                         all_NUTS=all_NUTS, **model_pars)
-
+                                         all_NUTS=all_NUTS, **model)
     
     else:
         raise ValueError(f"Unknown method '{method}'.")
     
-    # Update model_pars dictionary
-    model_pars['method'] = method
-    model_pars['Vscale'] = Vscale
-    model_pars['dr'] = r[1]-r[0]
-    model = {'model': model_pymc, 'pars': model_pars, 't': t, 
-             'Vexp': Vexp_scaled}
+    # Update model dictionary
+    model['method'] = method
+    model['Vscale'] = Vscale
+    model['dr'] = r[1]-r[0]
+    model['model_pymc'] = model_pymc
     
     # Print information about data and model
     print(f"Time range:         {min(t):g} µs to {max(t):g} µs  ({len(t):d} points, step size {t[1]-t[0]:g} µs)")
@@ -179,11 +175,11 @@ def multigaussmodel(
 
     Returns
     -------
-    pm.Model
+    model_pymc : pm.Model
         A PyMC Model object representing a parametric DEER model.
     """
     # Model definition
-    with pm.Model() as model:
+    with pm.Model() as model_pymc:
         # Distance distribution parameters
         r0_rel = pm.Beta('r0_rel', alpha=2, beta=2, shape=n_gauss)
         # for reporting
@@ -241,7 +237,7 @@ def multigaussmodel(
         # Likelihood
         pm.Normal('V', mu=Vmodel, sigma=sigma, observed=Vexp)
         
-    return model
+    return model_pymc
 
 def regularizationmodel(
     t: ArrayLike, Vexp: ArrayLike, K0: np.ndarray, L: np.ndarray, 
@@ -249,7 +245,7 @@ def regularizationmodel(
     tau_prior: tuple[float,float] = (1, 1e-4), include_background: bool = True, 
     include_mod_depth: bool = True, include_amplitude: bool = True,
     tau_gibbs: bool = True, delta_gibbs: bool = True, bkgd_var: str = "Bend", 
-    alpha: float = None, all_NUTS: bool = False):
+    alpha: float = None, all_NUTS: bool = False) -> pm.Model:
     """Generates a nonparametric PyMC model.
 
     The model is for a DEER signal over time vector t (in µs) given data 
@@ -310,13 +306,13 @@ def regularizationmodel(
 
     Returns
     -------
-    pm.Model
+    model_pymc : pm.Model
         A PyMC Model object representing a nonparametric DEER model.
     """
     dr = r[1]-r[0]
     
     # Model definition
-    with pm.Model() as model:               
+    with pm.Model() as model_pymc:               
         # Noise parameter
         if tau_gibbs: # no prior (it's included in the Gibbs sampler)
             tau = pm.Flat('tau', initval=1.2)
@@ -384,10 +380,10 @@ def regularizationmodel(
         # Add likelihood
         pm.Normal('V', mu=Vmodel, tau=tau, observed=Vexp)
         
-    return model
+    return model_pymc
 
 
-def sample(model: dict, **kwargs):
+def sample(model: dict, **kwargs) -> arviz.InferenceData:
     """Samples the provided model with PyMC.
 
     Depending on the model method, Gibbs sampling is used for none to
@@ -403,57 +399,60 @@ def sample(model: dict, **kwargs):
     
     Returns
     -------
-    arviz.InferenceData
+    trace : arviz.InferenceData
         An ArviZ `InferenceData` object containing the posterior samples
         and some supplementary information.
+
+    See Also
+    --------
+    pm.sample
     """
     # Important variables    
-    model_PyMC = model['model']
-    model_pars = model['pars']
-    method = model_pars['method']
-    bkgd_var = model_pars['bkgd_var']
-    alpha = model_pars['alpha']
+    model_pymc = model['model_pymc']
+    method = model['method']
+    bkgd_var = model['bkgd_var']
+    alpha = model['alpha']
     
     # Set stepping methods, depending on model
     if method == "gaussian":   
-        with model_PyMC:
+        with model_pymc:
             NUTS_varlist = ['r0_rel','w','w_mu','a','sigma',bkgd_var,'V0',
                             'lamb']
-            PyMC_varlist = []
+            pymc_varlist = []
             for var in NUTS_varlist:
-                if var in model_PyMC:
-                    PyMC_varlist.append(model_PyMC[var])
-            step = [pm.NUTS(PyMC_varlist, on_unused_input="ignore")]
+                if var in model_pymc:
+                    pymc_varlist.append(model_pymc[var])
+            step = [pm.NUTS(pymc_varlist, on_unused_input="ignore")]
             remove_vars  = ["r0_rel","w_mu"]
         
     elif method == "regularization":    
-        with model_PyMC:
-            conjstep_tau = randTau_posterior(model_pars)
-            conjstep_P = randPnorm_posterior(model_pars)
+        with model_pymc:
+            conjstep_tau = TauSampler(model)
+            conjstep_P = PSampler(model)
             if alpha is None:
-                conjstep_delta = randDelta_posterior(model_pars)
+                conjstep_delta = DeltaSampler(model)
             NUTS_varlist = ['V0','lamb',bkgd_var]
-            PyMC_varlist = []
+            pymc_varlist = []
             for var in NUTS_varlist:
-                if var in model_PyMC:
-                    PyMC_varlist.append(model_PyMC[var])
-            step_NUTS = pm.NUTS(PyMC_varlist, on_unused_input="ignore")
+                if var in model_pymc:
+                    pymc_varlist.append(model_pymc[var])
+            step_NUTS = pm.NUTS(pymc_varlist, on_unused_input="ignore")
         step = [conjstep_tau, conjstep_P, step_NUTS]
         if alpha is None:
             step.insert(1,conjstep_delta)
         remove_vars = ["lg_alpha"] if alpha is not None else None
         
     elif method == "regularizationP":
-        with model_PyMC:     
-            conjstep_P = randPnorm_posterior(model_pars)
+        with model_pymc:     
+            conjstep_P = PSampler(model)
             if alpha is None:
-                conjstep_delta = randDelta_posterior(model_pars)
+                conjstep_delta = DeltaSampler(model)
             NUTS_varlist = ['V0','lamb',bkgd_var]
-            PyMC_varlist = []
+            pymc_varlist = []
             for var in NUTS_varlist:
-                if var in model_PyMC:
-                    PyMC_varlist.append(model_PyMC[var])
-            step_NUTS = pm.NUTS(PyMC_varlist, on_unused_input="ignore")
+                if var in model_pymc:
+                    pymc_varlist.append(model_pymc[var])
+            step_NUTS = pm.NUTS(pymc_varlist, on_unused_input="ignore")
         step = [conjstep_P, step_NUTS]
         remove_vars = None
 
@@ -465,7 +464,7 @@ def sample(model: dict, **kwargs):
         raise KeyError(f"Unknown method '{method}'.",method)
 
     # Perform MCMC sampling
-    trace = pm.sample(model=model_PyMC, step=step, **kwargs)
+    trace = pm.sample(model=model_pymc, step=step, **kwargs)
 
     # Remove undesired variables
     if remove_vars is not None:
@@ -475,13 +474,13 @@ def sample(model: dict, **kwargs):
                 
     # Postprocessing to add in data form the model
     trace.observed_data.coords["V_dim_0"] = model["t"]
-    trace.posterior.coords["P_dim_0"] = model_pars["r"]
+    trace.posterior.coords["P_dim_0"] = model["r"]
     trace.posterior.attrs["method"] = method
     trace.posterior.attrs["background"] = bkgd_var
     if "random_seed" in kwargs.keys():
         trace.posterior.attrs["random_seed"] = kwargs["random_seed"]
-    if "n_gauss" in model_pars:
-        trace.posterior.attrs["n_gauss"] = model_pars["n_gauss"]
+    if "n_gauss" in model:
+        trace.posterior.attrs["n_gauss"] = model["n_gauss"]
     if alpha is not None:
         trace.posterior.attrs["alpha"] = alpha
 
