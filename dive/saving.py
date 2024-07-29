@@ -31,7 +31,7 @@ def save_trace(trace : az.InferenceData, filename: str = None):
     trace.to_netcdf(filename)
     return
 
-def load_trace(path):
+def load_trace(filename : str) -> tuple[az.InferenceData,dict]:
     """Returns the trace and the model dictionary from a netCDF file.
 
     Parameters
@@ -50,7 +50,7 @@ def load_trace(path):
     save_trace
     """
     # reads netCDF file (as an InferenceData object)
-    trace = az.from_netcdf(path)
+    trace = az.from_netcdf(filename)
 
     # recreates model object
     t = trace.observed_data.coords["V_dim_0"].values
