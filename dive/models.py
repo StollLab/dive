@@ -3,6 +3,7 @@ import pymc as pm
 import numpy as np
 import deerlab as dl
 import pytensor as pt
+import arviz as az
 
 from .utils import *
 from .deer import *
@@ -383,7 +384,7 @@ def regularizationmodel(
     return model_pymc
 
 
-def sample(model: dict, **kwargs) -> arviz.InferenceData:
+def sample(model: dict, **kwargs) -> az.InferenceData:
     """Samples the provided model with PyMC.
 
     Depending on the model method, Gibbs sampling is used for none to
@@ -399,7 +400,7 @@ def sample(model: dict, **kwargs) -> arviz.InferenceData:
     
     Returns
     -------
-    trace : arviz.InferenceData
+    trace : az.InferenceData
         An ArviZ `InferenceData` object containing the posterior samples
         and some supplementary information.
 

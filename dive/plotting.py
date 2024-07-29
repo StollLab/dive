@@ -9,141 +9,300 @@ import arviz as az
 from IPython.display import display
 import deerlab as dl
 from scipy.io import loadmat
+from xarray.core.utils import HiddenKeyDict
 
 from .utils import *
 from .deer import *
 
+from numpy.typing import ArrayLike
+from matplotlib.typing import ColorType
 
-def _relevantVariables(trace):
-    #desiredVars = ["r0", "w", "a", "k", "lamb", "V0", "sigma", "lg_alpha"]
-    desiredVars = ["lamb","V0","sigma"]
-    if "Bend" in trace.posterior:
-        desiredVars.append("Bend")
-    elif "tauB" in trace.posterior:
-        desiredVars.append("tauB")
-    else:
-        desiredVars.append("k")
-    if "lg_alpha" in trace.posterior:
-        desiredVars.append("lg_alpha")
+def _get_relevant_vars(trace: az.InferenceData) -> list[str]:
+    """Returns a list of important variables from a given trace.
 
-    # checks if gaussian
-    if "w_dim_0" in trace.posterior:
-        # adds r0, w, and a to the dictionary with the number of variables
-        nGauss = trace.posterior.dims["w_dim_0"]
-        desiredVars.extend(["r0","w"])
-        if nGauss > 1:
-            desiredVars.append("a")
+    These variables are used for some plotting functions.
 
-    return desiredVars
+    The important variables are:
+        lamb        modulation depth
+        V0          signal amplitude
+        Bend        value at end of background function
+        lg_alpha    log10 of regularizaton parameter alpha
+        r0          mean(s) of gaussian(s) of distance distribution
+        w           width(s) of gaussian(s) of distance distribution
+        a           amplitudes of gaussians of distance distribution
+    
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
 
-
-def printsummary(trace,var_names=None):
+    Returns
+    -------
+    relevant_vars : list of str
+        A list of variables present in the trace that are important
+        to plot or summarize.
     """
-    Print table of all parameters, including their means, standard deviations,
-    effective sample sizes, Monte Carlo standard errors, and R-hat diagnostics.
+    # list of important variables possibly in the trace
+    possible_vars = ["lamb","V0","sigma","lg_alpha","r0","w","a","Bend"]
+    relevant_vars = []
+    for var in possible_vars:
+        if var in trace.posterior:
+            relevant_vars.append(var)
+    # only add k if Bend not present
+    if "k" in trace.posterior and "Bend" not in relevant_vars:
+        relevant_vars.append("k")
+    return relevant_vars
+
+def print_summary(
+    trace: az.InferenceData, var_names: list[str] = None, **kwargs):
+    """Prints a table with summary statistics of important parameters.
+    
+    The table includes their means, standard deviations, 
+    effective sample sizes, Monte Carlo standard errors, and R-hat 
+    diagnostic values.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    var_names : list of str, optional
+        The variables to be summarized. If not provided, a list of
+        relevant important variables will be automatically selected.
+    **kwargs : dict, optional
+        Keyword arguments to be passed to az.summary.
+
+    See Also
+    --------
+    az.summary
+    summary
     """
+    # get relevant variables if not provided
     if var_names is None:
-        var_names = _relevantVariables(trace)
-    summary = az.summary(trace, var_names=var_names)
+        var_names = _get_relevant_vars(trace)
+    summary = az.summary(trace, var_names=var_names, **kwargs)
     # replace the labels with their unicode characters before displaying
-    summary.index = _betterLabels(summary.index.values)
+    summary.index = _replace_labels(summary.index.values)
     display(summary)
+    return
 
-def plotmarginals(trace, axs=None, var_names=None, GroundTruth=None, point_estimate=None, hdi_prob="hide", **kwargs):
+def plot_marginals(
+    trace: az.InferenceData, axs: np.ndarray[plt.Axes] = None, 
+    var_names: list[str] = None, ground_truth: dict[str,float] = None, 
+    point_estimate: str = None, hdi_prob: float = "hide", **kwargs) -> plt.Axes:
+    """Plot 1D marginalized posteriors of selected variables.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    axs : np.ndarray of plt.Axes, optional
+        1D numpy array of the MatPlotLib axes to be plotted on. If not 
+        provided, axes will be automatically created. Needs to be the 
+        correct size.
+    var_names : list of str, optional
+        The variables to be plotted. If not provided, a list of
+        relevant important variables will be automatically selected.
+    ground_truth : dict of str, float, optional
+        A dictionary of ground-truth variable values, which will be
+        plotted as vertical gray lines. Keys should be the variable
+        names and arguments should be their values.
+    point_estimate : str, optional
+        If "mean", "median", or "mode" are passed, that value will
+        be plotted. See az.plot_posterior.
+    hdi_prob : float, default="hide"
+        The highest density interval to plot. If set to the default
+        "hide", none will be plotted.
+    **kwargs : dict, optional
+        Keyword arguments to be passed to az.plot_posterior.
+    
+    Returns
+    -------
+    axs : plt.Axes
+    
+    See Also
+    --------
+    az.plot_posterior
+    summary
     """
-    Plot marginalized posteriors
-    """
+    # get relevant variables if not provided
     if var_names is None:
-        var_names = _relevantVariables(trace)
+        var_names = _get_relevant_vars(trace)
+    # create axes if not provided
     if axs is None:
-        fig, axs = plt.subplots(1,len(var_names),figsize=(2.5*len(var_names),2.5))
+        figsize = (2.5*len(var_names),2.5)
+        fig, axs = plt.subplots(1,len(var_names),figsize=figsize)
+    # plots and stylizes posterior for each variable
     for i,ax in enumerate(axs):
-        az.plot_posterior(trace, ax=ax, var_names=var_names[i], point_estimate=point_estimate, hdi_prob=hdi_prob, **kwargs)
+        az.plot_posterior(trace, ax=ax, var_names=var_names[i], 
+                          point_estimate=point_estimate, hdi_prob=hdi_prob, 
+                          **kwargs)
         ax.patch.set_linewidth(1)
         ax.patch.set_edgecolor("black")
-        ax.set_title(_betterLabels(var_names[i]))
+        ax.set_title(_replace_labels(var_names[i]))
         # plots vertical bar @ ground truth if given
-        if GroundTruth:
-            if var_names[i] in GroundTruth:
-                ax.axvline(GroundTruth[var_names[i]], color='black') 
+        if ground_truth:
+            if var_names[i] in ground_truth:
+                ax.axvline(ground_truth[var_names[i]], color='black') 
     return axs
 
-def plotcorrelations(trace, axs=None, var_names=None, marginals=True, **kwargs):
-    """
-    Matrix of pairwise correlation plots between model parameters.
+def plot_correlations(
+    trace: az.InferenceData, axs: np.ndarray[plt.Axes] = None, 
+    var_names: list[str] = None, marginals: bool = True, **kwargs) -> plt.Axes:
+    """Plots 2D marginalized posteriors of selected variables.
+
+    Illustrates pairwise correlation plots between model parameters.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    axs : np.ndarray of plt.Axes
+        2D numpy array of the MatPlotLib axes to be plotted on. If not
+        provided, axes will be automatically created. Needs to be the
+        correct size.
+    var_names : list of str
+        The variables to be plotted. If not provided, a list of relevant
+        important variables will be automatically selected.
+    marginals : bool, default=True
+        Whether or not to also include the 1D marginalized posteriors
+        for each variable.
+    **kwargs : dict, optional
+        Keyword arguments to be passed to az.plot_pair.
+    
+    Returns
+    -------
+    axs : plt.Axes
+
+    See Also
+    --------
+    az.plot_pair
+    summary
     """
     # determine variables to include
     if var_names is None:
-        var_names = _relevantVariables(trace)
-    nVars = len(var_names) - 1 + marginals
-    
+        var_names = _get_relevant_vars(trace)
+    n_vars = len(var_names) - 1 + marginals
     # configure axes
     if axs is None:
-        if nVars < 3:
+        if n_vars < 3:
             figsize = (7, 7)
         else:
             figsize = (10, 10)
-        fig, axs = plt.subplots(nVars,nVars,figsize=figsize,layout="constrained")
+        fig, axs = plt.subplots(n_vars,n_vars,figsize=figsize,
+                                layout="constrained")
 
     # use arviz library to plot correlations
     az.rcParams["plot.max_subplots"] = 200
-
-    az.plot_pair(trace, ax=axs, var_names=var_names, kind='kde', figsize=figsize, marginals=marginals, **kwargs)
+    az.plot_pair(trace, ax=axs, var_names=var_names, kind='kde', 
+                 figsize=figsize, marginals=marginals, **kwargs)
 
     # replace labels with the nicer unicode character versions
     if len(var_names) > 2:
         # reshape axes so that we can loop through them
         axs = np.reshape(axs,np.shape(axs)[0]*np.shape(axs)[1])
-
         for ax in axs:
             xlabel = ax.get_xlabel()
             ylabel = ax.get_ylabel()
             if xlabel:
-                ax.set_xlabel(_betterLabels(xlabel))
+                ax.set_xlabel(_replace_labels(xlabel))
             if ylabel:
-                ax.set_ylabel(_betterLabels(ylabel))
+                ax.set_ylabel(_replace_labels(ylabel))
     else:
         xlabel = axs.get_xlabel()
         ylabel = axs.get_ylabel()
-        axs.set_xlabel(_betterLabels(xlabel))
-        axs.set_ylabel(_betterLabels(ylabel))
-
+        axs.set_xlabel(_replace_labels(xlabel))
+        axs.set_ylabel(_replace_labels(ylabel))
     return axs
 
-def plotV(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, residuals_offset=0, Vkwargs={}, Bkwargs={}, reskwargs={}, **kwargs):
+def plot_V(
+    trace: az.InferenceData, ax: plt.Axes = None, num_samples: int = 100, 
+    show_avg: bool = False, hdi: float = None, rng: int = None, 
+    residuals_offset: float = 0, V_kwargs: dict = None, B_kwargs: dict = {}, 
+    res_kwargs = None, **kwargs) -> plt.Axes:
+    """Plots an ensemble of fitted signals and backgrounds with residuals.
+
+    A set of random samples from the full trace is selected for V and B. 
+    Averages and highest density intervals may also be optionally 
+    plotted.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    ax : plt.Axes, optional
+        The MatPlotLib axes to plot on. If none provided, axes will be
+        automatically created. 
+    num_samples : int, default=100
+        The number of random samples to draw from the trace.
+    show_avg : bool, default=False
+        Whether or not to plot the average signal and background.
+    hdi : float, optional
+        If a float is provided, the corresponding highest density 
+        interval will be plotted instead of the ensembles.
+    rng : int, optional
+        The seed for the random number generator for drawing random
+        samples.
+    residuals_offset : float, default=0
+        The amount to raise the residual plot by (for a more compact
+        plot).
+    V_kwargs : dict, optional
+        Keyword arguments to be passed to plt.plot or plt.fill_between 
+        for V.
+    B_kwargs : dict, optional
+        Keyword arguments to be passed to plt.plot or plt.fill_between 
+        for B.
+    res_kwargs : dict, optional
+        Keyword arguments to be passed to plt.plot or plt.fill_between 
+        for the residuals.
+    **kwargs : dict, optional
+        Keyword arguments to be passed to plt.plot or plt.fill_between 
+        for all plots.
+    
+    Returns
+    -------
+    ax : plt.Axes
+
+    See Also
+    --------
+    draw_posterior_samples
+    summary
+    plt.plot
+    plt.fill_between
+    """
     if not ax:
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
     # setup default colors and alphas
     default_colors = ["#4A5899","#F38D68","#4A5899"]
-    for i,kwarglist in enumerate([Vkwargs,Bkwargs,reskwargs]):
+    for i,kwarglist in enumerate([V_kwargs,B_kwargs,res_kwargs]):
         if "color" not in kwarglist and "color" not in kwargs:
             kwarglist.update({"color":default_colors[i]})
         if "alpha" not in kwarglist and "alpha" not in kwargs:
-            if ci is None:
+            if hdi is None:
                 kwarglist.update({"alpha":0.2})
             else:
                 kwarglist.update({"alpha":0.7})
-    # get Vs and Bs from trace
-    totalDraws = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
-    Vs, Bs = drawPosteriorSamples(trace, nDraws=(nDraws if ci is None else totalDraws), rng=rng)
+    # get Vs and Bs from draw_posterior_samples
+    if hdi is not None:
+        num_samples = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
+    Vs, Bs = draw_posterior_samples(trace, num_samples, rng=rng)
     # get t and Vexp from trace
     t = trace.observed_data.coords["V_dim_0"].values
     Vexp = trace.observed_data["V"].values
     # Plot time-domain quantities
-    if ci is None:
+    if hdi is None:
         for B in Bs:
-            ax.plot(t, B, **Bkwargs, **kwargs)
+            ax.plot(t, B, **kwargs, **B_kwargs)
         for V in Vs:
-            ax.plot(t, V, **Vkwargs, **kwargs)
+            ax.plot(t, V, **kwargs, **V_kwargs)
             residuals = V - Vexp
-            ax.plot(t, residuals+residuals_offset, **reskwargs, **kwargs)
+            ax.plot(t, residuals+residuals_offset, **kwargs, **res_kwargs)
     else:
         # this code may not work in the future
-        Bci = az.hdi(np.asarray(Bs),hdi_prob=0.95).transpose()
-        ax.fill_between(t, Bci[0], Bci[1], lw=0, **Bkwargs, **kwargs)
-        Vci = az.hdi(np.asarray(Vs),hdi_prob=0.95).transpose()
-        ax.fill_between(t, Vci[0], Vci[1], lw=0, **Vkwargs, **kwargs)
+        Bhdi = az.hdi(np.asarray(Bs),hdi_prob=0.95).transpose()
+        ax.fill_between(t, Bhdi[0], Bhdi[1], lw=0, **kwargs, **B_kwargs)
+        Vhdi = az.hdi(np.asarray(Vs),hdi_prob=0.95).transpose()
+        ax.fill_between(t, Vhdi[0], Vhdi[1], lw=0, **kwargs, **V_kwargs)
     # plot average values
     if show_avg:
         Bavg = np.mean(Bs,0)
@@ -152,32 +311,85 @@ def plotV(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, residuals_
         ax.plot(t,Vavg,color="black",alpha=0.7,lw=2)
     # axis configurations
     ax.plot(t, Vexp, marker=".", color='k', ms=3, alpha=0.6, mew=0, lw=0)
-    if ci is None:
+    if hdi is None:
         ax.axhline(residuals_offset, color="black")
     ax.set_xlabel('$t$ (µs)')
     ax.set_ylabel('$V(t)$ (arb. u.)')
     ax.set_xlim((min(t), max(t)))
     ax.set_ylim(-0.1+residuals_offset,1.1)
     ax.set_title('time domain and residuals')
+    return ax
 
-def plotP(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, Pref=None, rref=None, alpha=0.2, color="#4A5899", **kwargs):
+def plot_P(
+    trace : az.InferenceData, ax: plt.Axes = None, num_samples: int = 100, 
+    show_avg: bool = False, hdi: float = None, rng: int = None, 
+    Pref: ArrayLike = None, rref: ArrayLike = None, alpha: float = 0.2, 
+    color: ColorType = "#4A5899", **kwargs) -> plt.Axes:
+    """Plots an ensemble of distance distributions.
+
+    A set of random distance distributions is drawn from the posterior
+    of P. Averages and highest density intervals may also be optionally
+    plotted. A ground-truth distance distribution will be plotted in
+    black if provided through rref and Pref.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    ax : plt.Axes, optional
+        The MatPlotLib axes to plot on. If none provided, axes will be
+        automatically created. 
+    num_samples : int, default=100
+        The number of random samples to draw from the trace.
+    show_avg : bool, default=False
+        Whether or not to plot the average distance distribution.
+    hdi : float, optional
+        If a float is provided, the corresponding highest density 
+        interval will be plotted instead of the ensembles.
+    rng : int, optional
+        The seed for the random number generator for drawing random
+        samples.
+    Pref : ArrayLike, optional
+        The ground-truth distance distribution.
+    rref : ArrayLike, optional
+        The distnace axis of the ground-truth distance distribution.
+    alpha : float, default=0.2
+        The transparency of the ensemble plots.
+    color : ColorType, default="#4A5899"
+        The color of the ensemble plots.
+    **kwargs : dict, optional
+        Keyword arguments to be passed to plt.plot or plt.fill_between.
+    
+    Returns
+    -------
+    ax : plt.Axes
+
+    See Also
+    --------
+    az.extract
+    summary
+    plt.plot
+    plt.fill_between
+    """
     if not ax:
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
     # get Ps and r from trace
-    totalDraws = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
-    Ps = az.extract(trace, var_names=["P"], num_samples=nDraws, rng=rng).transpose("sample", ...)
+    if hdi is not None:
+        num_samples = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
+    Ps = az.extract(trace, var_names=["P"], num_samples=num_samples, 
+                    rng=rng).transpose("sample", ...)
     r = trace.posterior.coords["P_dim_0"]
     # Plot distance distributions
     Pmax = 0
-    if ci is None:
+    if hdi is None:
         for P in Ps:
             ax.plot(r, P, alpha=alpha, color=color, **kwargs)
             if max(P) > Pmax:
                 Pmax = max(P)
     else:
         # this may break in the future
-        Pci = az.hdi(np.asarray(Ps),hdi_prob=ci).transpose()
+        Pci = az.hdi(np.asarray(Ps),hdi_prob=hdi).transpose()
         plt.fill_between(r,Pci[0],Pci[1],alpha=alpha,color=color,lw=0,**kwargs)
         Pmax = max(Pci[1])
     # Plot average
@@ -190,27 +402,55 @@ def plotP(trace, ax=None, nDraws=100, show_avg=False, ci=None, rng=0, Pref=None,
     ax.set_xlim(min(r), max(r))
     ax.set_ylim(0,Pmax*1.1)
     ax.set_title('distance domain')
-    if Pref is not None:
+    if Pref is not None and rref is not None:
         ax.plot(rref, Pref, color='black')
     plt.grid()
     return ax
 
-def summary(trace, var_names=None, nDraws=100, rng=0):
-    
-    printsummary(trace, var_names)
-    plotmarginals(trace, var_names)
-    plotcorrelations(trace, var_names)
+def summary(
+    trace: az.InferenceData, var_names: list[str] = None, 
+    num_samples: int = 100, rng: int = None):
+    """Summary function to plot several plots.
+
+    Calls print_summary, plot_marginals, plot_correlations, plot_V,
+    and plot_P.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    var_names : list of str
+        The variables to be plotted. If not provided, a list of relevant
+        important variables will be automatically selected.
+    num_samples : int, default=100
+        The number of random samples to draw from the trace.
+    rng : int, optional
+        The seed for the random number generator for drawing random
+        samples.
+
+    See Also
+    --------
+    print_summary
+    plot_marginals
+    plot_correlations
+    plot_V
+    plot_P
+    """
+    print_summary(trace, var_names)
+    plot_marginals(trace, var_names)
+    plot_correlations(trace, var_names)
     fig, axs = plt.subplots(1,2,figsize=(8,4),layout="constrained")
-    plotV(trace, ax=axs[0], nDraws=nDraws, rng=rng)
-    plotP(trace, ax=axs[1], nDraws=nDraws, rng=rng)
+    plot_V(trace, ax=axs[0], num_samples=num_samples, rng=rng)
+    plot_P(trace, ax=axs[1], num_samples=num_samples, rng=rng)
+    return
 
 # Look-up table that maps variable strings to better symbols for printing
 _table = {
     "k": "$k$",
-    "tau": "$τ_B$",
+    "tauB": "$τ_B$",
     "Bend": "$B_\mathrm{end}$",
     "lamb": "$λ$",
-    "lamba": "$λ$",
+    "lambda": "$λ$",
     "sigma": "$σ$",
     "delta": "$δ$",
     "tau": "$τ$",
@@ -245,9 +485,18 @@ _table = {
 }
 
 
-def _betterLabels(x):
-    """
-    Replace strings with their corresponding (greek) symbols
+def _replace_labels(x: str) -> str:
+    """Replaces strings with their corresponding (greek) symbols.
+
+    Parameters
+    ----------
+    x : str
+        The label to be replaced.
+
+    Returns
+    -------
+    str
+        The replaced label.
     """
     if isinstance(x, str):
         return _table.get(x,x)
@@ -255,7 +504,7 @@ def _betterLabels(x):
         return [_table.get(x_,x_) for x_ in x]
 
 
-def drawPosteriorSamples(trace, nDraws=100, rng=0):
+def draw_posterior_samples(trace, nDraws=100, rng=0):
     # Extracts (nDraws) random samples from the trace and reshapes it to work nicely
     varDict = az.extract(trace, num_samples=nDraws, rng=rng).transpose("sample", ...)
     # Extract t and r from trace object
