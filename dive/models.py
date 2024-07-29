@@ -476,12 +476,16 @@ def sample(model: dict, **kwargs) -> arviz.InferenceData:
     trace.observed_data.coords["V_dim_0"] = model["t"]
     trace.posterior.coords["P_dim_0"] = model["r"]
     trace.posterior.attrs["method"] = method
-    trace.posterior.attrs["background"] = bkgd_var
+    trace.posterior.attrs["bkgd_var"] = bkgd_var
+    trace.posterior.attrs["alpha"] = alpha
+    trace.posterior.attrs["include_background"] = model["include_background"]
+    trace.posterior.attrs["include_mod_depth"] = model["include_mod_depth"]
+    trace.posterior.attrs["include_amplitude"] = model["include_amplitude"]
+    trace.posterior.attrs["delta_prior"] = model["delta_prior"]
+    trace.posterior.attrs["tau_prior"] = model["tau_prior"]
     if "random_seed" in kwargs.keys():
         trace.posterior.attrs["random_seed"] = kwargs["random_seed"]
     if "n_gauss" in model:
-        trace.posterior.attrs["n_gauss"] = model["n_gauss"]
-    if alpha is not None:
-        trace.posterior.attrs["alpha"] = alpha
+        trace.posterior.attrs["n_gauss"] = model["n_gauss"]      
 
     return trace

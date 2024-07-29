@@ -3,39 +3,72 @@ import arviz as az
 from datetime import date
 from .models import *
 
-def saveTrace(trace, SaveName=None):
-    """
-    Saves a trace to a netCDF file.
+def save_trace(trace : az.InferenceData, filename: str = None):
+    """Saves a trace to a netCDF file.
+
+    If no name is provided, the date and time will be used as the 
+    filename.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be saved.
+    filename : str, optional
+        The name of the generated file.
+
+    See Also
+    --------
+    load_trace
     """
     # creates the proper name for the file
-    if not SaveName:
+    if not filename:
         today = date.today()
-        SaveName = 'data/' + today.strftime("%Y%m%d")
-
-    if not SaveName.endswith('.nc'):
-        SaveName = SaveName + '.nc'
+        filename = 'data/' + today.strftime("%Y%m%d")
+    if not filename.endswith('.nc'):
+        filename = filename + '.nc'
 
     # saves the trace as a netCDF file
-    trace.to_netcdf(SaveName)
-    
+    trace.to_netcdf(filename)
     return
 
-def loadTrace(path):
-    """
-    Returns the trace and the model dictionary from a netCDF file.
+def load_trace(path):
+    """Returns the trace and the model dictionary from a netCDF file.
+
+    Parameters
+    ----------
+    filename : str
+        The filepath of the file to be read.
+
+    Returns
+    -------
+    trace, model : az.InferenceData, dict
+        A tuple containing the loaded trace and the recreated model
+        dictionary.
+    
+    See Also
+    --------
+    save_trace
     """
     # reads netCDF file (as an InferenceData object)
     trace = az.from_netcdf(path)
 
-    # recreates model_dic object
+    # recreates model object
     t = trace.observed_data.coords["V_dim_0"].values
     Vexp = trace.observed_data["V"].values
-    pars = {"method": trace.posterior.attrs["method"], "r": trace.posterior.coords["P_dim_0"].values, "background": trace.posterior.attrs["background"]}
-    if "nGauss" in trace.posterior.attrs:
-        pars.update({"nGauss": int(trace.posterior.attrs["nGauss"])})
-    if "alpha" in trace.posterior.attrs:
-        pars.update({"alpha": trace.posterior.attrs["alpha"]})
+    r = trace.posterior.coords["P_dim_0"].values
+    method = trace.posterior.attrs["method"]
+    bkgd_var = trace.posterior.attrs["bkgd_var"]
+    alpha = trace.posterior.attrs["alpha"]
+    include_background = trace.posterior.attrs["include_background"]
+    include_mod_depth = trace.posterior.attrs["include_mod_depth"]
+    include_amplitude = trace.posterior.attrs["include_amplitude"]
+    delta_prior = trace.posterior.attrs["delta_prior"]
+    tau_prior = trace.posterior.attrs["tau_prior"]
+    n_gauss = 1
+    if "n_gauss" in trace.posterior.attrs:
+        n_gauss = trace.posterior.attrs["n_gauss"]
 
-    model_dic = model(t, Vexp, pars)
+    model = model(t, Vexp, method, r, n_gauss, alpha, delta_prior, tau_prior,
+                  include_background, include_mod_depth, include_amplitude)
 
-    return trace, model_dic
+    return trace, model
