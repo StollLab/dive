@@ -14,6 +14,7 @@ from xarray.core.utils import HiddenKeyDict
 from .utils import *
 from .deer import *
 
+from typing import Union
 from numpy.typing import ArrayLike
 from matplotlib.typing import ColorType
 
@@ -485,17 +486,17 @@ _table = {
 }
 
 
-def _replace_labels(x: str) -> str:
+def _replace_labels(x: Union[str, list[str]]) -> Union[str, list[str]]:
     """Replaces strings with their corresponding (greek) symbols.
 
     Parameters
     ----------
-    x : str
+    x : str or list of str
         The label to be replaced.
 
     Returns
     -------
-    str
+    str or list of str
         The replaced label.
     """
     if isinstance(x, str):
@@ -504,72 +505,120 @@ def _replace_labels(x: str) -> str:
         return [_table.get(x_,x_) for x_ in x]
 
 
-def draw_posterior_samples(trace, nDraws=100, rng=0):
-    # Extracts (nDraws) random samples from the trace and reshapes it to work nicely
-    varDict = az.extract(trace, num_samples=nDraws, rng=rng).transpose("sample", ...)
+def draw_posterior_samples(
+    trace: az.InferenceData, num_samples: int = 100, 
+    rng: int = None) -> tuple(np.ndarray,np.ndarray):
+    """Draws random samples from a trace and calculates Vs and Bs.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    num_samples : int, default=100
+        The number of random samples to draw from the trace.
+    rng : int, optional
+        The seed for the random number generator for drawing random
+        samples.
+
+    Returns
+    -------
+    Vs, Bs : tuple of np.ndarray
+        The fitted signals and backgrounds from the random samples.
+
+    See Also
+    --------
+    plot_V
+    """
+    # Extracts (nDraws) random samples from the trace and reshapes it
+    var_dict = az.extract(trace, num_samples=num_samples, 
+                          rng=rng).transpose("sample", ...)
     # Extract t and r from trace object
     t = trace.observed_data.coords["V_dim_0"].values
     r = trace.posterior.coords["P_dim_0"].values
 
-    # Rename time-domain parameters to make code below cleaner -------------------------
-    if 'P' in varDict:
-        Ps = varDict["P"].values
-    if 'V0' in varDict:
-        V0 = varDict["V0"].values
-    if 'k' in varDict:
-        k = varDict["k"].values
-    if 'Bend' in varDict:
-        Bend = varDict["Bend"].values   
-    if 'tauB' in varDict:
-        tauB = varDict["tauB"].values
-    if 'lamb' in varDict:
-        lamb = varDict["lamb"].values
+    # Rename time-domain parameters to make code below cleaner
+    if 'P' in var_dict:
+        Ps = var_dict["P"].values
+    if 'V0' in var_dict:
+        V0 = var_dict["V0"].values
+    if 'k' in var_dict:
+        k = var_dict["k"].values
+    if 'Bend' in var_dict:
+        Bend = var_dict["Bend"].values   
+    if 'lamb' in var_dict:
+        lamb = var_dict["lamb"].values
 
-    # Generate V's and B's from P's and other parameters --------------------------------
+    # Generate V's and B's from P's and other parameters
     Vs = []
     Bs = []
     K0 = dl.dipolarkernel(t, r, integralop=False)
     dr = r[1] - r[0]
 
-    for iDraw in range(nDraws):
-        V_ = dr*K0@Ps[iDraw]
-
-        if 'lamb' in varDict:
-            V_ = (1-lamb[iDraw]) + lamb[iDraw]*V_
-
-        if 'Bend' in varDict:
-            k = -1/t[-1]*np.log(Bend[iDraw])
+    for i in range(num_samples):
+        V_ = dr*K0@Ps[i]
+        if 'lamb' in var_dict:
+            V_ = (1-lamb[i]) + lamb[i]*V_
+        if 'Bend' in var_dict:
+            k = -1/t[-1]*np.log(Bend[i])
             B = bg_exp(t,k)
-        elif 'tauB' in varDict:
-            B = bg_exp_time(t,tauB[iDraw])
         else:
-            B = bg_exp(t,k[iDraw])
-        
+            B = bg_exp(t,k[i])
         V_ *= B
-        Blamb = (1-lamb[iDraw])*B
-            
-        if 'V0' in varDict:
-            Blamb *= V0[iDraw]
-        Bs.append(Blamb)
-        
-        if 'tauB' in varDict:
-            B = bg_exp_time(t,tauB[iDraw])
-            V_ *= B
+        Blamb = (1-lamb[i])*B
+        if 'V0' in var_dict:
+            Blamb *= V0[i]
+            V_ *= V0[i]
 
-            Blamb = (1-lamb[iDraw])*B
-            if 'V0' in varDict:
-                Blamb *= V0[iDraw]
-            Bs.append(Blamb)
-
-        if 'V0' in varDict:
-            V_ *= V0[iDraw]
-
+        Bs.append(Blamb)  
         Vs.append(V_)
 
     return Vs, Bs
 
-def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=1, ax=None, colors=["r","g","b","y","m","c","orange","deeppink","indigo","seagreen"], alpha_points=0.1, alpha_inits=1):
-    """Plots two parameters against each other for each chain."""
+def pairplot_chain(
+    trace: az.InferenceData, var1: str, var2: str, ax: plt.Axes = None, 
+    plot_inits: bool = False, gauss_id: int = 1, 
+    colors: Union[list[ColorType],ColorType] = ["r","g","b","y","m","c"], 
+    alpha: float = 0.1, **kwargs) -> plt.Axes:
+    """Plots a scatter plot of two parameters for each chain.
+
+    Each chain will be plotted in a different color. Optionally, the
+    initial point of each chain may be plotted.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    var1, var2 : str
+        The variables to be plotted.
+    ax : plt.Axes, optional
+        The MatPlotLib axes to plot on. If none provided, axes will be
+        automatically created. 
+    plot_inits : bool, default=False
+        Whether or not to plot the initial points of each chain.
+    gauss_id : int, default=1
+        For the parameters associated with a gaussian fit (r0, w, a),
+        which gaussian to plot. E.g., if var1 is set to w and gauss_id
+        is set to 2, the widths of the second gaussian will be plotted.
+        Counting starts at 1.
+    colors : ColorType or list of ColorType, default=["r","g","b","y","m","c"]
+        The color(s) to plot the chains. If a str is provided, all
+        chains will be plotted that color. If a list of colors is
+        provided, the chains will follow those colors. If the number of
+        colors is less than the number of chains, the colors will be
+        cycled.
+    alpha : float, default=0.1
+        The transparency of the plotted points.
+    **kwargs : dict, optional
+        Keyword arguments to be passed to plt.plot.
+    
+    Returns
+    -------
+    ax : plt.Axes
+
+    See Also
+    --------
+    plt.plot
+    """
     if not ax:
         # creates ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5,5))
@@ -577,8 +626,11 @@ def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=1, ax=None, col
     xlabel = var1
     ylabel = var2
     for chain in range(trace.posterior.dims["chain"]):
-        v1 = az.extract(trace, var_names=[var1], combined=False)[chain].transpose()
-        v2 = az.extract(trace, var_names=[var2], combined=False)[chain].transpose()
+        # retrieve variable values
+        v1 = az.extract(trace, var_names=[var1], 
+                        combined=False)[chain].transpose()
+        v2 = az.extract(trace, var_names=[var2], 
+                        combined=False)[chain].transpose()
         # for parameters w/ multiple values (a, w, and r0)
         # will plot the values corresponding to gauss_id
         if len(v1.dims) > 1:
@@ -587,22 +639,71 @@ def pairplot_chain(trace, var1, var2, plot_inits=False, gauss_id=1, ax=None, col
         if len(v2.dims) > 1:
                 v2 = v2[gauss_id]
                 ylabel = var2 + "[%s]" % gauss_id
-        # if color is a string, it uses that color; if it is a list, it uses them in order
+        # if color is a string, it uses that color
+        # if it is a list, it uses them in order
         color = colors if isinstance(colors, str) else colors[chain%len(colors)]
         # plots the two parameters
-        ax.plot(v1, v2, ".", color=color, alpha=alpha_points)
+        ax.plot(v1, v2, ".", color=color, alpha=alpha, **kwargs)
         if plot_inits:
             # if plot_inits is True, it plots the initial points as a larger dot
-            ax.plot(v1[0], v2[0], "o", color=color, alpha=alpha_inits)
+            ax.plot(v1[0], v2[0], "o", color=color)
     # labels axes and title
-    ax.set_xlabel(_betterLabels(xlabel))
-    ax.set_ylabel(_betterLabels(ylabel))
-    ax.set_title("scatter plot between %s and %s" % (_betterLabels(xlabel), _betterLabels(ylabel)))
+    ax.set_xlabel(_replace_labels(xlabel))
+    ax.set_ylabel(_replace_labels(ylabel))
+    ax.set_title("scatter plot between %s and %s" 
+                 % (_replace_labels(xlabel), _replace_labels(ylabel)))
     return ax
 
-def pairplot_divergence(trace, var1, var2, gauss_id=1, ax=None, color="C2", divergence_color="C3", alpha=0.2, divergence_alpha=0.4):
-    """Plots two parameters against each other and highlights divergences."""
+def pairplot_divergence(
+    trace: az.InferenceData, var1: str, var2: str, ax: plt.Axes=None, 
+    gauss_id: int = 1, color: ColorType = "C2", 
+    divergence_color: ColorType = "C3", alpha: float = 0.2, 
+    divergence_alpha: float = 0.4, **kwargs) -> plt.Axes:
+    """Plots a scatter plot of two parameters, highlighting divergences.
+    
+    Divergences are plotted in a different color. Divergences occur 
+    when the potential-energy landscape is too steep to effectively
+    sample, causing the sampler to remain in place, potentially 
+    indicating poor sampling.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    var1, var2 : str
+        The variables to be plotted.
+    ax : plt.Axes, optional
+        The MatPlotLib axes to plot on. If none provided, axes will be
+        automatically created. 
+    gauss_id : int, default=1
+        For the parameters associated with a gaussian fit (r0, w, a),
+        which gaussian to plot. E.g., if var1 is set to w and gauss_id
+        is set to 2, the widths of the second gaussian will be plotted.
+        Counting starts at 1.
+    color : ColorType, default="C2"
+        The color to plot the non-divergent points.
+    divergence_color : ColorType, default="C3"
+        The color to plot the divergent points.
+    alpha : float, default=0.2
+        The transparency of the non-divergent points.
+    divergence_alpha : float, default=0.4
+        The transparency of the divergent points.
+    **kwargs : dict, optional
+        Keyword arguments to pass to plt.plot.
+
+    Returns
+    -------
+    ax : plt.Axes
+
+    See Also
+    --------
+    plt.plot
+    """
+    if not ax:
+        _, ax = plt.subplots(1, 1, figsize=(5, 5))
+        # creates an ax object if not provided
     gauss_id -= 1 # to fix off-by-one error
+    # extract points for each variable
     v1 = az.extract(trace, var_names=[var1])
     v2 = az.extract(trace, var_names=[var2])
     xlabel = var1
@@ -615,26 +716,71 @@ def pairplot_divergence(trace, var1, var2, gauss_id=1, ax=None, color="C2", dive
     if len(v2.dims) > 1:
         v2 = v2[gauss_id]
         ylabel = var2 + "[%s]" % gauss_id
+    # plots all the points first
+    ax.plot(v1, v2, ".", color=color, alpha=alpha, **kwargs)
+    # then, plots the divergent points in divergence_color & larger
+    divergent = az.extract(trace, group="sample_stats", var_names=["diverging"])
+    ax.plot(v1[divergent], v2[divergent], "o", color=divergence_color, 
+            alpha=divergence_alpha, **kwargs)
+    ax.set_xlabel(_replace_labels(xlabel))
+    ax.set_ylabel(_replace_labels(ylabel))
+    ax.set_title("scatter plot with divergences between %s and %s" 
+                 % (_replace_labels(xlabel), _replace_labels(ylabel)))
+    return ax
+
+def pairplot_condition(
+    trace: az.InferenceData, var1: str, var2: str, ax: plt.Axes = None, 
+    gauss_id: int = 1, criterion: str = None, threshold: float = None, 
+    color_greater: ColorType = "dodgerblue", 
+    color_lesser: ColorType = "hotpink", alpha_greater: float = 0.2, 
+    alpha_lesser: float = 0.2, **kwargs) -> plt.Axes:
+    """Plots two parameters in two groups based on a criterion.
+    
+    The criteria can be found in the keys of trace.sample_stats, 
+    including tree depth and step size. 
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be read.
+    var1, var2 : str
+        The variables to be plotted.
+    ax : plt.Axes, optional
+        The MatPlotLib axes to plot on. If none provided, axes will be
+        automatically created. 
+    gauss_id : int, default=1
+        For the parameters associated with a gaussian fit (r0, w, a),
+        which gaussian to plot. E.g., if var1 is set to w and gauss_id
+        is set to 2, the widths of the second gaussian will be plotted.
+        Counting starts at 1.
+    color_greater : ColorType, default="dodgerblue"
+        The color to plot the samples greater than the condition.
+    color_lesser : ColorType, default="hotpink"
+        The color to plot the samples less than the condition.
+    alpha : float, default=0.2
+        The transparency of the samples greater than the condition.
+    divergence_alpha : float, default=0.4
+        The transparency of the samples less than the condition.
+    **kwargs : dict, optional
+        Keyword arguments to pass to plt.plot.
+
+    Returns
+    -------
+    ax : plt.Axes
+
+    See Also
+    --------
+    plt.plot
+    """
     if not ax:
         # creates an ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5, 5))
-    # plots all the points first
-    ax.plot(v1, v2, ".", color=color, alpha=alpha)
-    # then, plots the divergent points in divergence_color & larger
-    divergent = az.extract(trace, group="sample_stats", var_names=["diverging"])
-    ax.plot(v1[divergent], v2[divergent], "o", color=divergence_color, alpha=divergence_alpha)
-    ax.set_xlabel(_betterLabels(xlabel))
-    ax.set_ylabel(_betterLabels(ylabel))
-    ax.set_title("scatter plot with divergences between %s and %s" % (_betterLabels(xlabel), _betterLabels(ylabel)))
-    return ax
-
-def pairplot_condition(trace, var1, var2, gauss_id=1, ax=None, criterion=None, threshold=None, color_greater="dodgerblue", color_lesser="hotpink", alpha_greater=0.2, alpha_lesser=0.2):
-    """Plots two parameters against each other and divides points greater and less than a threshold in a certain criterion."""
     # the criterion should be in sample_stats, e.g. tree_depth
-    # points above and below the threshold in this criterion will be plotted in different colors
     gauss_id -= 1 # to fix off-by-one error
+    # gets samples
     v1 = az.extract(trace, var_names=[var1])
     v2 = az.extract(trace, var_names=[var2])
+    # gets sample stats for criterion
     stats = az.extract(trace, group="sample_stats", var_names=[criterion])
     xlabel = var1
     ylabel = var2
@@ -646,34 +792,70 @@ def pairplot_condition(trace, var1, var2, gauss_id=1, ax=None, criterion=None, t
     if len(v2.dims) > 1:
         v2 = v2[gauss_id]
         ylabel = var2 + "[%s]" % gauss_id
-    if not ax:
-        # creates an ax object if not provided
-        _, ax = plt.subplots(1, 1, figsize=(5, 5))
     for i in range(len(v1)):
         if stats[i] > threshold:
-            ax.plot(v1[i], v2[i], ".", color=color_greater, alpha=alpha_greater)
+            ax.plot(v1[i], v2[i], ".", color=color_greater, 
+            alpha=alpha_greater, **kwargs)
         else:
-            ax.plot(v1[i], v2[i], ".", color=color_lesser, alpha=alpha_lesser)
-    ax.set_xlabel(_betterLabels(xlabel))
-    ax.set_ylabel(_betterLabels(ylabel))
-    ax.set_title("scatter plot between %s and %s split at %s = %s" % (_betterLabels(xlabel), _betterLabels(ylabel), criterion, threshold))
+            ax.plot(v1[i], v2[i], ".", color=color_lesser, 
+            alpha=alpha_lesser, **kwargs)
+    ax.set_xlabel(_replace_labels(xlabel))
+    ax.set_ylabel(_replace_labels(ylabel))
+    ax.set_title("scatter plot between %s and %s split at %s = %s" 
+                 % (_replace_labels(xlabel), _replace_labels(ylabel), 
+                    criterion, threshold))
     return ax
 
-def plot_hist(trace, var, combine_multi=False, gauss_id=1, ax=None, bins=10, color="k", alpha=1):
-    """Plots a histogram of a parameter"""
+def plot_hist(
+    trace: az.InferenceData, var: str, ax: plt.Axes = None, 
+    combine: bool = False, gauss_id: int = 1, **kwargs) -> plt.Axes:
+    """Plots a histogram of a parameter's values.
+    
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to read.
+    var : str
+        The varaible to plot.
+    ax : plt.Axes, optional
+        The MatPlotLib axes to plot on. If none provided, axes will be
+        automatically created. 
+    combine : bool, default=False
+        For the parameters associated with a gaussian fit (r0, w, a),
+        whether or not to combine all gaussians. E.g., if set to True,
+        the r0, w, and a values for all gaussians will be combined.
+    gauss_id : int, default=1
+        For the parameters associated with a gaussian fit (r0, w, a),
+        which gaussian to plot. E.g., if var1 is set to w and gauss_id
+        is set to 2, the widths of the second gaussian will be plotted.
+        Counting starts at 1. Only if combine is False.
+    **kwargs : dict, optional
+        Keyword arguments to pass to plt.hist.
+    
+    Returns
+    -------
+    ax : plt.Axes
+
+    See Also
+    --------
+    plt.hist
+        
+    """
     if not ax:
         # creates an ax object if not provided
         _, ax = plt.subplots(1, 1, figsize=(5, 5))
     gauss_id -= 1 # to fix off-by-one error
     xlabel = var
+    # gets samples
     v = az.extract(trace, var_names=[var])
     if len(v.dims) > 1:
-        if combine_multi: # for multi-value parameters a, w, and r0, will combine into one histogram
+        if combine: # for r0, w, a, combine into one histogram
             v = v.unstack().stack(stacked=["draw",...]) # combines into one list
         else:
             v = v[gauss_id] # selects the gaussian chosen in gauss_id
             xlabel = var + "[%s]" % gauss_id
-    ax.set_xlabel(_betterLabels(xlabel))
+    ax.set_xlabel(_replace_labels(xlabel))
     ax.set_ylabel("number of draws")
-    ax.set_title("histogram of %s" % _betterLabels(xlabel))
-    ax.hist(v, bins=bins, alpha=alpha, color=color)
+    ax.set_title("histogram of %s" % _replace_labels(xlabel))
+    ax.hist(v, **kwargs)
+    return ax

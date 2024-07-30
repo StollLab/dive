@@ -94,7 +94,7 @@ def model(
         K0tK0 = K0.T@K0
  
         tau_gibbs = method == "regularization"
-        delta_gibbs = (method == "regularization" and "alpha" is not None)
+        delta_gibbs = (method == "regularization" and alpha is not None)
         all_NUTS = method == "regularization_NUTS"
 
         model = {"t":t, "Vexp":Vexp_scaled, "r": r, "K0": K0, "L": L, 

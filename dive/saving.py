@@ -56,19 +56,16 @@ def load_trace(filename : str) -> tuple[az.InferenceData,dict]:
     t = trace.observed_data.coords["V_dim_0"].values
     Vexp = trace.observed_data["V"].values
     r = trace.posterior.coords["P_dim_0"].values
-    method = trace.posterior.attrs["method"]
-    bkgd_var = trace.posterior.attrs["bkgd_var"]
-    alpha = trace.posterior.attrs["alpha"]
-    include_background = trace.posterior.attrs["include_background"]
-    include_mod_depth = trace.posterior.attrs["include_mod_depth"]
-    include_amplitude = trace.posterior.attrs["include_amplitude"]
-    delta_prior = trace.posterior.attrs["delta_prior"]
-    tau_prior = trace.posterior.attrs["tau_prior"]
-    n_gauss = 1
-    if "n_gauss" in trace.posterior.attrs:
-        n_gauss = trace.posterior.attrs["n_gauss"]
+    attributes = ["method","bkgd_var","alpha","include_background",
+                  "include_mod_depth","include_amplitude","delta_prior"
+                  "tau_prior","n_gauss"]
+    attr_dict = {}
+    for attr in attributes:
+        if attr in trace.posterior.attrs:
+            attr_dict.update({attr:trace.posterior.attrs[attr]})
+    # background was renamed to bkgd_var
+    if "background" in trace.posterior.attrs:
+        attr_dict.update({"bkgd_var":trace.posterior.attrs["background"]})
 
-    model = model(t, Vexp, method, r, n_gauss, alpha, delta_prior, tau_prior,
-                  include_background, include_mod_depth, include_amplitude)
-
+    model = model(t, Vexp, r, **attr_dict)
     return trace, model
