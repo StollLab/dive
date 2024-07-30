@@ -98,8 +98,7 @@ def model(
         all_NUTS = method == "regularization_NUTS"
 
         model = {"t":t, "Vexp":Vexp_scaled, "r": r, "K0": K0, "L": L, 
-                 "LtL": LtL, "K0tK0": K0tK0, "delta_prior": delta_prior, 
-                 "tau_prior": tau_prior, 
+                 "LtL": LtL, "delta_prior": delta_prior, "tau_prior": tau_prior, 
                  "include_background": include_background,
                  "include_mod_depth": include_mod_depth, 
                  "include_amplitude": include_amplitude, "alpha": alpha,

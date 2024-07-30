@@ -41,7 +41,7 @@ def load_trace(filename : str) -> tuple[az.InferenceData,dict]:
 
     Returns
     -------
-    trace, model : az.InferenceData, dict
+    trace, model_return : az.InferenceData, dict
         A tuple containing the loaded trace and the recreated model
         dictionary.
     
@@ -67,5 +67,5 @@ def load_trace(filename : str) -> tuple[az.InferenceData,dict]:
     if "background" in trace.posterior.attrs:
         attr_dict.update({"bkgd_var":trace.posterior.attrs["background"]})
 
-    model = model(t, Vexp, r, **attr_dict)
-    return trace, model
+    model_return = model(t, Vexp, r=r, **attr_dict)
+    return trace, model_return

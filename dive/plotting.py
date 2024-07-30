@@ -218,8 +218,8 @@ def plot_correlations(
 def plot_V(
     trace: az.InferenceData, ax: plt.Axes = None, num_samples: int = 100, 
     show_avg: bool = False, hdi: float = None, rng: int = None, 
-    residuals_offset: float = 0, V_kwargs: dict = None, B_kwargs: dict = {}, 
-    res_kwargs = None, **kwargs) -> plt.Axes:
+    residuals_offset: float = 0, V_kwargs: dict = {}, B_kwargs: dict = {}, 
+    res_kwargs = {}, **kwargs) -> plt.Axes:
     """Plots an ensemble of fitted signals and backgrounds with residuals.
 
     A set of random samples from the full trace is selected for V and B. 
@@ -246,13 +246,13 @@ def plot_V(
     residuals_offset : float, default=0
         The amount to raise the residual plot by (for a more compact
         plot).
-    V_kwargs : dict, optional
+    V_kwargs : dict, default={}
         Keyword arguments to be passed to plt.plot or plt.fill_between 
         for V.
-    B_kwargs : dict, optional
+    B_kwargs : dict, default={}
         Keyword arguments to be passed to plt.plot or plt.fill_between 
         for B.
-    res_kwargs : dict, optional
+    res_kwargs : dict, default={}
         Keyword arguments to be passed to plt.plot or plt.fill_between 
         for the residuals.
     **kwargs : dict, optional
@@ -507,7 +507,7 @@ def _replace_labels(x: Union[str, list[str]]) -> Union[str, list[str]]:
 
 def draw_posterior_samples(
     trace: az.InferenceData, num_samples: int = 100, 
-    rng: int = None) -> tuple(np.ndarray,np.ndarray):
+    rng: int = None) -> tuple[np.ndarray,np.ndarray]:
     """Draws random samples from a trace and calculates Vs and Bs.
 
     Parameters
