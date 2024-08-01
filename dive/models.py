@@ -201,7 +201,7 @@ def multigaussmodel(
         P /= scale
         # for reporting
         pm.Deterministic('P', P)
-        
+
         # Time-domain model signal
         Vmodel = pm.math.dot(K0,P)
 
@@ -411,7 +411,7 @@ def sample(model: dict, **kwargs) -> az.InferenceData:
     model_pymc = model['model_pymc']
     method = model['method']
     bkgd_var = model['bkgd_var']
-    alpha = model['alpha']
+    alpha = model['alpha'] if 'alpha' in model else None
     
     # Set stepping methods, depending on model
     if method == "gaussian":   
@@ -477,12 +477,15 @@ def sample(model: dict, **kwargs) -> az.InferenceData:
     trace.posterior.coords["P_dim_0"] = model["r"]
     trace.posterior.attrs["method"] = method
     trace.posterior.attrs["bkgd_var"] = bkgd_var
-    trace.posterior.attrs["alpha"] = alpha
+    if "alpha" in model:
+        trace.posterior.attrs["alpha"] = alpha
     trace.posterior.attrs["include_background"] = model["include_background"]
     trace.posterior.attrs["include_mod_depth"] = model["include_mod_depth"]
     trace.posterior.attrs["include_amplitude"] = model["include_amplitude"]
-    trace.posterior.attrs["delta_prior"] = model["delta_prior"]
-    trace.posterior.attrs["tau_prior"] = model["tau_prior"]
+    if "delta_prior" in model:
+        trace.posterior.attrs["delta_prior"] = model["delta_prior"]
+    if "tau_prior" in model:
+        trace.posterior.attrs["tau_prior"] = model["tau_prior"]
     if "random_seed" in kwargs.keys():
         trace.posterior.attrs["random_seed"] = kwargs["random_seed"]
     if "n_gauss" in model:
