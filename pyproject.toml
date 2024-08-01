@@ -5,12 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dive-TBD"
 version = "0.1.0"
-dynamic = ["version"]
 authors = [
   {name = "Sarah Sweger"},
   {name = "Julian Cheung", email = "julianc2477@gmail.com"},
   {name = "Lukas Zha"},
-  {name = "Stephan Pribitzer, email = "stephapr@uw.edu"},
+  {name = "Stephan Pribitzer", email = "stephapr@uw.edu"},
   {name = "Stefan Stoll", email = "stst@uw.edu"},
 ]
 description = "Python package for Bayesian analysis of dipolar EPR spectroscopy data through Markov chain Monte Carlo sampling with PyMC."
@@ -21,7 +20,7 @@ dependencies = [
     "pymc>5.10.4",
     "deerlab>1.1.2",
     "scipy>1.11.4",
-    "matplotlib>3.7.1",
+    "matplotlib>3.9.1",
     "pandas>2.0.3",
     "mkl-service>2.4.1",
     "h5netcdf>1.3.0",
