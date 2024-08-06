@@ -75,6 +75,9 @@ def load_trace(filename : str) -> tuple[az.InferenceData,dict]:
     # background was renamed to bkgd_var
     if "background" in trace.posterior.attrs:
         attr_dict.update({"bkgd_var":trace.posterior.attrs["background"]})
+    # convert n_gauss back to integer
+    if "n_gauss" in attr_dict:
+        attr_dict.update({"n_gauss":int(attr_dict["n_gauss"])})
 
     model_return = model(t, Vexp, r=r, **attr_dict)
     return trace, model_return
