@@ -183,6 +183,12 @@ def plot_correlations(
     if var_names is None:
         var_names = _get_relevant_vars(trace)
     n_vars = len(var_names) - 1 + marginals
+    # edit n_vars for gaussians
+    for var in ["r0","w","a"]:
+        if var in var_names:
+            dim_name = var + "_dim_0"
+            if dim_name in trace.posterior.sizes:
+                n_vars += trace.posterior.sizes[dim_name]-1
     # configure axes
     if axs is None:
         if n_vars < 3:
@@ -285,7 +291,7 @@ def plot_V(
                 kwarglist.update({"alpha":0.7})
     # get Vs and Bs from draw_posterior_samples
     if hdi is not None:
-        num_samples = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
+        num_samples = trace.posterior.sizes["chain"]*trace.posterior.sizes["draw"]
     Vs, Bs = draw_posterior_samples(trace, num_samples, rng=rng)
     # get t and Vexp from trace
     t = trace.observed_data.coords["V_dim_0"].values
@@ -377,7 +383,7 @@ def plot_P(
         _, ax = plt.subplots(1, 1, figsize=(5,5))
     # get Ps and r from trace
     if hdi is not None:
-        num_samples = trace.posterior.dims["chain"]*trace.posterior.dims["draw"]
+        num_samples = trace.posterior.sizes["chain"]*trace.posterior.sizes["draw"]
     Ps = az.extract(trace, var_names=["P"], num_samples=num_samples, 
                     rng=rng).transpose("sample", ...)
     r = trace.posterior.coords["P_dim_0"]
