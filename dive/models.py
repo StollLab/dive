@@ -30,7 +30,8 @@ def model(
     Vexp : ArrayLike
         The experimental signal of the DEER data.
     method : str, default="regularization"
-        The method (regularization or gaussian) to use.
+        The method (regularization, regularization_NUTS, or gaussian) 
+        to use.
     r : ArrayLike, optional
         The distance axis of the DEER data. If none given, a distance
         axis will be automatically generated.
@@ -86,8 +87,7 @@ def model(
                  "include_amplitude": include_amplitude, "bkgd_var": bkgd_var}
         model_pymc = multigaussmodel(**model)
 
-    elif (method == "regularization" or method == "regularizationP" or 
-          method == "regularization_NUTS"):
+    elif (method == "regularization" or method == "regularization_NUTS"):
         K0 = dl.dipolarkernel(t, r, integralop=False)
         L = dl.regoperator(np.arange(len(r)), 2, includeedges=False)
         LtL = L.T@L
@@ -425,12 +425,21 @@ def sample(model: dict, **kwargs) -> az.InferenceData:
             step = [pm.NUTS(pymc_varlist, on_unused_input="ignore")]
             remove_vars  = ["r0_rel","w_mu"]
         
-    elif method == "regularization":    
+    elif method == "regularization":
+        # Keys to pass on to sampling functions
+        keys_tau = {"t","Vexp","dr","K0","tau_prior"}
+        model_tau = {k: model[k] for k in keys_tau}
+        keys_P = {"t","Vexp","dr","K0","LtL","alpha"}
+        model_P = {k: model[k] for k in keys_P}
+        keys_delta = {"L","delta_prior"}
+        model_delta = {k: model[k] for k in keys_delta}    
+
         with model_pymc:
-            conjstep_tau = TauSampler(model)
-            conjstep_P = PSampler(model)
+            conjstep_tau = TauSampler(model_tau)
+            keys_include = {}
+            conjstep_P = PSampler(model_P)
             if alpha is None:
-                conjstep_delta = DeltaSampler(model)
+                conjstep_delta = DeltaSampler(model_delta)
             NUTS_varlist = ['V0','lamb',bkgd_var]
             pymc_varlist = []
             for var in NUTS_varlist:
@@ -440,22 +449,8 @@ def sample(model: dict, **kwargs) -> az.InferenceData:
         step = [conjstep_tau, conjstep_P, step_NUTS]
         if alpha is None:
             step.insert(1,conjstep_delta)
-        remove_vars = ["lg_alpha"] if alpha is not None else None
-        
-    elif method == "regularizationP":
-        with model_pymc:     
-            conjstep_P = PSampler(model)
-            if alpha is None:
-                conjstep_delta = DeltaSampler(model)
-            NUTS_varlist = ['V0','lamb',bkgd_var]
-            pymc_varlist = []
-            for var in NUTS_varlist:
-                if var in model_pymc:
-                    pymc_varlist.append(model_pymc[var])
-            step_NUTS = pm.NUTS(pymc_varlist, on_unused_input="ignore")
-        step = [conjstep_P, step_NUTS]
-        remove_vars = None
-
+        remove_vars = ["lg_alpha"] if alpha is not None else None        
+ 
     elif method == "regularization_NUTS":
         step = None
         remove_vars = None

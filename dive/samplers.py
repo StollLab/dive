@@ -16,11 +16,12 @@ class PSampler(BlockedStep):
     Notes
     -----
     Initalization needs the following:
+        t     time vector
+        Vexp  data vector
         K0    kernel matrix
         LtL   L'*L, where L is the regularization matrix
-        t     time vector
-        V     data vector
-        r     distance vector
+        dr    the resolution of the distance axis
+        alpha the value of the regularization parameter, if fixed
       
     The following model parameters are needed as well and are pulled 
     from the PyMC model context:
