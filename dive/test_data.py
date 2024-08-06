@@ -5,7 +5,7 @@ def generate_single_gauss(
     sigma: float = 0.01, r0: float = 4, w: float = 0.4, lamb: float = 0.5, 
     k: float = 0.1, V0: float = 1, seed: int = 0, nr: int = 800, nt: int = 150, 
     r_lim: tuple[float,float] = [1,10], 
-    t_lim: tuple[float,float] = [-0.1,2.5]) -> tuple(dict,dict):
+    t_lim: tuple[float,float] = [-0.1,2.5]) -> tuple[dict,dict]:
     """Generates a single-gauss P(r) and associated V(t).
 
     Parameters
