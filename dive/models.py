@@ -472,7 +472,7 @@ def sample(model: dict, **kwargs) -> az.InferenceData:
     trace.posterior.coords["P_dim_0"] = model["r"]
     trace.posterior.attrs["method"] = method
     trace.posterior.attrs["bkgd_var"] = bkgd_var
-    if "alpha" is not None:
+    if alpha is not None:
         trace.posterior.attrs["alpha"] = alpha
     trace.posterior.attrs["include_background"] = model["include_background"]
     trace.posterior.attrs["include_mod_depth"] = model["include_mod_depth"]
