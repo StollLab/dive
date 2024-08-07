@@ -15,9 +15,7 @@ def model(
     t: ArrayLike, Vexp: ArrayLike, method: str = "regularization", 
     r: ArrayLike = None, bkgd_var: str = "Bend", n_gauss: int = 1, 
     alpha: float = None, delta_prior: tuple[float, float] = (1, 1e-6), 
-    tau_prior: tuple[float, float] = (1, 1e-4),
-    include_background: bool = True, include_mod_depth: bool = True,
-    include_amplitude: bool = True) -> dict:
+    tau_prior: tuple[float, float] = (1, 1e-4)) -> dict:
     """Creates a model for sampling.
     
     The PyMC model, the DEER data, and additional parameters are all
@@ -50,14 +48,6 @@ def model(
     tau_prior : tuple of float, default=(1, 1e-4)
         The alpha and beta parameters of the gamma distribution of the
         prior for tau. Only used in the regularization models.
-    include_background : bool, default=True
-        Whether or not to include the background as part of the model.
-    include_mod_depth : bool, default=True
-        Whether or not to include the modulation depth as part of the
-        model.
-    include_amplitude : bool, default=True
-        Whether or not to include the signal amplitude as part of the
-        model.
     
     Returns
     -------
@@ -82,9 +72,7 @@ def model(
     if method == "gaussian":
         K0 = dl.dipolarkernel(t, r, integralop=True)
         model = {"t":t, "Vexp": Vexp_scaled, "r": r, "K0": K0, 
-                 "n_gauss": n_gauss, "include_background": include_background,
-                 "include_mod_depth": include_mod_depth,
-                 "include_amplitude": include_amplitude, "bkgd_var": bkgd_var}
+                 "n_gauss": n_gauss, "bkgd_var": bkgd_var}
         model_pymc = multigaussmodel(**model)
 
     elif (method == "regularization" or method == "regularization_NUTS"):
@@ -99,10 +87,7 @@ def model(
 
         model = {"t":t, "Vexp":Vexp_scaled, "r": r, "K0": K0, "L": L, 
                  "LtL": LtL, "delta_prior": delta_prior, "tau_prior": tau_prior, 
-                 "include_background": include_background,
-                 "include_mod_depth": include_mod_depth, 
-                 "include_amplitude": include_amplitude, "alpha": alpha,
-                 "bkgd_var": bkgd_var}
+                 "alpha": alpha, "bkgd_var": bkgd_var}
         model_pymc = regularizationmodel(tau_gibbs=tau_gibbs,
                                          delta_gibbs=delta_gibbs,
                                          all_NUTS=all_NUTS, **model)
@@ -130,9 +115,7 @@ def model(
 
 def multigaussmodel(
     t: ArrayLike, Vexp: ArrayLike, K0: np.ndarray, r: ArrayLike, 
-    n_gauss: int = 1, include_background: bool = True, 
-    include_mod_depth: bool = True, include_amplitude: bool = True, 
-    bkgd_var: str = "Bend") -> pm.Model:
+    n_gauss: int = 1, bkgd_var: str = "Bend") -> pm.Model:
     """Generates a parametric PyMC model.
     
     The model is for a DEER signal over time vector t (in µs) given data 
@@ -161,14 +144,6 @@ def multigaussmodel(
         axis will be automatically generated.
     n_gauss : int, default=1
         The number of gaussians to use.
-    include_background : bool, default=True
-        Whether or not to include the background as part of the model.
-    include_mod_depth : bool, default=True
-        Whether or not to include the modulation depth as part of the
-        model.
-    include_amplitude : bool, default=True
-        Whether or not to include the signal amplitude as part of the
-        model.
     bkgd_var : str, default="Bend"
         The background parameterization to use. Options are "Bend" and
         "k".
@@ -206,27 +181,24 @@ def multigaussmodel(
         Vmodel = pm.math.dot(K0,P)
 
         # Add modulation depth
-        if include_mod_depth:
-            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
-            Vmodel = (1-lamb) + lamb*Vmodel
+        lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
+        Vmodel = (1-lamb) + lamb*Vmodel
 
         # Add background
-        if include_background:
-            if bkgd_var == "k":
-                k = pm.Exponential("k", scale=0.1)
-                # for reporting
-                Bend = pm.Deterministic("Bend", np.exp(0-k*t[-1]))
-            else:
-                Bend = pm.Beta("Bend", alpha=1.0, beta=1.5)
-                # for reporting
-                k = pm.Deterministic('k', -np.log(Bend)/t[-1])
-            B = bg_exp(t,k)
-            Vmodel *= B
+        if bkgd_var == "k":
+            k = pm.Exponential("k", scale=0.1)
+            # for reporting
+            Bend = pm.Deterministic("Bend", np.exp(0-k*t[-1]))
+        else:
+            Bend = pm.Beta("Bend", alpha=1.0, beta=1.5)
+            # for reporting
+            k = pm.Deterministic('k', -np.log(Bend)/t[-1])
+        B = bg_exp(t,k)
+        Vmodel *= B
 
         # Add overall amplitude
-        if include_amplitude:
-            V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
-            Vmodel *= V0
+        V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
+        Vmodel *= V0
         
         # Noise level
         #sigma = pm.Gamma('sigma', alpha=1, beta=0.1)  # old prior
@@ -242,10 +214,9 @@ def multigaussmodel(
 def regularizationmodel(
     t: ArrayLike, Vexp: ArrayLike, K0: np.ndarray, L: np.ndarray, 
     LtL: np.ndarray, r: ArrayLike, delta_prior: tuple[float,float] = (1, 1e-6), 
-    tau_prior: tuple[float,float] = (1, 1e-4), include_background: bool = True, 
-    include_mod_depth: bool = True, include_amplitude: bool = True,
-    tau_gibbs: bool = True, delta_gibbs: bool = True, bkgd_var: str = "Bend", 
-    alpha: float = None, all_NUTS: bool = False) -> pm.Model:
+    tau_prior: tuple[float,float] = (1, 1e-4), tau_gibbs: bool = True, 
+    delta_gibbs: bool = True, bkgd_var: str = "Bend", alpha: float = None, 
+    all_NUTS: bool = False) -> pm.Model:
     """Generates a nonparametric PyMC model.
 
     The model is for a DEER signal over time vector t (in µs) given data 
@@ -282,14 +253,6 @@ def regularizationmodel(
     tau_prior : tuple of float, default=(1, 1e-4)
         The alpha and beta parameters of the gamma distribution of the
         prior for tau. Only used in the regularization models.
-    include_background : bool, default=True
-        Whether or not to include the background as part of the model.
-    include_mod_depth : bool, default=True
-        Whether or not to include the modulation depth as part of the
-        model.
-    include_amplitude : bool, default=True
-        Whether or not to include the signal amplitude as part of the
-        model.
     tau_gibbs : bool, default=True
         Whether or not to sample tau with the Gibbs sampling method.
     delta_gibbs : bool, default=True
@@ -355,27 +318,24 @@ def regularizationmodel(
         Vmodel = pm.math.dot(K0*dr,P)
 
         # Add modulation depth
-        if include_mod_depth:
-            lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
-            Vmodel = (1-lamb) + lamb*Vmodel
+        lamb = pm.Beta('lamb', alpha=1.3, beta=2.0, initval=0.2)
+        Vmodel = (1-lamb) + lamb*Vmodel
 
         # Add background
-        if include_background:
-            if bkgd_var == "k":
-                k = pm.Exponential("k", scale=0.1)
-                # for reporting
-                Bend = pm.Deterministic("Bend", np.exp(0-k*t[-1]))
-            else:
-                Bend = pm.Beta("Bend", alpha=1.0, beta=1.5)
-                # for reporting
-                k = pm.Deterministic('k', -np.log(Bend)/t[-1])
-            B = bg_exp(t,k)
-            Vmodel *= B
+        if bkgd_var == "k":
+            k = pm.Exponential("k", scale=0.1)
+            # for reporting
+            Bend = pm.Deterministic("Bend", np.exp(0-k*t[-1]))
+        else:
+            Bend = pm.Beta("Bend", alpha=1.0, beta=1.5)
+            # for reporting
+            k = pm.Deterministic('k', -np.log(Bend)/t[-1])
+        B = bg_exp(t,k)
+        Vmodel *= B
 
         # Add overall amplitude
-        if include_amplitude:
-            V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
-            Vmodel *= V0
+        V0 = pm.TruncatedNormal('V0', mu=1, sigma=0.2, lower=0)
+        Vmodel *= V0
         
         # Add likelihood
         pm.Normal('V', mu=Vmodel, tau=tau, observed=Vexp)
@@ -475,9 +435,6 @@ def sample(model: dict, **kwargs) -> az.InferenceData:
     trace.posterior.attrs["bkgd_var"] = bkgd_var
     if alpha is not None:
         trace.posterior.attrs["alpha"] = alpha
-    trace.posterior.attrs["include_background"] = model["include_background"]
-    trace.posterior.attrs["include_mod_depth"] = model["include_mod_depth"]
-    trace.posterior.attrs["include_amplitude"] = model["include_amplitude"]
     if "delta_prior" in model:
         trace.posterior.attrs["delta_prior"] = model["delta_prior"]
     if "tau_prior" in model:

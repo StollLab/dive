@@ -26,12 +26,6 @@ def save_trace(trace : az.InferenceData, filename: str = None):
         filename = 'data/' + today.strftime("%Y%m%d")
     if not filename.endswith('.nc'):
         filename = filename + '.nc'
-
-    # convert boolean variables to integers
-    bools = {"include_background", "include_amplitude", "include_mod_depth"}
-    for b in bools:
-        trace.posterior.attrs[b] = int(trace.posterior.attrs[b])
-
     # saves the trace as a netCDF file
     trace.to_netcdf(filename)
     return
@@ -68,10 +62,6 @@ def load_trace(filename : str) -> tuple[az.InferenceData,dict]:
     for attr in attributes:
         if attr in trace.posterior.attrs:
             attr_dict.update({attr:trace.posterior.attrs[attr]})
-    # convert boolean variables back to booleans
-    bools = {"include_background", "include_amplitude", "include_mod_depth"}
-    for b in bools:
-        attr_dict.update({b:bool(trace.posterior.attrs[b])})
     # background was renamed to bkgd_var
     if "background" in trace.posterior.attrs:
         attr_dict.update({"bkgd_var":trace.posterior.attrs["background"]})
