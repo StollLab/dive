@@ -94,7 +94,7 @@ def model(
         K0tK0 = K0.T@K0
  
         tau_gibbs = method == "regularization"
-        delta_gibbs = (method == "regularization" and alpha is not None)
+        delta_gibbs = (method == "regularization" and alpha is None)
         all_NUTS = method == "regularization_NUTS"
 
         model = {"t":t, "Vexp":Vexp_scaled, "r": r, "K0": K0, "L": L, 
@@ -429,8 +429,9 @@ def sample(model: dict, **kwargs) -> az.InferenceData:
         # Keys to pass on to sampling functions
         keys_tau = {"t","Vexp","dr","K0","tau_prior"}
         model_tau = {k: model[k] for k in keys_tau}
-        keys_P = {"t","Vexp","dr","K0","LtL","alpha"}
+        keys_P = {"t","Vexp","dr","K0","LtL"}
         model_P = {k: model[k] for k in keys_P}
+        model_P.update({"alpha":alpha})
         keys_delta = {"L","delta_prior"}
         model_delta = {k: model[k] for k in keys_delta}    
 
