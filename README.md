@@ -5,7 +5,7 @@
 
 ### Requirements
 
-`dive` is available for Windows, Mac and Linux systems and requires **Python 3.8** or later and **PyMC 5.0** or later.
+`dive` is available for Windows, Mac and Linux systems and requires **Python 3.9** or later and **PyMC 5.0** or later.
  
 ### Features
 
@@ -18,7 +18,15 @@
 
 ### Setup
 
-As long as `dive` is in a development state, use the following installation procedure:
+You can install `dive` using `pip`. Please note that the installation name is `dive-MCMC`.
+
+    pip install dive-MCMC
+
+`dive` can then be used by importing the package as usual.
+
+    import dive
+
+<!-- As long as `dive` is in a development state, use the following installation procedure:
 
 If using `conda`, install the following packages to the environment of your choice:
 
@@ -28,7 +36,7 @@ You can also use `pip`.
 
 After successful installation of dependencies, navigate to the directory that contains the `dive` source code and run
 
-    python setup.py develop
+    python setup.py develop -->
 
 <!-- A pre-built distribution can be installed using `pip`.
 
@@ -40,9 +48,9 @@ Next, install dive with
 
     python -m pip install dive -->
 
-### How-to Guide
+### Documentation
 
-For a detailed guide on how to use `dive`, see `howtoguide.ipynb`.
+See the [documentation](stolllab.github.io/dive) for a detailed guide on how to use `dive`.
 
 ### Citation
 
