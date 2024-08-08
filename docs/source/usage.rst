@@ -21,7 +21,6 @@ You should also import important modules such as:
 
 .. code-block::
 
-    import dive
     import pymc as pm
     import numpy as np
     import matplotlib.pyplot as plt
@@ -68,7 +67,7 @@ Sampling
 --------
 
 You can now sample the model with PyMC through ``dive.sample``. See 
-doc:`sampling` for more information.
+:doc:`sampling` for more information.
 
 .. code-block::
 
@@ -112,12 +111,12 @@ we are most interested in the rightmost column titled ``r_hat``.
 If it is close to 1, then the variances are similar, meaning that the chains 
 have converged to similar regions.
 
-``r_hat`` values below ``1.05`` suggest good convergence, and it is encouraged 
+``r_hat`` values below 1.05 suggest good convergence, and it is encouraged 
 that the ``r_hat`` for every variable in ``dive.print_summary`` should be below 
 this value before you continue to analysis. (If you are just testing things out, 
 it is okay, though not ideal, to have higher values of ``r_hat``.)
 
-Documentation can be found in :doc:plotting.
+Documentation can be found in :doc:`plotting`.
 
 .. code-block::
 
@@ -126,23 +125,23 @@ Documentation can be found in :doc:plotting.
 
 .. code-block::
 
-        mean 	sd 	hdi_3% 	hdi_97% 	mcse_mean 	mcse_sd 	ess_bulk 	ess_tail 	r_hat
-    $λ$ 	0.533 	0.007 	0.521 	0.546 	0.000 	0.000 	1040.0 	1656.0 	1.01
-    $V_0$ 	1.007 	0.010 	0.990 	1.026 	0.000 	0.000 	1819.0 	3126.0 	1.00
-    $σ$ 	0.021 	0.001 	0.019 	0.023 	0.000 	0.000 	4447.0 	3908.0 	1.00
-    $\mathrm{lg}(α)$ 	-0.462 	0.074 	-0.597 	-0.322 	0.002 	0.001 	2225.0 	3735.0 	1.00
-    $B_\mathrm{end}$ 	0.897 	0.015 	0.872 	0.929 	0.000 	0.000 	1390.0 	970.0 	1.01
-        mean 	sd 	hdi_3% 	hdi_97% 	mcse_mean 	mcse_sd 	ess_bulk 	ess_tail 	r_hat
-    $λ$ 	0.502 	0.005 	0.495 	0.512 	0.001 	0.001 	16.0 	70.0 	1.19
-    $V_0$ 	0.977 	0.007 	0.963 	0.991 	0.001 	0.001 	33.0 	191.0 	1.14
-    $σ$ 	0.021 	0.001 	0.019 	0.022 	0.000 	0.000 	12.0 	21.0 	1.39
-    $r_{0,1}$ 	3.337 	0.571 	2.156 	3.849 	0.185 	0.142 	7.0 	123.0 	1.56
-    $r_{0,2}$ 	3.989 	0.076 	3.911 	4.123 	0.037 	0.028 	5.0 	16.0 	2.03
-    $w_1$ 	1.157 	0.908 	0.348 	2.998 	0.265 	0.192 	16.0 	128.0 	1.32
-    $w_2$ 	0.494 	0.108 	0.282 	0.603 	0.052 	0.040 	6.0 	14.0 	1.77
-    $a_1$ 	0.264 	0.259 	0.001 	0.708 	0.126 	0.097 	6.0 	51.0 	1.91
-    $a_2$ 	0.736 	0.259 	0.292 	0.999 	0.126 	0.096 	6.0 	49.0 	1.91
-    $B_\mathrm{end}$ 	0.850 	0.009 	0.839 	0.866 	0.002 	0.002 	14.0 	134.0 	1.21
+                        mean 	sd 	    hdi_3% 	hdi_97% mcse_mean 	mcse_sd ess_bulk 	ess_tail 	r_hat
+    $λ$ 	            0.533 	0.007 	0.521 	0.546 	0.000 	    0.000 	1040.0 	    1656.0 	    1.01
+    $V_0$ 	            1.007 	0.010 	0.990 	1.026 	0.000 	    0.000 	1819.0 	    3126.0 	    1.00
+    $σ$ 	            0.021 	0.001 	0.019 	0.023 	0.000 	    0.000 	4447.0 	    3908.0 	    1.00
+    $\mathrm{lg}(α)$ 	-0.462 	0.074 	-0.597 	-0.322 	0.002 	    0.001 	2225.0 	    3735.0 	    1.00
+    $B_\mathrm{end}$ 	0.897 	0.015 	0.872 	0.929 	0.000 	    0.000 	1390.0 	    970.0 	    1.01
+                        mean 	sd 	hdi_3% 	hdi_97% 	mcse_mean 	mcse_sd ess_bulk 	ess_tail 	r_hat
+    $λ$ 	            0.502 	0.005 	0.495 	0.512 	0.001 	    0.001 	16.0 	    70.0 	    1.19
+    $V_0$ 	            0.977 	0.007 	0.963 	0.991 	0.001 	    0.001 	33.0 	    191.0 	    1.14
+    $σ$ 	            0.021 	0.001 	0.019 	0.022 	0.000 	    0.000 	12.0 	    21.0 	    1.39
+    $r_{0,1}$ 	        3.337 	0.571 	2.156 	3.849 	0.185 	    0.142 	7.0 	    123.0 	    1.56
+    $r_{0,2}$ 	        3.989 	0.076 	3.911 	4.123 	0.037 	    0.028 	5.0 	    16.0 	    2.03
+    $w_1$ 	            1.157 	0.908 	0.348 	2.998 	0.265 	    0.192 	16.0 	    128.0 	    1.32
+    $w_2$ 	            0.494 	0.108 	0.282 	0.603 	0.052 	    0.040 	6.0 	    14.0 	    1.77
+    $a_1$ 	            0.264 	0.259 	0.001 	0.708 	0.126 	    0.097 	6.0 	    51.0 	    1.91
+    $a_2$ 	            0.736 	0.259 	0.292 	0.999 	0.126 	    0.096 	6.0 	    49.0 	    1.91
+    $B_\mathrm{end}$ 	0.850 	0.009 	0.839 	0.866 	0.002 	    0.002 	14.0 	    134.0 	    1.21
 
 
 ``az.plot_trace(trace)``: This helpful function from the ``arviz`` library makes 
@@ -205,7 +204,7 @@ uncertainty analysis, so do this with caution.
 Accessing Results
 -----------------
 
-The output of ``dive.sample`` is an `ArviZ InferenceData object<https://python.arviz.org/en/latest/getting_started/XarrayforArviZ.html#xarray-for-arviz>`_ 
+The output of ``dive.sample`` is an `ArviZ InferenceData object <https://python.arviz.org/en/latest/getting_started/XarrayforArviZ.html#xarray-for-arviz>`_ 
 that consists of three xarray objects: ``posterior``, ``sample_stats``, and 
 ``observed_data``.
 
@@ -254,7 +253,7 @@ coordinates, and some supplementary information as attributes.
         random_seed:                101
 
 The array stores the values for each parameter in the order they were generated, 
-so if we wanted to find the value of `lamb` for the first draw of the first 
+so if we wanted to find the value of ``lamb`` for the first draw of the first 
 chain, we would print:
 
 .. code-block::
@@ -304,7 +303,7 @@ interval) for some parameter.
     Data variables:
         lamb     (hdi) float64 16B 0.5202 0.5457
 
-**More information about InferenceData objects can be found `here <https://python.arviz.org/en/latest/getting_started/WorkingWithInferenceData.html>`_.**
+More information about InferenceData objects can be found `here <https://python.arviz.org/en/latest/getting_started/WorkingWithInferenceData.html>`_.
 
 Plotting
 --------
@@ -351,10 +350,10 @@ For the marginal posteriors of the other parameters, you can call
     dive.plot_marginals(trace_gauss, var_names=["lamb","Bend","V0","sigma","r0","w","a"]) # spiky/uneven plots due to poor convergence
 
 .. image:: images/marginals-1.png
-    :width: 400
+    :width: 500
 
 .. image:: images/marginals-2.png
-    :width: 400
+    :width: 700
 
 .. code-block::
 
