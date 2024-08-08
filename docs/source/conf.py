@@ -37,11 +37,12 @@ exclude_patterns = []
 autodoc_mock_imports = ['dive']
 
 # Napoleon settings
+napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'alabaster'
 html_static_path = ['_static']
