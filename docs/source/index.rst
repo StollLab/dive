@@ -16,4 +16,10 @@ Contents
 .. toctree::
    
    usage
+   data
+   models
+   sampling
+   plotting
+   saving
+   utils
    api
