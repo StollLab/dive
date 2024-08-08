@@ -19,6 +19,7 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'furo'
 ]
 
 templates_path = ['_templates']
