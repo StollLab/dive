@@ -29,11 +29,12 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'numpydoc'
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
-autodoc_mock_imports = ['dive']
+autodoc_mock_imports = ['dive','numpydoc']
 
 
 # -- Options for HTML output -------------------------------------------------
