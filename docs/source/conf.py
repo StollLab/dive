@@ -34,7 +34,7 @@ extensions = [
 
 templates_path = ['_templates']
 exclude_patterns = []
-autodoc_mock_imports = ['dive']
+autodoc_mock_imports = ['dive','sphinx-rtd-theme']
 
 # Napoleon settings
 napoleon_numpy_docstring = True
@@ -43,5 +43,5 @@ napoleon_numpy_docstring = True
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
