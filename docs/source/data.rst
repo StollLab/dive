@@ -4,7 +4,7 @@ Reading & Creating Data
 Reading .DSC Data
 -----------------
 
-.. automodule:: dive.deerload
+.. automodule:: deerload
     :imported-members:
     :members:
 
