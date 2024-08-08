@@ -5,6 +5,7 @@ Reading .DSC Data
 -----------------
 
 .. automodule:: dive.deerload
+    :imported-members:
     :members:
 
 Creating Synthetic Data
