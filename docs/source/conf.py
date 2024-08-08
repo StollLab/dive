@@ -11,7 +11,6 @@
 #
 import os
 import sys
-from numpy.typing import ArrayLike
 sys.path.insert(0, os.path.abspath('.'))
 
 # -- Project information -----------------------------------------------------
