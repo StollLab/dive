@@ -15,6 +15,11 @@ jobs:
            python -m pip install sphinx
            python -m pip install sphinx-rtd-theme  
            python -m pip install sphinx_mdinclude
+           python -m pip install pymc
+           python -m pip install deerlab
+           python -m pip install scipy
+           python -m pip install matplotlib
+           python -m pip install pandas
     - name: Build HTML
       uses: ammaraskar/sphinx-action@master
     - name: Upload artifacts
