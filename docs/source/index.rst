@@ -36,4 +36,3 @@ Contents
    plotting
    saving
    utils
-   modules

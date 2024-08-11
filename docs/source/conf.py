@@ -34,7 +34,7 @@ extensions = [
 
 templates_path = ['_templates']
 exclude_patterns = []
-autodoc_mock_imports = ['dive']
+autodoc_mock_imports = ['dive','pymc','deerlab','scipy','matplotlib','pandas']
 
 # Napoleon settings
 napoleon_google_docstring = False
