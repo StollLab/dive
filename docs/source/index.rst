@@ -36,6 +36,4 @@ Contents
    plotting
    saving
    utils
-   dive
    modules
-   api
