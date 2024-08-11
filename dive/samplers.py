@@ -16,20 +16,22 @@ class PSampler(BlockedStep):
     Notes
     -----
     Initalization needs the following:
-        t     time vector
-        Vexp  data vector
-        K0    kernel matrix
-        LtL   L'*L, where L is the regularization matrix
-        dr    the resolution of the distance axis
-        alpha the value of the regularization parameter, if fixed
+
+    t     time vector
+    Vexp  data vector
+    K0    kernel matrix
+    LtL   L'*L, where L is the regularization matrix
+    dr    the resolution of the distance axis
+    alpha the value of the regularization parameter, if fixed
       
     The following model parameters are needed as well and are pulled 
     from the PyMC model context:
-        tau     precision parameter
-        delta   regularization parameter
-        Bend    end value of background decay function (at t[-1])
-        lamb    modulation depth
-        V0      overall amplitude
+
+    tau     precision parameter
+    delta   regularization parameter
+    Bend    end value of background decay function (at t[-1])
+    lamb    modulation depth
+    V0      overall amplitude
     """
     
     def __init__(self, pars: dict):
@@ -99,12 +101,14 @@ class DeltaSampler(BlockedStep):
     Notes
     -----
     Initalization needs the following:
-        L             regularization operator/matrix
-        delta_prior   the alpha and beta values for delta's prior
+
+    L             regularization operator/matrix
+    delta_prior   the alpha and beta values for delta's prior
       
     The following model parameter is needed as well and is pulled from 
     the PyMC model context:
-        P       distance distribution
+
+    P       distance distribution
     """
     
     def __init__(self, pars):
@@ -148,18 +152,20 @@ class TauSampler(BlockedStep):
     Notes
     -----
     Initalization needs the following:
-        t             time-axis of DEER data
-        Vexp          measured DEER signal
-        dr            the resolution of the distance axis
-        tau_prior     the alpha and beta values for tau's prior
-        K0            kernel matrix
+
+    t             time-axis of DEER data
+    Vexp          measured DEER signal
+    dr            the resolution of the distance axis
+    tau_prior     the alpha and beta values for tau's prior
+    K0            kernel matrix
       
     The following model parameters are needed as well and are pulled 
     from the PyMC model context:
-        P       distance distribution
-        Bend    end value of background decay function (at t[-1])
-        lamb    modulation depth
-        V0      overall amplitude
+    
+    P       distance distribution
+    Bend    end value of background decay function (at t[-1])
+    lamb    modulation depth
+    V0      overall amplitude
     
     References
     ----------

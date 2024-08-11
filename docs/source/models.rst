@@ -11,4 +11,4 @@ PyMC Models
 
 .. autofunction:: dive.regularizationmodel
 
-.. autofunction:: dive.gaussianmodel
+.. autofunction:: dive.multigaussmodel
