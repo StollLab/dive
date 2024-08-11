@@ -11,11 +11,6 @@
 #
 import os
 import sys
-import pymc
-import deerlab
-import scipy
-import matplotlib
-import pandas
 sys.path.insert(0, os.path.abspath('../../dive'))
 
 # -- Project information -----------------------------------------------------
