@@ -22,6 +22,11 @@ You can install `dive` using `pip`. Please note that the installation name is `d
 
     pip install dive-MCMC
 
+You can also directly clone the `dive` directory. Please make sure to also import the necessary packages.
+
+    pip install pymc deerlab scipy matplotlib numpy pandas mkl-service h5netcdf pytest
+    git clone https://github.com/StollLab/dive
+
 `dive` can then be used by importing the package as usual.
 
     import dive
