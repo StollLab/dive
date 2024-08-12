@@ -1,33 +1,47 @@
 # dive
 
 ### About
-`dive` is a Python package for Bayesian analysis of dipolar EPR (electron paramagnetic resonance) spectroscopy data.
+`dive` is a Python package for Bayesian analysis of dipolar EPR (electron paramagnetic resonance) spectroscopy data through Markov chain Monte Carlo (MCMC) sampling with the Python package [PyMC](https://www.pymc.io).
 
 ### Requirements
 
-`dive` is available for Windows, Mac and Linux systems and requires **Python 3.8** or later and **PyMC 4.0** or later.
+`dive` is available for Windows, Mac and Linux systems and requires **Python 3.9** or later and **PyMC 5.0** or later.
  
+### Features
+
+`dive`'s features include:
+- An output InferenceData object containing many random posterior samples for each parameter
+- Full uncertainty quantification for all model parameters, including the distance distribution
+- Visualizations for ensembles of fitted signals and residuals
+- Visualizations for ensembles of fitted distance distributions
+- Histograms for margnialized posteriors of other parameters such as modulation depth and background decay rate
+
 ### Setup
 
-As long as `dive` is in a development state, use the following installation procedure:
+You can install `dive` using `pip`. Please note that the installation name is `dive-MCMC`.
+
+    pip install dive-MCMC
+
+You can also directly clone the `dive` directory. Please make sure to also import the necessary packages.
+
+    pip install pymc deerlab scipy matplotlib numpy pandas mkl-service h5netcdf pytest
+    git clone https://github.com/StollLab/dive
+
+`dive` can then be used by importing the package as usual.
+
+    import dive
+
+<!-- As long as `dive` is in a development state, use the following installation procedure:
 
 If using `conda`, install the following packages to the environment of your choice:
 
-    conda install mkl-service libpython m2w64-toolchain scipy matplotlib pandas
+    conda install pymc deerlab scipy matplotlib pandas mkl-service h5netcdf pytest
 
-In order to get the newest version of `pymc`, it is necessary to run
+You can also use `pip`.
 
-    pip install pymc 
+After successful installation of dependencies, navigate to the directory that contains the `dive` source code and run
 
-Unfortunately, the `conda-forge` version is usually deprecated.
-
-After successful installation of `pymc`, navigate to the directory that contains the `dive` source code and run
-
-    python setup.py develop
-
-For drawing graphs of the models, you will need `python-graphviz`, which can be installed with
-
-    conda install -c conda-forge python-graphviz
+    python setup.py develop -->
 
 <!-- A pre-built distribution can be installed using `pip`.
 
@@ -38,6 +52,10 @@ First, ensure that `pip` is up-to-date. From a terminal (preferably with admin p
 Next, install dive with
 
     python -m pip install dive -->
+
+### Documentation
+
+See the [documentation](https://stolllab.github.io/dive) for a detailed guide on how to use `dive`. An IPython Notebook guide on using `dive` can also be found under the `examples/` directory.
 
 ### Citation
 
@@ -53,4 +71,4 @@ Sarah R. Sweger, Stephan Pribitzer, and Stefan Stoll <br>
 
 `dive` is licensed under the [MIT License](LICENSE).
 
-Copyright © 2021: Stephan Pribitzer, Sarah Sweger, Stefan Stoll
+Copyright © 2024:  Sarah Sweger, Julian Cheung, Lukas Zha, Stephan Pribitzer, Stefan Stoll

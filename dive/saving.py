@@ -3,49 +3,71 @@ import arviz as az
 from datetime import date
 from .models import *
 
-def saveTrace(trace, model_dic, SaveName=None):
-    """
-    Saves a trace to a netCDF file.
-    """
-    # adds important supplemental info to the xarray object
-    trace.observed_data.coords["V_dim_0"] = model_dic["t"]
-    trace.posterior.coords["P_dim_0"] = model_dic["pars"]["r"]
-    trace.posterior.attrs["method"] = model_dic["pars"]["method"]
-    trace.posterior.attrs["background"] = model_dic["pars"]["background"]
-    if "nGauss" in model_dic["pars"]:
-        trace.posterior.attrs["nGauss"] = model_dic["pars"]["nGauss"]
-    if "alpha" in model_dic["pars"]:
-        trace.posterior.attrs["alpha"] = model_dic["pars"]["alpha"]
+def save_trace(trace : az.InferenceData, filename: str = None):
+    """Saves a trace to a netCDF file.
 
+    If no name is provided, the date and time will be used as the 
+    filename.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be saved.
+    filename : str, optional
+        The name of the generated file.
+
+    See Also
+    --------
+    load_trace
+    """
     # creates the proper name for the file
-    if not SaveName:
+    if not filename:
         today = date.today()
-        SaveName = 'data/' + today.strftime("%Y%m%d")
-
-    if not SaveName.endswith('.nc'):
-        SaveName = SaveName + '.nc'
-
+        filename = 'data/' + today.strftime("%Y%m%d")
+    if not filename.endswith('.nc'):
+        filename = filename + '.nc'
     # saves the trace as a netCDF file
-    trace.to_netcdf(SaveName)
-    
+    trace.to_netcdf(filename)
     return
 
-def loadTrace(path):
-    """
-    Returns the trace and the model dictionary from a netCDF file.
+def load_trace(filename : str) -> tuple[az.InferenceData,dict]:
+    """Returns the trace and the model dictionary from a netCDF file.
+
+    Parameters
+    ----------
+    filename : str
+        The filepath of the file to be read.
+
+    Returns
+    -------
+    trace, model_return : az.InferenceData, dict
+        A tuple containing the loaded trace and the recreated model
+        dictionary.
+    
+    See Also
+    --------
+    save_trace
     """
     # reads netCDF file (as an InferenceData object)
-    trace = az.from_netcdf(path)
+    trace = az.from_netcdf(filename)
 
-    # recreates model_dic object
+    # recreates model object
     t = trace.observed_data.coords["V_dim_0"].values
     Vexp = trace.observed_data["V"].values
-    pars = {"method": trace.posterior.attrs["method"], "r": trace.posterior.coords["P_dim_0"].values, "background": trace.posterior.attrs["background"]}
-    if "nGauss" in trace.posterior.attrs:
-        pars.update({"nGauss": int(trace.posterior.attrs["nGauss"])})
-    if "alpha" in trace.posterior.attrs:
-        pars.update({"alpha": trace.posterior.attrs["alpha"]})
+    r = trace.posterior.coords["P_dim_0"].values
+    attributes = ["method","bkgd_var","alpha","include_background",
+                  "include_mod_depth","include_amplitude","delta_prior"
+                  "tau_prior","n_gauss"]
+    attr_dict = {}
+    for attr in attributes:
+        if attr in trace.posterior.attrs:
+            attr_dict.update({attr:trace.posterior.attrs[attr]})
+    # background was renamed to bkgd_var
+    if "background" in trace.posterior.attrs:
+        attr_dict.update({"bkgd_var":trace.posterior.attrs["background"]})
+    # convert n_gauss back to integer
+    if "n_gauss" in attr_dict:
+        attr_dict.update({"n_gauss":int(attr_dict["n_gauss"])})
 
-    model_dic = model(t, Vexp, pars)
-
-    return trace, model_dic
+    model_return = model(t, Vexp, r=r, **attr_dict)
+    return trace, model_return

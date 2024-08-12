@@ -1,6 +1,7 @@
 from dataclasses import replace
 import numpy as np
 import math as m
+import pandas as pd
 from pandas.core import indexers
 from scipy.special import fresnel
 
@@ -10,40 +11,83 @@ from .deerload import *
 import arviz as az
 from .plotting import *
 
-def addnoise(V,sig):
+from typing import Union
+from numpy.typing import ArrayLike
 
-    """
-    Add Gaussian noise with standard deviation sig to signal
+def addnoise(V: ArrayLike, sig: float) -> ArrayLike:
+    """Adds Gaussian noise with standard deviation sig to signal.
+
+    Parameters
+    ----------
+    V : ArrayLike
+        The signal to add noise to.
+    sig : float
+        The standard deviation of the noise to add.
+    
+    Returns
+    -------
+    Vnoisy : ArrayLike
+
+    See Also
+    --------
+    np.random.normal
     """
     noise = np.random.normal(0, sig, np.size(V))
     Vnoisy = V + noise
     return Vnoisy
 
 
-def FWHM2sigma(FWHM):
-    """
-    Convert the full width at half maximum, FWHM, of a Gaussian to the standard deviation, sigma.
-    """
+def FWHM2sigma(FWHM: float) -> float:
+    """Converts full width at half maximum (FWHM) to standard deviation.
 
+    Parameters
+    ----------
+    FWHM : float
+        The full width at half maximum of a Gaussian.
+    
+    Returns
+    -------
+    sigma : float
+        The standard deviation of the Gaussian.
+    """
     sigma = FWHM/(2*m.sqrt(2*m.log(2)))
-
     return sigma
 
 
-def sigma2FWHM(sigma):
-    """
-    Convert the standard deviation, sigma, of a Gaussian to the full width at half maximum, FWHM.
+def sigma2FWHM(sigma) -> float:
+    """Converts standard deviation to full width at half maximum (FWHM)
+
+    Parameters
+    ----------
+    sigma : float
+        The standard deviation of a Gaussian
+    
+    Returns
+    -------
+    FWHM : float
+        The full width at half maximum of the Gaussian.
     """
     FWHM = sigma/(2*m.sqrt(2*m.log(2)))
-
     return FWHM
 
 
-def dipolarkernel(t,r):
-    """
-    K = dipolarkernel(t,r)
-    Calculate dipolar kernel matrix.
-    Assumes t in microseconds and r in nanometers
+def dipolarkernel(t: ArrayLike, r: ArrayLike) -> np.ndarray:
+    """Calculates the dipolar kernel matrix.
+
+    Generates given a time vector t in microseconds and a distance
+    vector r in nanometers.
+
+    Parameters
+    ----------
+    t : ArrayLike
+        The time vector, in microseconds.
+    r : ArrayLike
+        The distance vector, in nanometers.
+
+    Returns
+    -------
+    K : np.ndarray
+        The dipolar kernel matrix.
     """
     omega = 1e-6 * D/(r*1e-9)**3  # rad µs^-1
     
@@ -66,148 +110,78 @@ def dipolarkernel(t,r):
     
     return K
 
-def interpret(trace,model_dic):
+def get_rhats(trace: az.InferenceData) -> pd.Series:
+    """Gets the r-hat statistics for each variable in a trace.
+
+    R-hat is the ratio of interchain to intrachain variance and is a
+    good indicator of convergence. When R-hat is close to 1, the chains
+    are converged.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be analyzed.
     
-    class FitResult:
-        def __init__(self,trace, model):
-            # as of PyMC v5, parameters are now given as a (# of chains) * (# of draws) array
-            d = {key: [draw.values for chain in trace.posterior[key] for draw in chain] for key in trace.posterior}
-            self.__dict__.update(d)
-
-            self.r = model['pars']['r']
-            self.t = model['t']
-            self.Vexp = model['Vexp']
-            self.varnames = trace.posterior
-            self.trace = trace
-            self.K = dl.dipolarkernel(self.t, self.r)
-            self.dr = self.r[1] - self.r[0]
-            self.chain = trace.posterior.dims["chain"]
-            self.draw = trace.posterior.dims["draw"]
-
-            # self.plots = Plots(trace,model)
-
-        def subsample_fits(self, n=100, seed=1):
-            np.random.seed(seed)
-            idxs = np.random.choice(self.chain*self.draw, n, replace=False)
-            Ps = [self.P[idx].copy() for idx in idxs]
-            Bs, Vs = [], []
-
-            for idx in idxs:
-                V_ = self.K@self.P[idx]
-
-                if 'lamb' in self.varnames:
-                    V_ = (1-self.lamb[idx]) + self.lamb[idx]*V_
-
-                if 'k' in self.varnames:
-                    B = dl.bg_exp(self.t, self.k[idx])
-                    V_ *= B
-                    
-                    Blamb = (1-self.lamb[idx])*B
-                
-                if 'V0' in self.varnames:
-                    Blamb *= self.V0[idx]
-                    Bs.append(Blamb)
-                    V_ *= self.V0[idx]
-                Vs.append(V_)
-
-            return Vs, Bs, Ps
-
-        def plot(self,style = 'noodle',j =0.95):
-            plt.style.use('seaborn-darkgrid')
-            
-            plt.rcParams.update({'font.family':'serif'})
-            if style == 'noodle':
-                fig, (ax1, ax2) = plt.subplots(2, figsize=(8, 8))
-                Vs, Bs, Ps = self.subsample_fits()
-                
-                ax1.plot(self.t, self.Vexp,'g.',linewidth=0.5,alpha = 0.3)
-
-                for V, B, P in zip(Vs, Bs, Ps):
-                    ax2.plot(self.r, P, 'cornflowerblue', linewidth=0.3)
-                    ax1.plot(self.t, V,'#0000EE',linewidth=0.3)
-                    ax1.plot(self.t, B,'#FAD02C',linewidth=0.3)
-                    ax1.plot(self.t, V-self.Vexp,'#FF0080',linewidth=0.3)
-
-                leg1= ax1.legend(['Data','Vexp','Background','Residuals'])
-                leg2 = ax2.legend(['Distance Distribution'])
-
-                for lh1,lh2 in zip(leg1.legendHandles,leg2.legendHandles): 
-                    lh1.set_alpha(1)
-                    lh2.set_alpha(1)
-                
-
-                #ax2.set_xlabel(r'time ($\rm\mus$)')
-
-            if style == 'mean-ci':
-                fig, (ax1, ax2) = plt.subplots(2, figsize=(8, 8))
-                Vs, Bs, Ps = self.subsample_fits()
-                
-                l0, = ax1.plot(self.t, self.Vexp,'#808080',marker='.',linewidth=0.5,alpha = 0.3,label = 'Data',linestyle='None')
-
-                Pmean = np.mean(Ps,0)
-                Phd = az.hdi(np.array(Ps),j) 
-
-                Vmean = np.mean(Vs,0)
-                Vhd = az.hdi(np.array(Vs),j) 
-                
-
-                Bmean = np.mean(Bs,0)
-                Bhd = az.hdi(np.array(Bs),j) 
-
-            
-                ax2.plot(self.r, Pmean, '#8E05D4', linewidth=1)
-                ax2.fill_between(self.r,Phd[:,0],Phd[:,1],alpha = 0.7)
-
-
-                l1,=ax1.plot(self.t, Vmean, '#964B00', linewidth=0.5,label='Vexp mean')
-                l2,=ax1.plot(self.t, Bmean, 'b', linewidth=0.5 ,label='Background mean')
-                l3,=ax1.plot(self.t, Vmean-self.Vexp,'#FF0080',linewidth=0.8,label = "Residuals")
-
-
-                ax1.fill_between(self.t,Vhd[:,0],Vhd[:,1],color = 'C0',alpha =0.5)
-                ax1.fill_between(self.t,Bhd[:,0],Bhd[:,1],color = '#FFF68F',alpha =0.1)
-                ax1.legend(handles=[l0,l1,l2,l3])
-                ax2.legend()
-                
-                
-                #ax2.set_xlabel(r'time ($\rm\mus$)')
-            
-            ax2.set_xlabel('Distance(nm)')
-            ax2.set_ylabel("Probability($1/nm$)")
-            ax2.xaxis.set_major_locator(plt.MaxNLocator(16))
-
-            ax1.set_ylabel('Signal (a.u.)')
-            ax1.set_xlabel("Time(µs)")
-            ax1.xaxis.set_major_locator(plt.MaxNLocator(15))
-           
-
-
-            fig.tight_layout()
-            plt.style.use('seaborn-darkgrid')
-            return fig
-
-        def summary(self):
-            printsummary(self.trace,self.model)
-            
-
-    fit = FitResult(trace,model_dic)
-
-    return fit
-
-def get_rhats(trace):
+    Returns
+    -------
+    rhats : pd.Series
+        A pd.Series object containing the variable names and their r-hat
+        values.
+    
+    See Also
+    --------
+    prune_chains
+    az.summary
+    """
     rhats = az.summary(trace, var_names=["~P"], filter_vars="like")["r_hat"]
     return rhats
 
-def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, min_change_to_remove=0, spread_precedence=False, return_chain_nums=False, depth=0, chain_nums=None):
-    """
-    tries dropping chains one by one to see effect on rhat.
-    will remove until the max rhat is below max_allowed_rhat.
-    if spread_precedence is true, then chains are removed until the spread is below max_spread.
-    only removes up to max_remove of the chains.
-    only removes chains if the difference in rhat is greater than min_change_to_remove.
-    returns cleaned trace by default unless return_chain_nums (good chains) is set to True.
-    """
+def prune_chains(
+    trace: az.InferenceData, max_remove: int = None, max_allowed: float = 1.05, 
+    min_change: float = 0, return_chain_nums: bool = False, depth: int = 0, 
+    chain_nums: list[int] = None) -> Union[az.InferenceData, list[int]]:
+    """Prunes chains from a trace to attain convergence.
 
+    The algorithm drops chains one by one and iteratively removes the
+    chain that reduces maximum r-hat the most when dropped. This process
+    continues until the maximum r-hat is less than max_allowed. This 
+    only removes up to max_remove of the chains, and only if removing 
+    the chain reduces maximum r-hat by more than min_change.
+
+    Returns the trace with clean chains, unless return_chain_nums is
+    set to True.
+
+    Parameters
+    ----------
+    trace : az.InferenceData
+        The trace to be pruned.
+    max_remove : int, optional
+        The maximum number of chains to be removed. Defaults to half 
+        the number of chains in the trace.
+    max_allowed : float, default=1.05
+        The maximum allowable value of r-hat. When reached, the function 
+        will stop pruning.
+    min_change : float, default=0
+        The minimum reduction in r-hat for a chain to be pruned.
+    return_chain_nums : bool, default=False
+        Whether or not to return the numbers of the chains to be kept, 
+        instead of the pruned trace.
+    depth : int, default=0
+        Internal parameter to keep track of recursion.
+    chain_nums : list of int, optional
+        Internal parameter to keep track of remaining chains.
+
+    Returns
+    -------
+    to_return : az.InferenceData or list of int
+        Either the pruned trace or the list of chain numbers to keep,
+        depending on the value of return_chain_nums.
+    
+    See Also
+    --------
+    get_rhats
+    az.sel
+    """
     # get chain numbers
     if chain_nums is None:
         chain_nums = [j for j in range(trace.posterior.dims["chain"])]
@@ -223,16 +197,20 @@ def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, 
 
     # break if break criterion met
     exit = False
-    if rhat_max < max_allowed_rhat and not spread_precedence:
-        exit = True
-    if rhat_spread < max_spread and spread_precedence:
+    if rhat_max < max_allowed:
         exit = True
     if depth >= max_remove:
         exit = True
 
-    if not exit:
+    if exit:
+        if return_chain_nums:
+            to_return = chain_nums
+        else:
+            to_return = trace.sel(chain=chain_nums)
+    else:
         # finds the variable with the highest rhat
-        # then drops each chain one by one and see which one minimizes rhat in that variable
+        # then drops each chain one by one and see which one 
+        # minimizes rhat in that variable
         to_drop = None
         idx_of_rhat_max = rhats.idxmax()
         lowest_rhat_max = rhats[idx_of_rhat_max]
@@ -240,7 +218,7 @@ def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, 
             chain_nums_copy = chain_nums.copy()
             chain_nums_copy.remove(i)
             dropped_rhats = get_rhats(trace.sel(chain=chain_nums_copy))
-            if dropped_rhats[idx_of_rhat_max] < lowest_rhat_max-min_change_to_remove:
+            if dropped_rhats[idx_of_rhat_max] < lowest_rhat_max-min_change:
                 lowest_rhat_max = dropped_rhats[idx_of_rhat_max]
                 to_drop = i
         # update chain_nums with the chain to drop and recurse the function
@@ -249,28 +227,49 @@ def prune_chains(trace, max_remove=None, max_spread=0.1, max_allowed_rhat=1.05, 
             depth += 1
         else:
             exit = True
-
-    to_return = (chain_nums if return_chain_nums else trace.sel(chain=chain_nums)) if exit else prune_chains(trace, max_remove, max_spread, max_allowed_rhat, min_change_to_remove, spread_precedence, return_chain_nums, depth, chain_nums)
+        to_return = prune_chains(trace, max_remove, max_allowed, min_change, 
+                                 return_chain_nums, depth, chain_nums)
     return to_return
 
-def fnnls(AtA, Atb, tol=[], maxiter=[], verbose=False):
-    r"""
-    FNNLS   Fast non-negative least-squares algorithm.
+def fnnls(
+    AtA: ArrayLike, Atb: ArrayLike, tol: float = None, maxiter: int = None, 
+    verbose: bool = False):
+    r"""Fast non-negative least-squares algorithm.
+
     x = fnnls(AtA,Atb) solves the problem min ||b - Ax|| if
-        AtA = A'*A and Atb = A'*b.
+    AtA = A'*A and Atb = A'*b.
     A default tolerance of TOL = MAX(SIZE(AtA)) * NORM(AtA,1) * EPS
     is used for deciding when elements of x are less than zero.
     This can be overridden with x = fnnls(AtA,Atb,TOL).
 
     [x,w] = fnnls(AtA,Atb) also returns dual vector w where
-        w(i) < 0 where x(i) = 0 and w(i) = 0 where x(i) > 0.
+    w(i) < 0 where x(i) = 0 and w(i) = 0 where x(i) > 0.
+
+    Parameters
+    ----------
+    AtA, Atb : ArrayLike
+        The matrices/vectors to use in the FNNLS algorithm.
+    tol : float, optional
+        The tolerance. If not provided, it will be automatically
+        calculated.
+    maxiter : int, optional
+        The maximum number of iterations. If not provided, it will
+        be automatically calculated.
+    verbose : bool, default=False
+        Whether to print the status of solution-finding.
     
-    For the FNNLS algorithm, see
-        R. Bro, S. De Jong
-        A Fast Non-Negativity-Constrained Least Squares Algorithm
-        Journal of Chemometrics 11 (1997) 393-401
-    The algorithm FNNLS is based on is from
-        Lawson and Hanson, "Solving Least Squares Problems", Prentice-Hall, 1974.
+    Returns
+    -------
+    x : np.ndarray
+        The solution to the optimization problem.
+
+    References
+    ----------
+    .. [1] R. Bro, S. De Jong
+       A Fast Non-Negativity-Constrained Least Squares Algorithm
+       Journal of Chemometrics 11 (1997) 393-401
+    .. [2] Lawson and Hanson, "Solving Least Squares Problems", 
+       Prentice-Hall, 1974.
     """
 
     if np.iscomplex(AtA).any():
@@ -283,59 +282,57 @@ def fnnls(AtA, Atb, tol=[], maxiter=[], verbose=False):
 
     # Use all-zero starting vector
     N = np.shape(AtA)[1]
-
     x = np.zeros(N)
 
     # Calculate tolerance and maxiter if not given.
-    if np.size(np.atleast_1d(tol))==0:
+    if tol is None:
         eps = np.finfo(float).eps
         tol = 10*eps*np.linalg.norm(AtA,1)*max(np.shape(AtA))
-    if np.size(np.atleast_1d(maxiter))==0:
+    if maxiter is None:
         maxiter = 5*N
 
-
-    passive = x>0       # initial positive/passive set (points where constraint is not active)
+    # initial positive/passive set (points where constraint is not active)
+    passive = x>0
     x[~passive] = 0
-    w = Atb - AtA @ x     # negative gradient of error functional 0.5*||A*x-y||^2
+    # negative gradient of error functional 0.5*||A*x-y||^2
+    w = Atb - AtA @ x     
     
-    # Outer loop: Add variables to positive set if w indicates that fit can be improved.
+    # Outer loop: 
+    # Add variables to positive set if w indicates that fit can be improved.
     outIteration = 0
     maxIterations = 5*N
     while np.any(w>tol) and np.any(~passive):
         outIteration += 1
-        
         # Add the most promising variable (with largest w) to positive set.
         t = np.argmax(w)
         passive[t] = True
-        
         # Solve unconstrained problem for new augmented positive set.
-        # This gives a candidate solution with potentially new negative variables.
+        # Gives a candidate solution with potentially new negative variables.
         x_ = np.zeros(N)
-        
         if np.sum(passive)==1:
             x_[passive] = Atb[passive]/AtA[passive,passive]
         else:
-            x_[passive] = np.linalg.solve(AtA[np.ix_(passive,passive)], Atb[passive])
+            x_[passive] = np.linalg.solve(AtA[np.ix_(passive,passive)], 
+                                          Atb[passive])
         
-        # Inner loop: Iteratively eliminate negative variables from candidate solution.
+        # Inner loop: 
+        # Iteratively eliminate negative variables from candidate solution.
         iIteration = 0
         while any((x_<=tol) & passive) and iIteration<maxIterations:
             iIteration += 1
-            
             # Calculate maximum feasible step size and do step.
             negative = (x_<=tol) & passive
             alpha = min(x[negative]/(x[negative]-x_[negative]))
             x += alpha*(x_-x)
-            
             # Remove all negative variables from positive set.
             passive[x<tol] = False
-            
             # Solve unconstrained problem for reduced positive set.
             x_ = np.zeros(N)
             if np.sum(passive)==1:
                 x_[passive] = Atb[passive]/AtA[passive,passive]
             else:
-                x_[passive] = np.linalg.solve(AtA[np.ix_(passive,passive)],Atb[passive])
+                x_[passive] = np.linalg.solve(AtA[np.ix_(passive,passive)],
+                                              Atb[passive])
             
         # Accept non-negative candidate solution and calculate w.
         if all(x == x_):
@@ -352,6 +349,7 @@ def fnnls(AtA, Atb, tol=[], maxiter=[], verbose=False):
         if verbose:
             print(f"{outIteration:10.0f}{iIteration:15.0f}{max(w):20.4e}\n")
 
+    # Print status of optimization
     if verbose:
         if unsolvable:
             print('Optimization stopped because the solution cannot be further changed. \n')

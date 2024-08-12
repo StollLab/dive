@@ -4,18 +4,37 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-#-------------------------------------------------------------------------------
-def deerload(fullbasename,Scaling=None,plot=False,*args,**kwargs):
-    """
-    x,y,pars = deerload(fullbase,Scaling=None,plot=None)
-    Load file in BES3T format (Bruker EPR Standard for Spectrum Storage and Transfer)
+def deerload(
+    name: str, scaling: str = None, 
+    plot: bool = False) -> tuple[np.ndarray, np.ndarray, dict]:
+    """Loads DEER data from a .DSC or .DTA file.
+
+    Loads file in BES3T format
+    (Bruker EPR Standard for Spectrum Storage and Transfer)
       .DSC: description file
       .DTA: data file
-    used on Bruker ELEXSYS and EMX machines
-    Code based on BES3T version 1.2 (Xepr >=2.1)
+    which is used on Bruker ELEXSYS and EMX machines.
+    Code based on BES3T version 1.2 (Xepr >=2.1).
+
+    Parameters
+    ----------
+    name : str
+        The full filename, including the .DTA or .DSC extension.
+    scaling : str, optional
+        The scaling to use. Options are 'n' (number of scans), 'G' 
+        (receiver gain), 'C' (conversion time), 'P' (power), and 'T' 
+        (temperature).
+    plot : bool, default=False
+        Whether or not to plot the data once loaded.
+    
+    Returns
+    -------
+    (abcissa, data, parameters): tuple of np.ndarray, np.ndarray, dict
+        The x-axis values, y-axis values, and additional parameters, 
+        respectively.
     """
-    filename = fullbasename[:-4]
-    fileextension = fullbasename[-4:].upper() # case insensitive extension
+    filename = name[:-4]
+    fileextension = name[-4:].upper() # case insensitive extension
     if fileextension in ['.DSC','.DTA']:
         filename_dsc = filename + '.DSC'
         filename_dta = filename + '.DTA'
@@ -177,11 +196,11 @@ def deerload(fullbasename,Scaling=None,plot=False,*args,**kwargs):
     if nz == 1:
         data = data.reshape(nx,ny)
         
-    if Scaling == None:
+    if scaling == None:
         pass
     else:
         # Averaging over the number of scans
-        if Scaling == 'n':
+        if scaling == 'n':
             #Check if the experiments was already averaged
             # Number of scans  
             if 'AVGS' in parSPL:
@@ -196,7 +215,7 @@ def deerload(fullbasename,Scaling=None,plot=False,*args,**kwargs):
                 raise warn('Missing AVGS field in the DSC file.')
         
         # Receiver gain
-        if parameters['EXPT'] =='CW' and Scaling == 'G':
+        if parameters['EXPT'] =='CW' and scaling == 'G':
             #SPL/RCAG: Receiver Gain in dB
             if 'RCAG' in parameters:
                 ReceiverGaindB = float(parameters['RCAG'])
@@ -206,7 +225,7 @@ def deerload(fullbasename,Scaling=None,plot=False,*args,**kwargs):
                 warn('Cannot scale by receiver gain, since RCAG in the DSC file is missing.')
 
         # Conversion/sampling time
-        elif parameters['EXPT'] =='CW' and Scaling == 'c':
+        elif parameters['EXPT'] =='CW' and scaling == 'c':
             #SPL/SPTP: sampling time in seconds
             if 'STPT' in parameters:
                 # Xenon (according to Feb 2011 manual) already scaled data by ConvTime if
@@ -218,7 +237,7 @@ def deerload(fullbasename,Scaling=None,plot=False,*args,**kwargs):
             else:
                 warn('Cannot scale by sampling time, since SPTP in the DSC file is missing.')
         # Microwave power
-        elif parameters['EXPT'] =='CW' and Scaling == 'P':
+        elif parameters['EXPT'] =='CW' and scaling == 'P':
             #SPL/MWPW: microwave power in watt
             if 'MWPW' in parameters:
                 mwPower = float(parameters['MWPW'])*1000
@@ -229,7 +248,7 @@ def deerload(fullbasename,Scaling=None,plot=False,*args,**kwargs):
         #    warn('Cannot scale by microwave power, since these are not CW-EPR data.')
         
         # Temperature
-        if Scaling == 'T':
+        if scaling == 'T':
             ##SPL/STMP: temperature in kelvin
             if 'STMP'in parameters:
                 Temperature = float(parameters['STMP'])
@@ -247,12 +266,20 @@ def deerload(fullbasename,Scaling=None,plot=False,*args,**kwargs):
     return abscissa, data, parameters
     
 
-def read_description_file(DSCFileName):
+def read_description_file(name: str) -> dict:
+    """Retrieves the parameters from a .DSC files as a dictionary.
+    
+    Parameters
+    ----------
+    name : str
+        The filename to be read, including the .DSC extension.
+    
+    Returns
+    -------
+    Parameters : dict
+        A dictionary of the parameters in the .DSC file.
     """
-    Parameters = readDSCfile(DSCFileName)
-    Reads a Bruker BES3T .DSC file DSCFileName and returns a dictionary in Parameters.
-    """
-    with open(DSCFileName,"r") as f:
+    with open(name,"r") as f:
         allLines = f.readlines()
     
     # Remove lines with comments
