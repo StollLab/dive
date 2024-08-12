@@ -37,7 +37,7 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = []
 # autodoc_mock_imports = ['pymc','deerlab','scipy','matplotlib','pandas','numpy']
-autodoc_type_aliases = {ArrayLike: 'ArrayLike', Colortype: 'ColorType'}
+autodoc_type_aliases = {ArrayLike: 'ArrayLike', ColorType: 'ColorType'}
 
 # Napoleon settings
 napoleon_google_docstring = False
