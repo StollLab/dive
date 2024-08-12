@@ -21,6 +21,7 @@ dependencies = [
     "deerlab>=1.1.2",
     "scipy>=1.11.4",
     "matplotlib>=3.9.1",
+    "numpy>=1.15.0",
     "pandas>=2.0.3",
     "mkl-service>=2.4.1",
     "h5netcdf>=1.3.0",
@@ -37,3 +38,4 @@ license = {file = "LICENSE"}
 
 [project.urls]
 Repository = "https://github.com/StollLab/dive"
+Documentation = "https://stolllab.github.io/dive"
