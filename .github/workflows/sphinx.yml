@@ -23,6 +23,7 @@ jobs:
            python -m pip install scipy
            python -m pip install matplotlib
            python -m pip install pandas
+           python -m pip install ipython
     - name: Build HTML
       run: |
            sphinx-build -E -b html docs/source docs/build/html
