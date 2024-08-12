@@ -18,9 +18,9 @@
 
 ### Setup
 
-You can install `dive` using `pip`. Please note that the installation name is `dive-MCMC`.
+You can install `dive` using `pip`. Please note that the installation name is `dive-EPR`.
 
-    pip install dive-MCMC
+    pip install dive-EPR
 
 You can also directly clone the `dive` directory. Please make sure to also import the necessary packages.
 
