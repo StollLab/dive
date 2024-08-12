@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage &mdash; dive 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2709fde1"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Reading &amp; Creating Data" href="data.html" />
+    <link rel="prev" title="dive documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            dive
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reading-data">Reading Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#modeling">Modeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sampling">Sampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#saving">Saving</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#validating">Validating</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#accessing-results">Accessing Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plotting">Plotting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Reading &amp; Creating Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="saving.html">Saving</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utility Functions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dive</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Usage</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h1>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<p>To install <code class="docutils literal notranslate"><span class="pre">dive</span></code>, install it with pip. Please note that the package name is
+<code class="docutils literal notranslate"><span class="pre">dive-MCMC</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">dive</span><span class="o">-</span><span class="n">MCMC</span>
+</pre></div>
+</div>
+<p>To use <code class="docutils literal notranslate"><span class="pre">dive</span></code>, import it as usual:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">dive</span>
+</pre></div>
+</div>
+<p>You should also import important modules such as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pymc</span> <span class="k">as</span> <span class="nn">pm</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">arviz</span> <span class="k">as</span> <span class="nn">az</span>
+<span class="kn">import</span> <span class="nn">deerlab</span> <span class="k">as</span> <span class="nn">dl</span>
+<span class="kn">from</span> <span class="nn">scipy.io</span> <span class="kn">import</span> <span class="n">loadmat</span>
+</pre></div>
+</div>
+</section>
+<section id="reading-data">
+<h2>Reading Data<a class="headerlink" href="#reading-data" title="Link to this heading"></a></h2>
+<p>If you already have experimental traces that you wish to analyze, load them in
+as usual. Two example data files, <code class="docutils literal notranslate"><span class="pre">3992_good.dat</span></code> and <code class="docutils literal notranslate"><span class="pre">3992_bad.dat</span></code>, are
+also included with <code class="docutils literal notranslate"><span class="pre">dive</span></code> in the <code class="docutils literal notranslate"><span class="pre">/data</span></code> folder.</p>
+<p>For example,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># example data in /data</span>
+<span class="n">loaded_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;data/3992_good.dat&quot;</span><span class="p">,</span> <span class="n">skip_header</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">loaded_data</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">Vexp</span> <span class="o">=</span> <span class="n">loaded_data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>If you would instead like to create synthetic data, follow <a class="reference external" href="https://jeschkelab.github.io/DeerLab/auto_examples/basic_simulations/ex_simulate_basic_4pdeer.html">this tutorial</a>
+from DeerLab or use the built in functions at <a class="reference internal" href="data.html"><span class="doc">Reading &amp; Creating Data</span></a>.</p>
+</section>
+<section id="modeling">
+<h2>Modeling<a class="headerlink" href="#modeling" title="Link to this heading"></a></h2>
+<p>Next, you should create for <code class="docutils literal notranslate"><span class="pre">PyMC</span></code> to run numerical sampling with
+<code class="docutils literal notranslate"><span class="pre">dive.model</span></code>. Detailed information can be found at <a class="reference internal" href="models.html"><span class="doc">Modeling</span></a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># a shorter rmax is recommended for better and faster sampling</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">6.5</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
+<span class="c1"># non-parametric (Tikhonov regularization):</span>
+<span class="n">model_tikh</span> <span class="o">=</span> <span class="n">dive</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">Vexp</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;regularization&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="n">r</span><span class="p">)</span>
+<span class="c1"># parametric (Gaussian mixture model):</span>
+<span class="n">model_gauss</span> <span class="o">=</span> <span class="n">dive</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">Vexp</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span> <span class="n">n_gauss</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="n">r</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="sampling">
+<h2>Sampling<a class="headerlink" href="#sampling" title="Link to this heading"></a></h2>
+<p>You can now sample the model with PyMC through <code class="docutils literal notranslate"><span class="pre">dive.sample</span></code>. See
+<a class="reference internal" href="sampling.html"><span class="doc">Sampling</span></a> for more information.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># non-parametric</span>
+<span class="n">trace_tikh</span> <span class="o">=</span> <span class="n">dive</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">model_tikh</span><span class="p">,</span> <span class="n">draws</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">tune</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">chains</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">random_seed</span><span class="o">=</span><span class="mi">101</span><span class="p">)</span>
+<span class="c1"># parametric</span>
+<span class="n">trace_gauss</span> <span class="o">=</span> <span class="n">dive</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">model_gauss</span><span class="p">,</span> <span class="n">draws</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">tune</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">chains</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">random_seed</span><span class="o">=</span><span class="mi">101</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The output of <code class="docutils literal notranslate"><span class="pre">dive.sample</span></code> is an
+<a class="reference external" href="https://python.arviz.org/en/latest/getting_started/XarrayforArviZ.html#xarray-for-arviz">ArviZ InferenceData object</a>.</p>
+</section>
+<section id="saving">
+<h2>Saving<a class="headerlink" href="#saving" title="Link to this heading"></a></h2>
+<p>The traces can be saved with <code class="docutils literal notranslate"><span class="pre">dive.save_trace</span></code> and <code class="docutils literal notranslate"><span class="pre">dive.load_trace</span></code>.
+More information can be found at <a class="reference internal" href="saving.html"><span class="doc">Saving</span></a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dive</span><span class="o">.</span><span class="n">save_trace</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">,</span> <span class="s2">&quot;data/example_trace_tikh&quot;</span><span class="p">)</span>
+<span class="n">dive</span><span class="o">.</span><span class="n">save_trace</span><span class="p">(</span><span class="n">trace_gauss</span><span class="p">,</span> <span class="s2">&quot;data/example_trace_gauss&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">trace_tikh</span><span class="p">,</span> <span class="n">model_tikh</span> <span class="o">=</span> <span class="n">dive</span><span class="o">.</span><span class="n">load_trace</span><span class="p">(</span><span class="s2">&quot;data/example_trace_tikh.nc&quot;</span><span class="p">)</span>
+<span class="n">trace_gauss</span><span class="p">,</span> <span class="n">model_gauss</span> <span class="o">=</span> <span class="n">dive</span><span class="o">.</span><span class="n">load_trace</span><span class="p">(</span><span class="s2">&quot;data/example_trace_gauss.nc&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="validating">
+<h2>Validating<a class="headerlink" href="#validating" title="Link to this heading"></a></h2>
+<p>Before moving on to data analysis, it is important to make sure that the chains
+are stable and converged. Below are a few functions that are helpful in
+assessing chain convergence and quality:</p>
+<p><code class="docutils literal notranslate"><span class="pre">dive.print_summary(trace)</span></code>: This prints a data table containing information
+about the marginalized parameter distributions, including their mean,
+94% confidence interval, skewness, etc. For validating our results, however,
+we are most interested in the rightmost column titled <code class="docutils literal notranslate"><span class="pre">r_hat</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">r_hat</span></code> is the ratio of interchain variance to intrachain variance.
+If it is close to 1, then the variances are similar, meaning that the chains
+have converged to similar regions.</p>
+<p><code class="docutils literal notranslate"><span class="pre">r_hat</span></code> values below 1.05 suggest good convergence, and it is encouraged
+that the <code class="docutils literal notranslate"><span class="pre">r_hat</span></code> for every variable in <code class="docutils literal notranslate"><span class="pre">dive.print_summary</span></code> should be below
+this value before you continue to analysis. (If you are just testing things out,
+it is okay, though not ideal, to have higher values of <code class="docutils literal notranslate"><span class="pre">r_hat</span></code>.)</p>
+<p>Documentation can be found in <a class="reference internal" href="plotting.html"><span class="doc">Plotting</span></a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dive</span><span class="o">.</span><span class="n">print_summary</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">)</span>
+<span class="n">dive</span><span class="o">.</span><span class="n">print_summary</span><span class="p">(</span><span class="n">trace_gauss</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                    mean    sd          hdi_3%      hdi_97% mcse_mean       mcse_sd ess_bulk        ess_tail        r_hat
+$λ$                     0.533       0.007   0.521   0.546   0.000       0.000       1040.0      1656.0          1.01
+$V_0$                   1.007       0.010   0.990   1.026   0.000       0.000       1819.0      3126.0          1.00
+$σ$                     0.021       0.001   0.019   0.023   0.000       0.000       4447.0      3908.0          1.00
+$\mathrm{lg}(α)$    -0.462  0.074   -0.597  -0.322  0.002       0.001       2225.0      3735.0          1.00
+$B_\mathrm{end}$    0.897   0.015   0.872   0.929   0.000       0.000       1390.0      970.0           1.01
+                    mean    sd      hdi_3%  hdi_97%         mcse_mean       mcse_sd ess_bulk        ess_tail        r_hat
+$λ$                     0.502       0.005   0.495   0.512   0.001       0.001       16.0        70.0            1.19
+$V_0$                   0.977       0.007   0.963   0.991   0.001       0.001       33.0        191.0           1.14
+$σ$                     0.021       0.001   0.019   0.022   0.000       0.000       12.0        21.0            1.39
+$r_{0,1}$           3.337   0.571   2.156   3.849   0.185       0.142       7.0         123.0           1.56
+$r_{0,2}$           3.989   0.076   3.911   4.123   0.037       0.028       5.0         16.0            2.03
+$w_1$                   1.157       0.908   0.348   2.998   0.265       0.192       16.0        128.0           1.32
+$w_2$                   0.494       0.108   0.282   0.603   0.052       0.040       6.0         14.0            1.77
+$a_1$                   0.264       0.259   0.001   0.708   0.126       0.097       6.0         51.0            1.91
+$a_2$                   0.736       0.259   0.292   0.999   0.126       0.096       6.0         49.0            1.91
+$B_\mathrm{end}$    0.850   0.009   0.839   0.866   0.002       0.002       14.0        134.0           1.21
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">az.plot_trace(trace)</span></code>: This helpful function from the <code class="docutils literal notranslate"><span class="pre">arviz</span></code> library makes
+two plots for each parameter. On the left, it plots the marginalized posterior
+of the parameter for each chain (if you set <code class="docutils literal notranslate"><span class="pre">combined</span></code> to <code class="docutils literal notranslate"><span class="pre">False</span></code>). This is
+very helpful in visualizing convergence. If you see one (or more) chains with a
+significantly different posterior plot, it is like unconverged. On the right,
+it plots the value of the parameter chronologically for each chain.
+If you notice that it gets ‘stuck’ (showing the same value for many draws in a
+row), it may be sampling poorly.</p>
+<p>See <a class="reference external" href="https://python.arviz.org/en/stable/api/generated/arviz.plot_trace.html">the documentation</a> for az.plot_trace.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># non-parametric trace is converged:</span>
+<span class="n">az</span><span class="o">.</span><span class="n">plot_trace</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">,</span> <span class="n">var_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lamb&quot;</span><span class="p">,</span><span class="s2">&quot;Bend&quot;</span><span class="p">,</span><span class="s2">&quot;V0&quot;</span><span class="p">,</span><span class="s2">&quot;sigma&quot;</span><span class="p">,</span><span class="s2">&quot;lg_alpha&quot;</span><span class="p">],</span> <span class="n">combined</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="c1"># parametric trace is not converged</span>
+<span class="n">az</span><span class="o">.</span><span class="n">plot_trace</span><span class="p">(</span><span class="n">trace_gauss</span><span class="p">,</span> <span class="n">var_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lamb&quot;</span><span class="p">,</span><span class="s2">&quot;Bend&quot;</span><span class="p">,</span><span class="s2">&quot;V0&quot;</span><span class="p">,</span><span class="s2">&quot;sigma&quot;</span><span class="p">,</span><span class="s2">&quot;r0&quot;</span><span class="p">,</span><span class="s2">&quot;w&quot;</span><span class="p">,</span><span class="s2">&quot;a&quot;</span><span class="p">],</span> <span class="n">combined</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/arviz-plot-trace.png"><img alt="_images/arviz-plot-trace.png" src="_images/arviz-plot-trace.png" style="width: 600px;" /></a>
+<p>It can be seen that the non-parametric trace is well-converged, while the
+parametric trace is not. This is probably because the sampler does not know
+where to put the second gaussian in the parametric trace, as shown by the large
+uncertainties in its mean (<code class="docutils literal notranslate"><span class="pre">r0</span></code>), width (<code class="docutils literal notranslate"><span class="pre">w</span></code>), and amplitude (<code class="docutils literal notranslate"><span class="pre">a</span></code>) on the
+arviz plot. Changing the model to be a 1-gaussian model would likely help with
+convergence.</p>
+<p><strong>Question: My chains aren’t converged! What should I do?</strong></p>
+<p><strong>Answer:</strong> Try the following steps:</p>
+<p>1. <strong>Increase the number of draws</strong>. Most often, you just need to run your trace
+for longer to attain convergence.</p>
+<p>2. <strong>Increase the number of tunes</strong>. Proper tuning is important to good
+sampling, and increasing the number of tuning steps may help, though anything
+above 2000 tunes per chain probably will not be too helpful.</p>
+<p>3. <strong>Adjust your model</strong>. For example, shortening the maximum value of the
+r-axis will lead to faster sampling and convergence. You may also want to
+consider changing the number of gaussians (if using a parametric model) and
+changing the resolution of the r-axis.</p>
+<p>4. <strong>Prune chain(s)</strong>. If you notice that one (or more) chains are particularly
+unconverged, but the rest are decent, then you could remove the faulty chain(s).
+You can do this through <code class="docutils literal notranslate"><span class="pre">dive.prune_chains(trace)</span></code>, which drops each chain one
+by one and pruning the one that reduces <code class="docutils literal notranslate"><span class="pre">r_hat</span></code> the most, repeating until
+converged. You can also remove chains with
+<code class="docutils literal notranslate"><span class="pre">trace.sel(chain=desired_chain_numbers)</span></code>. Note that pruning chains will not be
+very effective if all of your chains are very different from each other.</p>
+<p>5. <strong>Set alpha to a fixed value</strong>. This can be done by passing an <code class="docutils literal notranslate"><span class="pre">alpha</span></code>
+parameter in <code class="docutils literal notranslate"><span class="pre">dive.model()</span></code>. Removing a parameter may make for better
+sampling. However, fixing a parameter will also limit the validity of the
+uncertainty analysis, so do this with caution.</p>
+</section>
+<section id="accessing-results">
+<h2>Accessing Results<a class="headerlink" href="#accessing-results" title="Link to this heading"></a></h2>
+<p>The output of <code class="docutils literal notranslate"><span class="pre">dive.sample</span></code> is an <a class="reference external" href="https://python.arviz.org/en/latest/getting_started/XarrayforArviZ.html#xarray-for-arviz">ArviZ InferenceData object</a>
+that consists of three xarray objects: <code class="docutils literal notranslate"><span class="pre">posterior</span></code>, <code class="docutils literal notranslate"><span class="pre">sample_stats</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">observed_data</span></code>.</p>
+<p>We are primarily interested in <code class="docutils literal notranslate"><span class="pre">trace.posterior</span></code>, which is an xarray object
+containing all of our parameters as data variables, the chains and draws as
+coordinates, and some supplementary information as attributes.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">trace_tikh</span><span class="o">.</span><span class="n">posterior</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">xarray</span><span class="o">.</span><span class="n">Dataset</span><span class="o">&gt;</span> <span class="n">Size</span><span class="p">:</span> <span class="mi">7</span><span class="n">MB</span>
+<span class="n">Dimensions</span><span class="p">:</span>            <span class="p">(</span><span class="n">chain</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="n">draw</span><span class="p">:</span> <span class="mi">2000</span><span class="p">,</span> <span class="n">P_dim_0</span><span class="p">:</span> <span class="mi">51</span><span class="p">,</span> <span class="n">P_Dirichlet_dim_0</span><span class="p">:</span> <span class="mi">51</span><span class="p">)</span>
+<span class="n">Coordinates</span><span class="p">:</span>
+<span class="o">*</span> <span class="n">chain</span>              <span class="p">(</span><span class="n">chain</span><span class="p">)</span> <span class="n">int64</span> <span class="mi">32</span><span class="n">B</span> <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span>
+<span class="o">*</span> <span class="n">draw</span>               <span class="p">(</span><span class="n">draw</span><span class="p">)</span> <span class="n">int64</span> <span class="mi">16</span><span class="n">kB</span> <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="mi">4</span> <span class="o">...</span> <span class="mi">1995</span> <span class="mi">1996</span> <span class="mi">1997</span> <span class="mi">1998</span> <span class="mi">1999</span>
+<span class="o">*</span> <span class="n">P_Dirichlet_dim_0</span>  <span class="p">(</span><span class="n">P_Dirichlet_dim_0</span><span class="p">)</span> <span class="n">int64</span> <span class="mi">408</span><span class="n">B</span> <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="mi">4</span> <span class="o">...</span> <span class="mi">47</span> <span class="mi">48</span> <span class="mi">49</span> <span class="mi">50</span>
+<span class="o">*</span> <span class="n">P_dim_0</span>            <span class="p">(</span><span class="n">P_dim_0</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">408</span><span class="n">B</span> <span class="mf">1.5</span> <span class="mf">1.6</span> <span class="mf">1.7</span> <span class="mf">1.8</span> <span class="o">...</span> <span class="mf">6.3</span> <span class="mf">6.4</span> <span class="mf">6.5</span>
+<span class="n">Data</span> <span class="n">variables</span><span class="p">:</span>
+    <span class="n">Bend</span>               <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="mf">0.8891</span> <span class="mf">0.8917</span> <span class="o">...</span> <span class="mf">0.8683</span>
+    <span class="n">P</span>                  <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">,</span> <span class="n">P_dim_0</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">3</span><span class="n">MB</span> <span class="o">...</span>
+    <span class="n">P_Dirichlet</span>        <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">,</span> <span class="n">P_Dirichlet_dim_0</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">3</span><span class="n">MB</span> <span class="o">...</span>
+    <span class="n">V0</span>                 <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="mf">1.003</span> <span class="mf">0.9967</span> <span class="o">...</span> <span class="mf">1.003</span> <span class="mf">1.01</span>
+    <span class="n">delta</span>              <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="o">...</span>
+    <span class="n">k</span>                  <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="o">...</span>
+    <span class="n">lamb</span>               <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="mf">0.5271</span> <span class="mf">0.5239</span> <span class="o">...</span> <span class="mf">0.5251</span>
+    <span class="n">lg_alpha</span>           <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="o">-</span><span class="mf">0.4515</span> <span class="o">-</span><span class="mf">0.4756</span> <span class="o">...</span> <span class="o">-</span><span class="mf">0.6419</span>
+    <span class="n">lg_delta</span>           <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="o">...</span>
+    <span class="n">sigma</span>              <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="mf">0.01939</span> <span class="mf">0.02025</span> <span class="o">...</span> <span class="mf">0.02026</span>
+    <span class="n">tau</span>                <span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">draw</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">64</span><span class="n">kB</span> <span class="o">...</span>
+<span class="n">Attributes</span><span class="p">:</span> <span class="p">(</span><span class="mi">12</span><span class="o">/</span><span class="mi">14</span><span class="p">)</span>
+    <span class="n">created_at</span><span class="p">:</span>                 <span class="mi">2024</span><span class="o">-</span><span class="mi">08</span><span class="o">-</span><span class="mi">06</span><span class="n">T20</span><span class="p">:</span><span class="mi">39</span><span class="p">:</span><span class="mf">37.362330</span><span class="o">+</span><span class="mi">00</span><span class="p">:</span><span class="mi">00</span>
+    <span class="n">arviz_version</span><span class="p">:</span>              <span class="mf">0.18.0</span>
+    <span class="n">inference_library</span><span class="p">:</span>          <span class="n">pymc</span>
+    <span class="n">inference_library_version</span><span class="p">:</span>  <span class="mf">5.10.4</span>
+    <span class="n">sampling_time</span><span class="p">:</span>              <span class="mf">519.4337060451508</span>
+    <span class="n">tuning_steps</span><span class="p">:</span>               <span class="mi">1000</span>
+    <span class="o">...</span>                         <span class="o">...</span>
+    <span class="n">include_background</span><span class="p">:</span>         <span class="mi">1</span>
+    <span class="n">include_mod_depth</span><span class="p">:</span>          <span class="mi">1</span>
+    <span class="n">include_amplitude</span><span class="p">:</span>          <span class="mi">1</span>
+    <span class="n">delta_prior</span><span class="p">:</span>                <span class="p">[</span><span class="mf">1.e+00</span> <span class="mf">1.e-06</span><span class="p">]</span>
+    <span class="n">tau_prior</span><span class="p">:</span>                  <span class="p">[</span><span class="mf">1.e+00</span> <span class="mf">1.e-04</span><span class="p">]</span>
+    <span class="n">random_seed</span><span class="p">:</span>                <span class="mi">101</span>
+</pre></div>
+</div>
+<p>The array stores the values for each parameter in the order they were generated,
+so if we wanted to find the value of <code class="docutils literal notranslate"><span class="pre">lamb</span></code> for the first draw of the first
+chain, we would print:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">trace_tikh</span><span class="o">.</span><span class="n">posterior</span><span class="o">.</span><span class="n">lamb</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span> <span class="s1">&#39;lamb&#39;</span> <span class="p">()</span><span class="o">&gt;</span> <span class="n">Size</span><span class="p">:</span> <span class="mi">8</span><span class="n">B</span>
+<span class="n">array</span><span class="p">(</span><span class="mf">0.527104</span><span class="p">)</span>
+<span class="n">Coordinates</span><span class="p">:</span>
+    <span class="n">chain</span>    <span class="n">int64</span> <span class="mi">8</span><span class="n">B</span> <span class="mi">0</span>
+    <span class="n">draw</span>     <span class="n">int64</span> <span class="mi">8</span><span class="n">B</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Oftentimes, however, this is not a very convenient way to access the posterior
+distributions. Instead, we can use the function <a class="reference external" href="https://python.arviz.org/en/latest/api/generated/arviz.extract.html#arviz.extract">az.extract</a>,
+which allows us to extract the parameters we want and stack them to combine the
+<code class="docutils literal notranslate"><span class="pre">chain</span></code> and <code class="docutils literal notranslate"><span class="pre">draw</span></code> dimensions.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">arviz</span> <span class="k">as</span> <span class="nn">az</span>
+<span class="n">lamb_array</span> <span class="o">=</span> <span class="n">az</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">,</span> <span class="n">var_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lamb&quot;</span><span class="p">])</span> <span class="c1"># extracts all the value of lambda for all samples and stacks them</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lamb_array</span><span class="o">.</span><span class="n">values</span><span class="p">)</span> <span class="c1">#.values converts the xarray into a numpy array</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mf">0.52710417</span> <span class="mf">0.52392079</span> <span class="mf">0.53517045</span> <span class="o">...</span> <span class="mf">0.53273982</span> <span class="mf">0.53126788</span> <span class="mf">0.52509982</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>With an xarray/numpy array of your parameters, you can perform your data
+analysis as usual. ArviZ may also have useful functions for data analysis,
+including <a class="reference external" href="https://python.arviz.org/en/stable/api/generated/arviz.hdi.html">az.hdi</a>,
+which calculates the highest density interval (the equivalent of a confidence
+interval) for some parameter.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lamb_hdi</span> <span class="o">=</span> <span class="n">az</span><span class="o">.</span><span class="n">hdi</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">,</span> <span class="n">hdi_prob</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">var_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lamb&quot;</span><span class="p">])</span> <span class="c1"># calculates the 95% highest density interval for lambda</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lamb_hdi</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">xarray</span><span class="o">.</span><span class="n">Dataset</span><span class="o">&gt;</span> <span class="n">Size</span><span class="p">:</span> <span class="mi">64</span><span class="n">B</span>
+<span class="n">Dimensions</span><span class="p">:</span>  <span class="p">(</span><span class="n">hdi</span><span class="p">:</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">Coordinates</span><span class="p">:</span>
+<span class="o">*</span> <span class="n">hdi</span>      <span class="p">(</span><span class="n">hdi</span><span class="p">)</span> <span class="o">&lt;</span><span class="n">U6</span> <span class="mi">48</span><span class="n">B</span> <span class="s1">&#39;lower&#39;</span> <span class="s1">&#39;higher&#39;</span>
+<span class="n">Data</span> <span class="n">variables</span><span class="p">:</span>
+    <span class="n">lamb</span>     <span class="p">(</span><span class="n">hdi</span><span class="p">)</span> <span class="n">float64</span> <span class="mi">16</span><span class="n">B</span> <span class="mf">0.5202</span> <span class="mf">0.5457</span>
+</pre></div>
+</div>
+<p>More information about InferenceData objects can be found <a class="reference external" href="https://python.arviz.org/en/latest/getting_started/WorkingWithInferenceData.html">here</a>.</p>
+</section>
+<section id="plotting">
+<h2>Plotting<a class="headerlink" href="#plotting" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">dive</span></code> provides several useful plots for assessing fit and investigating
+marginalized posterior distributions. Please see <a class="reference internal" href="plotting.html"><span class="doc">Plotting</span></a> for full
+documentation. A few funcitons are outlined below:</p>
+<p><code class="docutils literal notranslate"><span class="pre">dive.plot_V</span></code> plots an ensemble of modelled signals to the true signal,
+along with residuals and a corresponding ensemble of background fits.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dive</span><span class="o">.</span><span class="n">plot_V</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">)</span>
+<span class="n">dive</span><span class="o">.</span><span class="n">plot_V</span><span class="p">(</span><span class="n">trace_gauss</span><span class="p">,</span><span class="n">show_avg</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">hdi</span><span class="o">=</span><span class="mf">0.95</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/plotV-1.png"><img alt="_images/plotV-1.png" src="_images/plotV-1.png" style="width: 400px;" /></a>
+<a class="reference internal image-reference" href="_images/plotV-2.png"><img alt="_images/plotV-2.png" src="_images/plotV-2.png" style="width: 400px;" /></a>
+<p><code class="docutils literal notranslate"><span class="pre">dive.plot_P</span></code> plots an ensemble of distance distributions to give a
+visualization of the uncertainty of P.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dive</span><span class="o">.</span><span class="n">plot_P</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">)</span>
+<span class="n">dive</span><span class="o">.</span><span class="n">plot_P</span><span class="p">(</span><span class="n">trace_gauss</span><span class="p">,</span><span class="n">show_avg</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">hdi</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/plotP-1.png"><img alt="_images/plotP-1.png" src="_images/plotP-1.png" style="width: 400px;" /></a>
+<a class="reference internal image-reference" href="_images/plotP-2.png"><img alt="_images/plotP-2.png" src="_images/plotP-2.png" style="width: 400px;" /></a>
+<p>For the marginal posteriors of the other parameters, you can call
+<code class="docutils literal notranslate"><span class="pre">dive.plot_marginals</span></code> for 1D marginalized distributions and
+<code class="docutils literal notranslate"><span class="pre">dive.plot_correlations</span></code> for 2D marginalized distributions.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dive</span><span class="o">.</span><span class="n">plot_marginals</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">,</span> <span class="n">var_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lamb&quot;</span><span class="p">,</span><span class="s2">&quot;Bend&quot;</span><span class="p">,</span><span class="s2">&quot;V0&quot;</span><span class="p">,</span><span class="s2">&quot;sigma&quot;</span><span class="p">,</span><span class="s2">&quot;lg_alpha&quot;</span><span class="p">],</span> <span class="n">ground_truth</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;lamb&quot;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span><span class="s2">&quot;Bend&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.05</span><span class="o">*</span><span class="mf">3.2</span><span class="p">),</span><span class="s2">&quot;V0&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;sigma&quot;</span><span class="p">:</span><span class="mf">0.02</span><span class="p">})</span>
+<span class="n">dive</span><span class="o">.</span><span class="n">plot_marginals</span><span class="p">(</span><span class="n">trace_gauss</span><span class="p">,</span> <span class="n">var_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;lamb&quot;</span><span class="p">,</span><span class="s2">&quot;Bend&quot;</span><span class="p">,</span><span class="s2">&quot;V0&quot;</span><span class="p">,</span><span class="s2">&quot;sigma&quot;</span><span class="p">,</span><span class="s2">&quot;r0&quot;</span><span class="p">,</span><span class="s2">&quot;w&quot;</span><span class="p">,</span><span class="s2">&quot;a&quot;</span><span class="p">])</span> <span class="c1"># spiky/uneven plots due to poor convergence</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/marginals-1.png"><img alt="_images/marginals-1.png" src="_images/marginals-1.png" style="width: 500px;" /></a>
+<a class="reference internal image-reference" href="_images/marginals-2.png"><img alt="_images/marginals-2.png" src="_images/marginals-2.png" style="width: 700px;" /></a>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dive</span><span class="o">.</span><span class="n">plot_correlations</span><span class="p">(</span><span class="n">trace_tikh</span><span class="p">)</span>
+<span class="n">dive</span><span class="o">.</span><span class="n">plot_correlations</span><span class="p">(</span><span class="n">trace_gauss</span><span class="p">,</span><span class="n">marginals</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/correlations-1.png"><img alt="_images/correlations-1.png" src="_images/correlations-1.png" style="width: 400px;" /></a>
+<a class="reference internal image-reference" href="_images/correlations-2.png"><img alt="_images/correlations-2.png" src="_images/correlations-2.png" style="width: 400px;" /></a>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="dive documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="data.html" class="btn btn-neutral float-right" title="Reading &amp; Creating Data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sarah Sweger, Julian Cheung, Lukas Zha, Stephan Pribitzer, Stefan Stoll.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

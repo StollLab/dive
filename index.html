@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dive documentation &mdash; dive 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2709fde1"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Usage" href="usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            dive
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Reading &amp; Creating Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="saving.html">Saving</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utility Functions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">dive</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">dive documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="dive-documentation">
+<h1>dive documentation<a class="headerlink" href="#dive-documentation" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">dive</span></code> is a Python package for Bayesian analysis of dipolar EPR (electron paramagnetic resonance) spectroscopy data through Markov chain Monte Carlo (MCMC) sampling with the Python package <a class="reference external" href="https://www.pymc.io">PyMC</a>.</p>
+<section id="about">
+<h2>About<a class="headerlink" href="#about" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">dive</span></code> is a Python package for analyzing DEER spectroscopy with Bayesian
+inference. When given a model (Tikhonov regularization or Gaussian mixture),
+prior distributions for model parameters (which are already included in <code class="docutils literal notranslate"><span class="pre">dive</span></code>),
+and experimental data, Markov chain Monte Carlo (MCMC) sampling is run with
+<code class="docutils literal notranslate"><span class="pre">PyMC</span></code> to yield refined posterior distributions for each parameter. These
+posterior distributions provide full quantification of the uncertainty of all
+parameters, and can be analyzed for their means, confidence intervals, and so on.</p>
+<a class="reference internal image-reference" href="_images/figure-bayes-v6.png"><img alt="An illustration of the Bayes process." src="_images/figure-bayes-v6.png" style="width: 600px;" /></a>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<p>See <a class="reference internal" href="usage.html"><span class="doc">Usage</span></a> for information on how to use <code class="docutils literal notranslate"><span class="pre">dive</span></code>.</p>
+</section>
+<section id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#reading-data">Reading Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#modeling">Modeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#sampling">Sampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#saving">Saving</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#validating">Validating</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#accessing-results">Accessing Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#plotting">Plotting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Reading &amp; Creating Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data.html#module-dive.deerload">Reading .DSC Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data.html#dive.deerload.deerload"><code class="docutils literal notranslate"><span class="pre">deerload()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="data.html#dive.deerload.read_description_file"><code class="docutils literal notranslate"><span class="pre">read_description_file()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data.html#module-dive.test_data">Creating Synthetic Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data.html#dive.test_data.generate_multi_gauss"><code class="docutils literal notranslate"><span class="pre">generate_multi_gauss()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="data.html#dive.test_data.generate_single_gauss"><code class="docutils literal notranslate"><span class="pre">generate_single_gauss()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data.html#module-dive.deer">Creating P(r) and B(t)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data.html#dive.deer.bg_exp"><code class="docutils literal notranslate"><span class="pre">bg_exp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="data.html#dive.deer.bg_hom3d"><code class="docutils literal notranslate"><span class="pre">bg_hom3d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="data.html#dive.deer.dd_gauss"><code class="docutils literal notranslate"><span class="pre">dd_gauss()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="data.html#dive.deer.gauss"><code class="docutils literal notranslate"><span class="pre">gauss()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="models.html#creating-a-model">Creating a Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="models.html#dive.model"><code class="docutils literal notranslate"><span class="pre">model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#pymc-models">PyMC Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="models.html#dive.regularizationmodel"><code class="docutils literal notranslate"><span class="pre">regularizationmodel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="models.html#dive.multigaussmodel"><code class="docutils literal notranslate"><span class="pre">multigaussmodel()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sampling.html#sampling-a-model">Sampling a Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sampling.html#dive.sample"><code class="docutils literal notranslate"><span class="pre">sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sampling.html#module-dive.samplers">Backend Samplers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sampling.html#dive.samplers.DeltaSampler"><code class="docutils literal notranslate"><span class="pre">DeltaSampler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sampling.html#dive.samplers.DeltaSampler.step"><code class="docutils literal notranslate"><span class="pre">DeltaSampler.step()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sampling.html#dive.samplers.PSampler"><code class="docutils literal notranslate"><span class="pre">PSampler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sampling.html#dive.samplers.PSampler.step"><code class="docutils literal notranslate"><span class="pre">PSampler.step()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sampling.html#dive.samplers.TauSampler"><code class="docutils literal notranslate"><span class="pre">TauSampler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sampling.html#dive.samplers.TauSampler.step"><code class="docutils literal notranslate"><span class="pre">TauSampler.step()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="plotting.html">Plotting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.draw_posterior_samples"><code class="docutils literal notranslate"><span class="pre">draw_posterior_samples()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.pairplot_chain"><code class="docutils literal notranslate"><span class="pre">pairplot_chain()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.pairplot_condition"><code class="docutils literal notranslate"><span class="pre">pairplot_condition()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.pairplot_divergence"><code class="docutils literal notranslate"><span class="pre">pairplot_divergence()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.plot_P"><code class="docutils literal notranslate"><span class="pre">plot_P()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.plot_V"><code class="docutils literal notranslate"><span class="pre">plot_V()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.plot_correlations"><code class="docutils literal notranslate"><span class="pre">plot_correlations()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.plot_hist"><code class="docutils literal notranslate"><span class="pre">plot_hist()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.plot_marginals"><code class="docutils literal notranslate"><span class="pre">plot_marginals()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.print_summary"><code class="docutils literal notranslate"><span class="pre">print_summary()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html#dive.plotting.summary"><code class="docutils literal notranslate"><span class="pre">summary()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="saving.html">Saving</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="saving.html#dive.saving.load_trace"><code class="docutils literal notranslate"><span class="pre">load_trace()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="saving.html#dive.saving.save_trace"><code class="docutils literal notranslate"><span class="pre">save_trace()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utility Functions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#dive.utils.FWHM2sigma"><code class="docutils literal notranslate"><span class="pre">FWHM2sigma()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#dive.utils.addnoise"><code class="docutils literal notranslate"><span class="pre">addnoise()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#dive.utils.dipolarkernel"><code class="docutils literal notranslate"><span class="pre">dipolarkernel()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#dive.utils.fnnls"><code class="docutils literal notranslate"><span class="pre">fnnls()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#dive.utils.get_rhats"><code class="docutils literal notranslate"><span class="pre">get_rhats()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#dive.utils.prune_chains"><code class="docutils literal notranslate"><span class="pre">prune_chains()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#dive.utils.sigma2FWHM"><code class="docutils literal notranslate"><span class="pre">sigma2FWHM()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sarah Sweger, Julian Cheung, Lukas Zha, Stephan Pribitzer, Stefan Stoll.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

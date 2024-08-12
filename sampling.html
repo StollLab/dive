@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sampling &mdash; dive 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2709fde1"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Plotting" href="plotting.html" />
+    <link rel="prev" title="Modeling" href="models.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            dive
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Reading &amp; Creating Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Modeling</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Sampling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sampling-a-model">Sampling a Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dive.sample"><code class="docutils literal notranslate"><span class="pre">sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-dive.samplers">Backend Samplers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dive.samplers.DeltaSampler"><code class="docutils literal notranslate"><span class="pre">DeltaSampler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dive.samplers.DeltaSampler.step"><code class="docutils literal notranslate"><span class="pre">DeltaSampler.step()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#dive.samplers.PSampler"><code class="docutils literal notranslate"><span class="pre">PSampler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dive.samplers.PSampler.step"><code class="docutils literal notranslate"><span class="pre">PSampler.step()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#dive.samplers.TauSampler"><code class="docutils literal notranslate"><span class="pre">TauSampler</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dive.samplers.TauSampler.step"><code class="docutils literal notranslate"><span class="pre">TauSampler.step()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="plotting.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="saving.html">Saving</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utility Functions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dive</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Sampling</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/sampling.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="sampling">
+<h1>Sampling<a class="headerlink" href="#sampling" title="Link to this heading"></a></h1>
+<section id="sampling-a-model">
+<h2>Sampling a Model<a class="headerlink" href="#sampling-a-model" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="dive.sample">
+<span class="sig-prename descclassname"><span class="pre">dive.</span></span><span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">InferenceData</span></span></span><a class="headerlink" href="#dive.sample" title="Link to this definition"></a></dt>
+<dd><p>Samples the provided model with PyMC.</p>
+<p>Depending on the model method, Gibbs sampling is used for none to
+some of the parameters, and NUTS sampling is used for the rest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>dict</em>) – The dictionary containing the PyMC model, model parameters, and
+DEER data from <cite>dive.model()</cite>.</p></li>
+<li><p><strong>**kwargs</strong> (<em>dict</em><em>, </em><em>optional</em>) – Extra arguments to be passed to <cite>pm.sample()</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>trace</strong> – An ArviZ <cite>InferenceData</cite> object containing the posterior samples
+and some supplementary information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>az.InferenceData</p>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pm.sample</span></code></p>
+</div>
+</dd></dl>
+
+</section>
+<section id="module-dive.samplers">
+<span id="backend-samplers"></span><h2>Backend Samplers<a class="headerlink" href="#module-dive.samplers" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="dive.samplers.DeltaSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dive.samplers.</span></span><span class="sig-name descname"><span class="pre">DeltaSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dive.samplers.DeltaSampler" title="Link to this definition"></a></dt>
+<dd><p>Draws random samples from delta’s posterior.</p>
+<p>Draws independent samples of delta from its full conditional
+(posterior) distribution.</p>
+<p class="rubric">Notes</p>
+<p>Initalization needs the following:</p>
+<p>L             regularization operator/matrix
+delta_prior   the alpha and beta values for delta’s prior</p>
+<p>The following model parameter is needed as well and is pulled from
+the PyMC model context:</p>
+<p>P       distance distribution</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dive.samplers.DeltaSampler.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dive.samplers.DeltaSampler.step" title="Link to this definition"></a></dt>
+<dd><p>Draws a random sample of delta.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dive.samplers.PSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dive.samplers.</span></span><span class="sig-name descname"><span class="pre">PSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dive.samplers.PSampler" title="Link to this definition"></a></dt>
+<dd><p>Draws random non-negative normalized samples from P’s posterior.</p>
+<p>Draws independent samples of P (with non-negative elements)
+from the full conditional (posterior) distribution of P.
+The returned P is normalized.</p>
+<p class="rubric">Notes</p>
+<p>Initalization needs the following:</p>
+<p>t     time vector
+Vexp  data vector
+K0    kernel matrix
+LtL   L’<a href="#id1"><span class="problematic" id="id2">*</span></a>L, where L is the regularization matrix
+dr    the resolution of the distance axis
+alpha the value of the regularization parameter, if fixed</p>
+<p>The following model parameters are needed as well and are pulled
+from the PyMC model context:</p>
+<p>tau     precision parameter
+delta   regularization parameter
+Bend    end value of background decay function (at t[-1])
+lamb    modulation depth
+V0      overall amplitude</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dive.samplers.PSampler.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dive.samplers.PSampler.step" title="Link to this definition"></a></dt>
+<dd><p>Draws a random sample of P.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dive.samplers.TauSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dive.samplers.</span></span><span class="sig-name descname"><span class="pre">TauSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dive.samplers.TauSampler" title="Link to this definition"></a></dt>
+<dd><p>“Draws random samples from tau’s posterior.</p>
+<p>Draws independent samples of tau from its full conditional
+(posterior) distribution.</p>
+<p class="rubric">Notes</p>
+<p>Initalization needs the following:</p>
+<p>t             time-axis of DEER data
+Vexp          measured DEER signal
+dr            the resolution of the distance axis
+tau_prior     the alpha and beta values for tau’s prior
+K0            kernel matrix</p>
+<p>The following model parameters are needed as well and are pulled
+from the PyMC model context:</p>
+<p>P       distance distribution
+Bend    end value of background decay function (at t[-1])
+lamb    modulation depth
+V0      overall amplitude</p>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id3" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
+<p>J.M. Bardsley, P.C. Hansen, MCMC Algorithms for Computational
+UQ of Nonnegativity Constrained Linear Inverse Problems, SIAM
+Journal on Scientific Computing 42 (2020) A1269-A1288 from
+“Hierarchical Gibbs Sampler” block after Eqn. (2.8)</p>
+</aside>
+</aside>
+<dl class="py method">
+<dt class="sig sig-object py" id="dive.samplers.TauSampler.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dive.samplers.TauSampler.step" title="Link to this definition"></a></dt>
+<dd><p>Draws a random sample of tau.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="models.html" class="btn btn-neutral float-left" title="Modeling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="plotting.html" class="btn btn-neutral float-right" title="Plotting" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sarah Sweger, Julian Cheung, Lukas Zha, Stephan Pribitzer, Stefan Stoll.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
