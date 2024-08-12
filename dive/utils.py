@@ -237,13 +237,13 @@ def fnnls(
     r"""Fast non-negative least-squares algorithm.
 
     x = fnnls(AtA,Atb) solves the problem min ||b - Ax|| if
-        AtA = A'*A and Atb = A'*b.
+    AtA = A'*A and Atb = A'*b.
     A default tolerance of TOL = MAX(SIZE(AtA)) * NORM(AtA,1) * EPS
     is used for deciding when elements of x are less than zero.
     This can be overridden with x = fnnls(AtA,Atb,TOL).
 
     [x,w] = fnnls(AtA,Atb) also returns dual vector w where
-        w(i) < 0 where x(i) = 0 and w(i) = 0 where x(i) > 0.
+    w(i) < 0 where x(i) = 0 and w(i) = 0 where x(i) > 0.
 
     Parameters
     ----------

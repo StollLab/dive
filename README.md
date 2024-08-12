@@ -50,7 +50,7 @@ Next, install dive with
 
 ### Documentation
 
-See the [documentation](stolllab.github.io/dive) for a detailed guide on how to use `dive`.
+See the [documentation](https://stolllab.github.io/dive) for a detailed guide on how to use `dive`. An IPython Notebook guide on using `dive` can also be found under the `examples/` directory.
 
 ### Citation
 
