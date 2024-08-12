@@ -11,6 +11,8 @@
 #
 import os
 import sys
+from numpy.typing import ArrayLike
+from matplotlib.typing import ColorType
 sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
