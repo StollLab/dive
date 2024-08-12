@@ -42,6 +42,7 @@ autodoc_type_aliases = {ArrayLike: 'ArrayLike', ColorType: 'ColorType'}
 # Napoleon settings
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
+napoleon_type_aliases = {ArrayLike: 'ArrayLike', ColorType: 'ColorType'}
 
 
 # -- Options for HTML output -------------------------------------------------
