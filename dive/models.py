@@ -61,12 +61,11 @@ def model(
 
     # Generates distance axis if not provided
     if r is None:
-        r_ = r
+        rmin = 0
         tmax = max(abs(t))
         rmax = (108*tmax)**0.333333333333333
-        dr = (max(r_)-min(r_))/len(r_)
-        num = int((rmax-min(r_))/dr)
-        r = np.linspace(min(r_),rmax,num)
+        nr = 50
+        r = np.linspace(rmin,rmax,nr)
 
     # Sets up model based on method
     if method == "gaussian":
