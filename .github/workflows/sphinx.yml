@@ -24,7 +24,8 @@ jobs:
            python -m pip install matplotlib
            python -m pip install pandas
     - name: Build HTML
-      uses: ammaraskar/sphinx-action@master
+      run: |
+           sphinx-build -E -b html docs/source docs/build/html
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
