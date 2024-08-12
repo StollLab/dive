@@ -11,6 +11,8 @@
 #
 import os
 import sys
+from numpy.typing import ArrayLike
+from matplotlib.typing import ColorType
 sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
@@ -34,15 +36,17 @@ extensions = [
 
 templates_path = ['_templates']
 exclude_patterns = []
-autodoc_mock_imports = ['pymc','deerlab','scipy','matplotlib','pandas','numpy']
+# autodoc_mock_imports = ['pymc','deerlab','scipy','matplotlib','pandas','numpy']
+autodoc_type_aliases = {ArrayLike: 'ArrayLike', ColorType: 'ColorType'}
 
 # Napoleon settings
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
+napoleon_type_aliases = {ArrayLike: 'ArrayLike', ColorType: 'ColorType'}
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
