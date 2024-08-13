@@ -4,12 +4,12 @@ Usage
 Installation
 ------------
 
-To install ``dive``, install it with pip. Please note that the package name is 
-``dive-MCMC``:
+To install ``dive``, install it with pip. Please note that the PyPI package name is 
+``dive-EPR``:
 
 .. code-block::
 
-    pip install dive-MCMC
+    pip install dive-EPR
 
 To use ``dive``, import it as usual:
 
