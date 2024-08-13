@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dive-EPR"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
   {name = "Sarah Sweger"},
   {name = "Julian Cheung", email = "julianc2477@gmail.com"},
