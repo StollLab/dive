@@ -1,4 +1,4 @@
-name : Publish to TestPyPI
+name : Publish to PyPI
 
 on : push
 
@@ -28,16 +28,16 @@ jobs:
         name: python-package-distributions
         path: dist/
 
-  publish-to-testpypi:
+  publish-to-pypi:
     name: >-
-      Publish to TestPyPI
+      Publish to PyPI
     if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
     needs:
     - build
     runs-on: ubuntu-latest
     environment:
-      name: testpypi
-      url: https://test.pypi.org/p/dive-MCMC
+      name: pypi
+      url: https://pypi.org/p/dive-EPR
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
     steps:
@@ -46,17 +46,15 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-    - name: Publish distribution to TestPyPI
+    - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/
 
   github-release:
     name: >-
       Sign the distribution with Sigstore
       and upload them to GitHub Release
     needs:
-    - publish-to-testpypi
+    - publish-to-pypi
     runs-on: ubuntu-latest
 
     permissions:
