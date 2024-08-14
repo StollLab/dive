@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 project = 'dive'
 copyright = '2024, Sarah Sweger, Julian Cheung, Lukas Zha, Stephan Pribitzer, Stefan Stoll'
 author = 'Sarah Sweger, Julian Cheung, Lukas Zha, Stephan Pribitzer, Stefan Stoll'
-release = '0.2'
+release = '0.2.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
